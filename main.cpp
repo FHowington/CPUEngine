@@ -13,14 +13,9 @@ int main() {
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
-    // Create a mesh of triangles covering the entire screen
-    std::vector< std::array<std::array<int,2>, 3> > triangles;
-    std::array<int, 2> p0 = {0, 0};
-    std::array<int, 2> p1 = {20, 100};
-    std::array<int, 2> p2 = {400, 400};
 
-    std::array<std::array<int, 2>, 3> elem1 = {p0, p1, p2};
-    elem1 = {{{{0,0}}, {{10,10}}, {{0,50}}}};
+    std::vector< std::array<std::array<int,2>, 3> > triangles;
+    std::array<std::array<int,2>, 3> elem1 = {{{{0,0}}, {{10,10}}, {{0,50}}}};
 
     triangles.push_back(elem1);
 
@@ -36,7 +31,7 @@ int main() {
         for(auto& p: pixels) p = blank;
         for(auto& t: triangles)
         {
-            drawPoly(triangles[0][0], triangles[0][1], triangles[0][2]);
+            drawPoly(t[0], t[1], t[2]);
         }
         SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
         SDL_RenderCopy(renderer, texture, nullptr, nullptr);

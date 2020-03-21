@@ -24,11 +24,11 @@ void Plot(unsigned x, unsigned y)
 // Sort high to low, based on y-val first, then x-val
 // Can make this more efficient by swapping pointers I think
 template <typename T>
-inline void hToL (T& p0, T& p1) {
-    if (std::get<1>(p1) < std::get<1>(p0)) {
-        p0.swap(p1);
-    } else if (std::get<1>(p1) == std::get<1>(p0) && std::get<0>(p1) < std::get<0>(p0)) {
-        p0.swap(p1);
+inline void hToL (const T* p0, const T* p1) {
+    if (std::get<1>(*p1) < std::get<1>(*p0)) {
+      std::swap(p0, p1);
+    } else if (std::get<1>(*p1) == std::get<1>(*p0) && std::get<0>(*p1) < std::get<0>(*p0)) {
+      std::swap(p0, p1);
     }
 }
 
@@ -52,28 +52,28 @@ inline void drawScanline(T& left, T& right, unsigned y) {
 }
 
 template <typename T>
-void rasterizePolygon (T& p0, T& p1, T& p2) {
+void rasterizePolygon (const T* p0, T* p1, const T* p2) {
     hToL(p0, p1);
     hToL(p0, p2);
     hToL(p1, p2);
 
     // If highest and lowest are the same, return early as
     // triangle has no area
-    if (std::get<1>(p0) == std::get<1>(p2)) {
+    if (std::get<1>(*p0) == std::get<1>(*p2)) {
         return;
     }
 
     // True = right, false = left
     // Cross-product magic to determine which side it is on
-    bool rightIsShortSide = (std::get<1>(p1) - std::get<1>(p0)) * (std::get<0>(p2) - std::get<0>(p0)) <
-            (std::get<0>(p1) - std::get<0>(p0)) * (std::get<1>(p2) - std::get<1>(p0));
+    bool rightIsShortSide = (std::get<1>(*p1) - std::get<1>(*p0)) * (std::get<0>(*p2) - std::get<0>(*p0)) <
+            (std::get<0>(*p1) - std::get<0>(*p0)) * (std::get<1>(*p2) - std::get<1>(*p0));
 
-    SlopePair longSide = slope(p0, p2, std::get<1>(p2) - std::get<1>(p0));
+    SlopePair longSide = slope(*p0, *p2, std::get<1>(*p2) - std::get<1>(*p0));
 
     // Combine these 2 loops later
-    if (std::get<1>(p0) < std::get<1>(p1)) {
-        SlopePair shortSide = slope(p0, p1, std::get<1>(p1) - std::get<1>(p0));
-        for (auto y = std::get<1>(p0); y < std::get<1>(p1); ++y) {
+    if (std::get<1>(*p0) < std::get<1>(*p1)) {
+        SlopePair shortSide = slope(*p0, *p1, std::get<1>(*p1) - std::get<1>(*p0));
+        for (auto y = std::get<1>(*p0); y < std::get<1>(*p1); ++y) {
             if (rightIsShortSide) {
                 drawScanline(longSide, shortSide, y);
             } else {
@@ -82,9 +82,9 @@ void rasterizePolygon (T& p0, T& p1, T& p2) {
         }
     }
 
-    if (std::get<1>(p1) < std::get<1>(p2)) {
-        SlopePair shortSide = slope(p1, p2, std::get<1>(p2) - std::get<1>(p1));
-        for (auto y = std::get<1>(p1); y < std::get<1>(p2); ++y) {
+    if (std::get<1>(*p1) < std::get<1>(*p2)) {
+        SlopePair shortSide = slope(*p1, *p2, std::get<1>(*p2) - std::get<1>(*p1));
+        for (auto y = std::get<1>(*p1); y < std::get<1>(*p2); ++y) {
             if (rightIsShortSide) {
                 drawScanline(longSide, shortSide, y);
             } else {
@@ -95,5 +95,5 @@ void rasterizePolygon (T& p0, T& p1, T& p2) {
 }
 
 void drawPoly(std::array<int, 2> p0, std::array<int, 2> p1, std::array<int, 2> p2) {
-    rasterizePolygon(p0, p1, p2);
+    rasterizePolygon(&p0, &p1, &p2);
 }
