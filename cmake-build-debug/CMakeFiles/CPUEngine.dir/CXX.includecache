@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/forbes/CLionProjects/CPUEngine/RasterizePolygon.h
+vector
+-
+utility
+-
+array
+-
+SDL2/SDL.h
+-
+
+/Users/forbes/CLionProjects/CPUEngine/main.cpp
+iostream
+-
+mesh.h
+/Users/forbes/CLionProjects/CPUEngine/mesh.h
+RasterizePolygon.h
+/Users/forbes/CLionProjects/CPUEngine/RasterizePolygon.h
+vector
+-
+array
+-
+SDL2/SDL.h
+-
+
+/Users/forbes/CLionProjects/CPUEngine/mesh.h
+
