@@ -1,5 +1,4 @@
 #include <iostream>
-#include "mesh.h"
 #include "RasterizePolygon.h"
 #include <vector>
 #include <array>
@@ -21,6 +20,8 @@ int main() {
     std::array<int, 2> p2 = {400, 400};
 
     std::array<std::array<int, 2>, 3> elem1 = {p0, p1, p2};
+    elem1 = {{{{0,0}}, {{10,10}}, {{0,50}}}};
+
     triangles.push_back(elem1);
 
     for(bool interrupted=false; !interrupted; )
