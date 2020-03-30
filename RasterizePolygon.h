@@ -11,16 +11,15 @@
 #include "Window.h"
 
 unsigned blank = 0xFFFFFF, duplicate = 0xFFAA55;
+const unsigned halfW = W/2;
+const unsigned halfH = H/2;
 
 extern unsigned pixels[W*H];
 
 typedef std::pair<double, double> SlopePair;
-void Plot(unsigned x, unsigned y, const unsigned color)
+void plot(unsigned x, unsigned y, const unsigned color)
 {
-  //if(pixels[y*W+x] != blank)
-  //  pixels[y*W+x] = duplicate;
-  //else
-    pixels[y*W+x] = (color&0xFFFFFF);
+  pixels[y*W+x] = color;
 }
 
 
@@ -37,10 +36,9 @@ inline bool isTopLeft(T& p0, T& p1) {
   return false;
 }
 
-template <typename T>
-inline bool orient2d(const T& p0, const T& p1, const T& p2, int bias)
+inline bool orient2d(const int x0, const int x1, const int x2, const int y0, const int y1, const int y2, int bias)
 {
-  return (p1->_x - p0->_x)*(p2->_y - p0->_y) - (p1->_y - p0->_y)*(p2->_x - p0->_x) + bias > 0;
+  return (x1 - x0)*(y2 - y0) - (y1 - y0)*(x2 - x0) + bias > 0;
 }
 
 template <typename T>
@@ -65,17 +63,29 @@ inline bool directionality(const T& p0, const T& p1, const T& p2)
 template <typename T>
 void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
 {
+
   // Compute triangle bounding box
 
-  //int direction = directionality(p0, p1, p2);
-  //if (direction == 0) {
-  //  return;
-  //}
+  int direction = directionality(p0, p1, p2);
+  if (direction == false) {
+    printf("Failed\n");
+    return;
+  }
   //bool clockwise = direction > 0 ? true : false;
-  auto minX = min3(p0->_x, p1->_x, p2->_x);
-  auto minY = min3(p0->_y, p1->_y, p2->_y);
-  auto maxX = max3(p0->_x, p1->_x, p2->_x);
-  auto maxY = max3(p0->_y, p1->_y, p2->_y);
+
+  unsigned x0 = p0->_x * halfW + halfW;
+  unsigned x1 = p1->_x * halfW + halfW;
+  unsigned x2 = p2->_x * halfW + halfW;
+
+  unsigned y0 = p0->_y * halfH + halfH;
+  unsigned y1 = p1->_y * halfH + halfH;
+  unsigned y2 = p2->_y * halfH + halfH;
+
+
+  auto minX = min3(x0, x1, x2);
+  auto minY = min3(y0, y1, y2);
+  auto maxX = max3(x0, x1, x2);
+  auto maxY = max3(y0, y1, y2);
 
   // Clip against screen bounds
   minX = std::max(minX, (decltype(minX))0);
@@ -85,112 +95,35 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
 
   // Rasterize
   std::shared_ptr<vertex> p = std::make_shared<vertex>(0,0,0);
+  unsigned x, y;
 
   int bias0 = isTopLeft(p1, p2) ? 0 : 1;
   int bias1 = isTopLeft(p2, p0) ? 0 : 1;
   int bias2 = isTopLeft(p0, p1) ? 0 : 1;
 
-  for (p->_y = minY; p->_y <= maxY; ++(p->_y)) {
-    for (p->_x = minX; p->_x <= maxX; ++(p->_x)) {
-      //printf("%d %d\n",p->_x, p->_y);
+  for (y = minY; y <= maxY; ++y) {
+    for (x = minX; x <= maxX; ++x) {
+      auto w0 = orient2d(x2, x1, x, y2, y1, y, bias0);
+      auto w1 = orient2d(x0, x2, x, y0, y2, y, bias1);
+      auto w2 = orient2d(x1, x0, x, y1, y0, y, bias2);
 
-      // Determine barycentric coordinates
-      //printf("0: %d %d\n", p0->_x, p0->_y);
-      //printf("1: %d %d\n", p1->_x, p1->_y);
-      //printf("2: %d %d\n", p2->_x, p2->_y);
-      auto w0 = orient2d(p1, p2, p, bias0);
-      auto w1 = orient2d(p2, p0, p, bias1);
-      auto w2 = orient2d(p0, p1, p, bias2);
-      //printf("%d %d %d\n", w0, w1, w2);
-      // If p is on or inside all edges, render pixel->
+      // If p is on or inside all edges, render pixel
       if (w0 && w1 && w2)
-        Plot(p->_x, p->_y, color);
+        plot(x, y, color);
     }
   }
-}
-
-// Sort high to low, based on y-val first, then x-val
-template <typename T>
-inline void hToL (const T*& p0, const T*& p1) {
-    if (std::get<1>(*p1) < std::get<1>(*p0)) {
-      std::swap(p0, p1);
-    } else if (std::get<1>(*p1) == std::get<1>(*p0) && std::get<0>(*p1) < std::get<0>(*p0)) {
-      std::swap(p0, p1);
-    }
-}
-
-template <typename T>
-inline SlopePair slope(const T& from, const T& to, unsigned steps) {
-    // Read this as, beginning at x pos of from, we increase (second) pixels per scanline
-    return std::make_pair(std::get<0>(from), ((double)std::get<0>(to) - (double)std::get<0>(from)) / steps);
-}
-
-template <typename T>
-inline void drawScanline(T& left, T& right, unsigned y, unsigned color) {
-    unsigned begx = left.first, endx = right.first;
-
-    for (; begx < endx; ++begx) {
-      Plot(begx, y, color);
-    }
-    left.first += left.second;
-    right.first += right.second;
-
-    const std::array<int, 2>* p = new std::array<int, 2>;
-    const std::array<int, 2>* p2 = new std::array<int, 2>;
-}
-
-template <typename T>
-void rasterizePolygon (const T* p0, const T* p1, const T* p2, unsigned color) {
-  hToL(p0, p1);
-  hToL(p0, p2);
-  hToL(p1, p2);
-
-  // If highest and lowest are the same, return early as
-  // triangle has no area
-  if (std::get<1>(*p0) == std::get<1>(*p2)) {
-    return;
-  }
-
-  // True = right, false = left
-  // Cross-product magic to determine which side it is on
-  bool rightIsShortSide = (std::get<1>(*p1) - std::get<1>(*p0)) * (std::get<0>(*p2) - std::get<0>(*p0)) <
-    (std::get<0>(*p1) - std::get<0>(*p0)) * (std::get<1>(*p2) - std::get<1>(*p0));
-
-  SlopePair longSide = slope(*p0, *p2, std::get<1>(*p2) - std::get<1>(*p0));
-
-  // Combine these 2 loops later
-  if (std::get<1>(*p0) < std::get<1>(*p1)) {
-    SlopePair shortSide = slope(*p0, *p1, std::get<1>(*p1) - std::get<1>(*p0));
-    for (auto y = std::get<1>(*p0); y < std::get<1>(*p1); ++y) {
-      if (rightIsShortSide) {
-        drawScanline(longSide, shortSide, y, color);
-      } else {
-        drawScanline(shortSide, longSide, y, color);
-      }
-    }
-  }
-
-  if (std::get<1>(*p1) < std::get<1>(*p2)) {
-    SlopePair shortSide = slope(*p1, *p2, std::get<1>(*p2) - std::get<1>(*p1));
-    for (auto y = std::get<1>(*p1); y < std::get<1>(*p2); ++y) {
-      if (rightIsShortSide) {
-        drawScanline(longSide, shortSide, y, color);
-      } else {
-        drawScanline(shortSide, longSide, y, color);
-      }
-    }
-  }
-}
-
-void drawPoly(std::array<int, 2> p0, std::array<int, 2> p1, std::array<int, 2> p2, unsigned color) {
-  rasterizePolygon(&p0, &p1, &p2, color);
 }
 
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
-void line(unsigned x0, unsigned x1, unsigned y0, unsigned y1, const unsigned color) {
+void line(const vertex& v0, const vertex& v1, const unsigned color) {
   // We must find whether x is longer, or y is longer
   // If true, indicates that x will have pixels on same row
+
+  unsigned x0 = v0._x * halfW + halfW;
+  unsigned y0 = v0._y * halfH + halfH;
+  unsigned x1 = v1._x * halfW + halfW;
+  unsigned y1 = v1._y * halfH + halfH;
 
   bool longX = std::abs((long)x1 - x0) >= std::abs((long)y1 - y0);
   if (x1 < x0) {
@@ -213,7 +146,7 @@ void line(unsigned x0, unsigned x1, unsigned y0, unsigned y1, const unsigned col
 
     unsigned y = y0;
     for (int x = x0; x < x1; ++x) {
-      Plot(x, y, color);
+      plot(x, y, color);
       // We increment the y "error" by twice the change in y
       error += absderror;
       if (error > dx) {
@@ -237,7 +170,7 @@ void line(unsigned x0, unsigned x1, unsigned y0, unsigned y1, const unsigned col
     unsigned x = x0;
 
     for (unsigned y = y0; y < y1; ++y) {
-      Plot(x, y, color);
+      plot(x, y, color);
       error += absderror;
       if (error > dy) {
         x += offset;

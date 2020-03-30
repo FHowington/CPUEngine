@@ -11,15 +11,21 @@
 #include <vector>
 #include "Window.h"
 
+struct fcolor {
+  unsigned _color;
+  fcolor (uint8_t r, uint8_t g, uint8_t b, uint8_t a) : _color((r << 24) | (g << 16) | (b << 8) | a) {}
+  operator unsigned() const { return _color; }
+};
+
 struct vertex {
-  int _x;
-  int _y;
-  int _z;
-  vertex (const unsigned x, const unsigned y, const unsigned z) : _x(x), _y(y), _z(z) {}
+  float _x;
+  float _y;
+  float _z;
+  vertex (const float x, const float y, const float z) : _x(x), _y(y), _z(z) {}
   vertex () : _x(), _y(), _z() {};
 
   float norm() { return std::sqrt(_x*_x+_y*_y+_z*_z); }
-  vertex& normalize(unsigned l = 1) {
+  vertex& normalize(float l = 1) {
     float lnorm = norm();
     lnorm = l/lnorm;
     this->_x *= lnorm;
@@ -39,8 +45,8 @@ vertex cross(const vertex& v0, const vertex& v1, const vertex& v2) {
   return v;
 }
 
-// Remeber: this is vectors, not vertices!
-int dot(const vertex& l, const vertex& r) {
+// Remember: this is vectors, not vertices!
+float dot(const vertex& l, const vertex& r) {
   return l._x * r._x + l._y * r._y + l._z + r._z;
 }
 
@@ -67,10 +73,10 @@ std::vector<std::shared_ptr<vertex>> getVerticesFromWave(const std::string& file
       }
 
       // w/2 is 0
-      x = x * (W/2) + (W/2);
-      y = y * (H/2) + (H/2);
+      //x = x * (W/2) + (W/2);
+      //y = y * (H/2) + (H/2);
       // For now, consider 16 bits of depth
-      z = z * (0xFFFF / 2) + (0xFFFF / 2);
+      //z = z * (0xFFFF / 2) + (0xFFFF / 2);
 
       // For now, z is ignored
       result.emplace_back(std::make_shared<vertex>(x, y, z));
