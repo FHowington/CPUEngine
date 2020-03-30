@@ -17,9 +17,9 @@ extern unsigned pixels[W*H];
 typedef std::pair<double, double> SlopePair;
 void Plot(unsigned x, unsigned y, const unsigned color)
 {
-  if(pixels[y*W+x] != blank)
-    pixels[y*W+x] = duplicate;
-  else
+  //if(pixels[y*W+x] != blank)
+  //  pixels[y*W+x] = duplicate;
+  //else
     pixels[y*W+x] = (color&0xFFFFFF);
 }
 
@@ -29,9 +29,9 @@ void Plot(unsigned x, unsigned y, const unsigned color)
 // Or
 template <typename T>
 inline bool isTopLeft(T& p0, T& p1) {
-  if (std::get<1>(p0) == std::get<1>(p1) && std::get<0>(p1) < std::get<0>(p0)) {
+  if (p0->_y == p1->_y && p1->_x < p0->_x) {
     return true;
-  } else if (std::get<1>(p0) < std::get<1>(p1)) {
+  } else if (p0->_y < p1->_y) {
     return true;
   }
   return false;
@@ -40,7 +40,7 @@ inline bool isTopLeft(T& p0, T& p1) {
 template <typename T>
 inline bool orient2d(const T& p0, const T& p1, const T& p2, int bias)
 {
-  return (std::get<0>(p1)-std::get<0>(p0))*(std::get<1>(p2)-std::get<1>(p0)) - (std::get<1>(p1)-std::get<1>(p0))*(std::get<0>(p2)-std::get<0>(p0)) + bias > 0;
+  return (p1->_x - p0->_x)*(p2->_y - p0->_y) - (p1->_y - p0->_y)*(p2->_x - p0->_x) + bias > 0;
 }
 
 template <typename T>
@@ -59,7 +59,7 @@ template <typename T>
 // > 0, clockwise, <0, counterclockwise, 0, colinear
 inline bool directionality(const T& p0, const T& p1, const T& p2)
 {
-  return std::get<0>(p0)*(std::get<1>(p1) - std::get<1>(p2)) - std::get<1>(p0)*(std::get<0>(p1) - std::get<0>(p2)) + std::get<1>(p2)*std::get<0>(p1) - std::get<1>(p1)*std::get<0>(p2);
+  return p0->_x*(p1->_y - p2->_y) - p0->_y*(p1->_x - p2->_x) + p2->_y*p1->_x - p1->_y*p2->_x;
 }
 
 template <typename T>
@@ -72,10 +72,10 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
   //  return;
   //}
   //bool clockwise = direction > 0 ? true : false;
-  auto minX = min3(std::get<0>(p0), std::get<0>(p1),std::get<0>(p2));
-  auto minY = min3(std::get<1>(p0), std::get<1>(p1),std::get<1>(p2));
-  auto maxX = max3(std::get<0>(p0), std::get<0>(p1),std::get<0>(p2));
-  auto maxY = max3(std::get<1>(p0), std::get<1>(p1),std::get<1>(p2));
+  auto minX = min3(p0->_x, p1->_x, p2->_x);
+  auto minY = min3(p0->_y, p1->_y, p2->_y);
+  auto maxX = max3(p0->_x, p1->_x, p2->_x);
+  auto maxY = max3(p0->_y, p1->_y, p2->_y);
 
   // Clip against screen bounds
   minX = std::max(minX, (decltype(minX))0);
@@ -84,23 +84,27 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
   maxY = std::min(maxY, (decltype(minX))H - 1);
 
   // Rasterize
-  T p;
+  std::shared_ptr<vertex> p = std::make_shared<vertex>(0,0,0);
 
   int bias0 = isTopLeft(p1, p2) ? 0 : 1;
   int bias1 = isTopLeft(p2, p0) ? 0 : 1;
   int bias2 = isTopLeft(p0, p1) ? 0 : 1;
 
-  for (std::get<1>(p) = minY; std::get<1>(p) <= maxY; ++std::get<1>(p)) {
-    for (std::get<0>(p) = minX; std::get<0>(p) <= maxX; ++std::get<0>(p)) {
+  for (p->_y = minY; p->_y <= maxY; ++(p->_y)) {
+    for (p->_x = minX; p->_x <= maxX; ++(p->_x)) {
+      //printf("%d %d\n",p->_x, p->_y);
 
       // Determine barycentric coordinates
+      //printf("0: %d %d\n", p0->_x, p0->_y);
+      //printf("1: %d %d\n", p1->_x, p1->_y);
+      //printf("2: %d %d\n", p2->_x, p2->_y);
       auto w0 = orient2d(p1, p2, p, bias0);
       auto w1 = orient2d(p2, p0, p, bias1);
       auto w2 = orient2d(p0, p1, p, bias2);
-
-      // If p is on or inside all edges, render pixel.
+      //printf("%d %d %d\n", w0, w1, w2);
+      // If p is on or inside all edges, render pixel->
       if (w0 && w1 && w2)
-        Plot(std::get<0>(p), std::get<1>(p), color);
+        Plot(p->_x, p->_y, color);
     }
   }
 }
