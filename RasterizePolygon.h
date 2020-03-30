@@ -19,7 +19,7 @@ extern unsigned pixels[W*H];
 typedef std::pair<double, double> SlopePair;
 void plot(unsigned x, unsigned y, const unsigned color)
 {
-  pixels[y*W+x] = color;
+  pixels[(H-y)*W+x] = color;
 }
 
 
@@ -66,11 +66,12 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
 
   // Compute triangle bounding box
 
-  int direction = directionality(p0, p1, p2);
-  if (direction == false) {
-    printf("Failed\n");
-    return;
-  }
+
+  //int direction = directionality(p0, p1, p2);
+  //if (direction == false) {
+  //  printf("Failed\n");
+  //  return;
+  //}
   //bool clockwise = direction > 0 ? true : false;
 
   unsigned x0 = p0->_x * halfW + halfW;

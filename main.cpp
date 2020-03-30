@@ -61,23 +61,19 @@ int main() {
         }
 
       for (auto l : lines) {
-        if (wireframe) {
-          line(*std::get<0>(l), *std::get<1>(l), color);
-          line(*std::get<1>(l), *std::get<2>(l), color);
-          line(*std::get<2>(l), *std::get<0>(l), color);
-        } else {
-          vertex v = cross(*(std::get<0>(l)), *(std::get<1>(l)), *(std::get<2>(l)));
-          vertex light(0, 0, .7);
+        vertex v = cross(*(std::get<0>(l)), *(std::get<1>(l)), *(std::get<2>(l)));
+        vertex light(0, 0, -.7);
 
-          // Consider that positive x is "into" the screen.
-          // I have no idea what the convention is on other engines
-          float aoi = dot(v.normalize(), light);
+        // Consider that positive x is "out" of the screen.
+        // I have no idea what the convention is on other engines
+        // Makes sense based on right hand rule
+        float aoi = dot(v.normalize(), light);
 
-          if (aoi < 0) {
-            fcolor c(255 * aoi, 255 * aoi, 255 * aoi, 255);
-            //printf("Color %u\n", (unsigned)c);
-            drawTri(std::get<0>(l), std::get<1>(l), std::get<2>(l), c);
+        if (aoi > 0) {
+          fcolor c(0, 255 * aoi, 255 * aoi, 255 * aoi);
+          drawTri(std::get<2>(l), std::get<1>(l), std::get<0>(l), c);
 
+          if (wireframe) {
             line(*std::get<0>(l), *std::get<1>(l),  0xFFFFFFF);
             line(*std::get<1>(l), *std::get<2>(l),  0xFFFFFFF);
             line(*std::get<2>(l), *std::get<0>(l),  0xFFFFFFF);

@@ -47,7 +47,7 @@ vertex cross(const vertex& v0, const vertex& v1, const vertex& v2) {
 
 // Remember: this is vectors, not vertices!
 float dot(const vertex& l, const vertex& r) {
-  return l._x * r._x + l._y * r._y + l._z + r._z;
+  return l._x * r._x + l._y * r._y + l._z * r._z;
 }
 
 std::vector<std::shared_ptr<vertex>> getVerticesFromWave(const std::string& fileName) {
@@ -72,13 +72,6 @@ std::vector<std::shared_ptr<vertex>> getVerticesFromWave(const std::string& file
         break;
       }
 
-      // w/2 is 0
-      //x = x * (W/2) + (W/2);
-      //y = y * (H/2) + (H/2);
-      // For now, consider 16 bits of depth
-      //z = z * (0xFFFF / 2) + (0xFFFF / 2);
-
-      // For now, z is ignored
       result.emplace_back(std::make_shared<vertex>(x, y, z));
     }
   }
@@ -111,13 +104,11 @@ std::vector<std::tuple<const std::shared_ptr<vertex>, const std::shared_ptr<vert
       unsigned v2;
       unsigned trash;
 
-
       if (!(iss >> v0 >> trash >> trash >> v1 >> trash >> trash >> v2)) {
         printf("Parsing for faces failed at line: %s\n", line.c_str());
         break;
       }
 
-      // For now, z is ignored
       result.emplace_back(vertices[v0 - 1], vertices[v1 - 1], vertices[v2-1]);
     }
   }
