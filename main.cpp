@@ -51,7 +51,6 @@ int main() {
 
     for(bool interrupted=false; !interrupted; )
     {
-
       SDL_Event ev;
 
       while(SDL_PollEvent(&ev))
@@ -61,6 +60,7 @@ int main() {
         }
 
       for (auto l : lines) {
+
         vertex v = cross(*(std::get<0>(l)), *(std::get<1>(l)), *(std::get<2>(l)));
         vertex light(0, 0, -.7);
 

@@ -36,7 +36,7 @@ struct vertex {
 };
 
 vertex cross(const vertex& v0, const vertex& v1, const vertex& v2) {
-  vertex l(v1._x - v0._x, v1._y - v0._y, v1._z - v1._z);
+  vertex l(v1._x - v0._x, v1._y - v0._y, v1._z - v0._z);
   vertex r(v1._x - v2._x, v1._y - v2._y, v1._z - v2._z);
   vertex v;
   v._x = (l._y * r._z) - (l._z * r._y);
