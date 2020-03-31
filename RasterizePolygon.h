@@ -92,14 +92,13 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
   // Lets slice this up to allow for vectorization
   // Unroll by a factor of 16 (found this based on profiling, may be different for different CPUs)
   for (y = minY; y <= maxY; ++y) {
-    numInner = (maxX - minX) / 16;
+    numInner = (maxX - minX) / 8;
     for (xInner = 0; xInner < numInner; ++xInner) {
-      xVal = 16 * xInner + minX;
+      xVal = 8 * xInner + minX;
 
-#pragma clang loop vectorize(enable) interleave(enable)
-      for (unsigned x = 0; x < 16; ++x) {
+#pragma clang loop vectorize_width(8)
+      for (unsigned x = 0; x < 8; ++x) {
         xValInner = xVal + xs[x];
-
         auto w0 = orient2d(x2, x1, xValInner, y2, y1, y, bias0);
         auto w1 = orient2d(x0, x2, xValInner, y0, y2, y, bias1);
         auto w2 = orient2d(x1, x0, xValInner, y1, y0, y, bias2);
@@ -110,8 +109,8 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
       }
     }
 
-    xVal = 16 * numInner + minX;
-    for (x = 0; x < ((maxX - minX) % 16); ++x) {
+    xVal = 8 * numInner + minX;
+    for (x = 0; x < ((maxX - minX) % 8); ++x) {
       xValInner = xVal + x;
       auto w0 = orient2d(x2, x1, xValInner, y2, y1, y, bias0);
       auto w1 = orient2d(x0, x2, xValInner, y0, y2, y, bias1);

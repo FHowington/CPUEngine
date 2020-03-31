@@ -13,9 +13,9 @@ unsigned pixels[W * H];
 
 int main() {
   // Create a screen.
-  SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
-  SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
-  SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
+  //SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
+  //SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+  //SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
   bool wireframe = false;
 
@@ -88,10 +88,10 @@ int main() {
         }
       }
     }
-    SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
-    SDL_Delay(1000/60);
+    //SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
+    //SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    //SDL_RenderPresent(renderer);
+    //SDL_Delay(1000/60);
   }
 
   return 0;
