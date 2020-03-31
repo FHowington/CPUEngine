@@ -11,6 +11,7 @@
 #include "Window.h"
 
 unsigned blank = 0xFFFFFF, duplicate = 0xFFAA55;
+
 const unsigned halfW = W/2;
 const unsigned halfH = H/2;
 
@@ -20,7 +21,12 @@ typedef std::pair<double, double> SlopePair;
 void plot(unsigned x, unsigned y, const unsigned color)
 {
   // We want to flip pos y to mean "up"
-  pixels[(H-y)*W+x] = color;
+#ifdef DEBUG
+  if(pixels[(H-y)*W+x] != blank)
+    pixels[y*W+x] = duplicate;
+  else
+#endif
+    pixels[(H-y)*W+x] = color;
 }
 
 // We deal only with counter-clockwise triangles
@@ -36,92 +42,99 @@ inline bool isTopLeft(T& p0, T& p1) {
   return false;
 }
 
-inline bool orient2d(const int x0, const int x1, const int x2, const int y0, const int y1, const int y2, const int bias)
+inline int orient2d(const int x0, const int x1, const int x2, const int y0, const int y1, const int y2)
 {
-  return (x1 - x0)*(y2 - y0) - (y1 - y0)*(x2 - x0) + bias > 0;
+  return (x1 - x0)*(y2 - y0) - (y1 - y0)*(x2 - x0);
 }
 
 template <typename T>
-inline const T& min3(const T& v0, const T& v1, const T& v2)
+inline const T min3(const T& v0, const T& v1, const T& v2)
 {
-  return std::max<T>(0, v0 <= v1 ? (v0 <= v2 ? v0 : v2) : (v1 <= v2 ? v1 : v2));
+  const T result = v0 <= v1 ? (v0 <= v2 ? v0 : v2) : (v1 <= v2 ? v1 : v2);
+  if (result < 0)
+    return 0;
+  return result;
 }
 
 template <typename T>
-inline const T& max3(const T& v0, const T& v1, const T& v2, const T& border)
+inline const T max3(const T& v0, const T& v1, const T& v2, const T& border)
 {
   const T& max = v0 >= v1 ? (v0 >= v2 ? v0 : v2) : (v1 >= v2 ? v1 : v2);
   return max > border ? border : max;
 }
 
 template <typename T>
-// > 0, clockwise, <0, counterclockwise, 0, colinear
-inline bool directionality(const T& p0, const T& p1, const T& p2)
+inline int directionality(const T& p0, const T& p1, const T& p2)
 {
-  return p0->_x*(p1->_y - p2->_y) - p0->_y*(p1->_x - p2->_x) + p2->_y*p1->_x - p1->_y*p2->_x;
+  return p0._x*(p1._y - p2._y) - p0._y*(p1._x - p2._x) + p2._y*p1._x - p1._y*p2._x;
 }
 
 template <typename T>
 void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
 {
-  static const unsigned xs[16]{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+#ifdef DEBUG
+  int direction = directionality(p0, p1, p2);
+  if (direction < 0) {
+    printf("Failed\n");
+    return;
+  }
+#endif
 
-  // Compute triangle bounding box
+  unsigned x0 = p0._x * halfW + halfW;
+  unsigned x1 = p1._x * halfW + halfW;
+  unsigned x2 = p2._x * halfW + halfW;
+
+  unsigned y0 = p0._y * halfH + halfH;
+  unsigned y1 = p1._y * halfH + halfH;
+  unsigned y2 = p2._y * halfH + halfH;
+
+  int A01 = y0 - y1;
+  int A12 = y1 - y2;
+  int A20 = y2 - y0;
+  int B01 = x1 - x0;
+  int B12 = x2 - x1;
+  int B20 = x0 - x2;
 
 
-  //int direction = directionality(p0, p1, p2);
-  //if (direction == false) {
-  //  printf("Failed\n");
-  //  return;
-  //}
-  //bool clockwise = direction > 0 ? true : false;
-  unsigned x0 = p0._x * halfW + halfW, x1 = p1._x * halfW + halfW, x2 = p2._x * halfW + halfW;
-  unsigned y0 = p0._y * halfH + halfH, y1 = p1._y * halfH + halfH, y2 = p2._y * halfH + halfH;
+  int minX = min3(x0, x1, x2);
+  int minY = min3(y0, y1, y2);
+  if (!minY) {
+    minY = 1;
+  }
 
-  // TODO: make bounding box more efficient
-  const unsigned minX = min3(x0, x1, x2);
-  const unsigned minY = min3(y0, y1, y2);
-  const unsigned maxX = max3(x0, x1, x2, W-1) + 1;
-  const unsigned maxY = max3(y0, y1, y2, H-1);
+  int maxX = max3(x0, x1, x2, W);
+  int maxY = max3(y0, y1, y2, H);
 
-  unsigned x, y, xVal, xValInner, numInner, xInner;
-  unsigned bias0 = isTopLeft(p1, p2) ? 0 : 1;
-  unsigned bias1 = isTopLeft(p2, p0) ? 0 : 1;
-  unsigned bias2 = isTopLeft(p0, p1) ? 0 : 1;
+  int bias0 = isTopLeft(p1, p2) ? 0 : -1;
+  int bias1 = isTopLeft(p2, p0) ? 0 : -1;
+  int bias2 = isTopLeft(p0, p1) ? 0 : -1;
 
-  // Lets slice this up to allow for vectorization
-  // Unroll by a factor of 16 (found this based on profiling, may be different for different CPUs)
+  int w0_row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
+  int w1_row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
+  int w2_row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
+
+  unsigned x, y;
+
   for (y = minY; y <= maxY; ++y) {
-    numInner = (maxX - minX) / 8;
-    for (xInner = 0; xInner < numInner; ++xInner) {
-      xVal = 8 * xInner + minX;
+    int w0 = w0_row;
+    int w1 = w1_row;
+    int w2 = w2_row;
 
-#pragma clang loop vectorize_width(8)
-      for (unsigned x = 0; x < 8; ++x) {
-        xValInner = xVal + xs[x];
-        auto w0 = orient2d(x2, x1, xValInner, y2, y1, y, bias0);
-        auto w1 = orient2d(x0, x2, xValInner, y0, y2, y, bias1);
-        auto w2 = orient2d(x1, x0, xValInner, y1, y0, y, bias2);
-
-        // If p is on or inside all edges, render pixel
-        if (w0 && w1 && w2)
-          plot(xValInner, y, color);
-      }
-    }
-
-    xVal = 8 * numInner + minX;
-    for (x = 0; x < ((maxX - minX) % 8); ++x) {
-      xValInner = xVal + x;
-      auto w0 = orient2d(x2, x1, xValInner, y2, y1, y, bias0);
-      auto w1 = orient2d(x0, x2, xValInner, y0, y2, y, bias1);
-      auto w2 = orient2d(x1, x0, xValInner, y1, y0, y, bias2);
-
+    for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
-      if (w0 && w1 && w2)
-          plot(xValInner, y, color);
+      if (w0 >= 0 && w1 >= 0 && w2 >= 0){
+        plot(x, y, color);
+      }
+      w0 += A12;
+      w1 += A20;
+      w2 += A01;
     }
+    w0_row += B12;
+    w1_row += B20;
+    w2_row += B01;
   }
 }
+
 
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible

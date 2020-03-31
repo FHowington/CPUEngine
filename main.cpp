@@ -13,9 +13,9 @@ unsigned pixels[W * H];
 
 int main() {
   // Create a screen.
-  SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
-  SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
-  SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
+  //SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
+  //SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+  //SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
   bool wireframe = false;
 
@@ -25,7 +25,7 @@ int main() {
   // {
   //   unsigned color = 0x3B0103A5;
 
-  //   // Process events.
+  //   Process events.
   //   SDL_Event ev;
   //   while(SDL_PollEvent(&ev))
   //     switch(ev.type)
@@ -39,8 +39,10 @@ int main() {
   //     std::shared_ptr<vertex> t0 = std::make_shared<vertex>(((float)t[0][0]-halfW)/(float)halfW, ((float)t[0][1]-halfH)/(float)halfH, 0);
   //     std::shared_ptr<vertex> t1 = std::make_shared<vertex>(((float)t[1][0]-halfW)/(float)halfW, ((float)t[1][1]-halfH)/(float)halfH, 0);
   //     std::shared_ptr<vertex> t2 = std::make_shared<vertex>(((float)t[2][0]-halfW)/(float)halfW, ((float)t[2][1]-halfH)/(float)halfH, 0);
-  //     drawTri(t2, t1, t0, color);
+
+  //     drawTri(*t0, *t1, *t2, color);
   //   }
+
   //   SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
   //   SDL_RenderCopy(renderer, texture, nullptr, nullptr);
   //   SDL_RenderPresent(renderer);
@@ -67,7 +69,7 @@ int main() {
       vertex v = cross(*(std::get<0>(l)), *(std::get<1>(l)), *(std::get<2>(l)));
 
       // Angle of the light source
-      vertex light(-0.5, -0.5, -.7);
+      vertex light(0, -0.5, -.7);
 
       // Consider that positive z is "out" of the screen.
       // I have no idea what the convention is on other engines
@@ -79,7 +81,7 @@ int main() {
 
       if (aoi > 0) {
         fcolor c(0, 255 * aoi, 255 * aoi, 255 * aoi);
-        drawTri(*std::get<2>(l), *std::get<1>(l), *std::get<0>(l), c);
+        drawTri(*std::get<0>(l), *std::get<1>(l), *std::get<2>(l), c);
 
         if (wireframe) {
           line(*std::get<0>(l), *std::get<1>(l),  0xFFFFFFF);
@@ -88,10 +90,10 @@ int main() {
         }
       }
     }
-    SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
-    SDL_Delay(1000/60);
+    //SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
+    //SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+    //SDL_RenderPresent(renderer);
+    //SDL_Delay(1000/60);
   }
 
   return 0;
