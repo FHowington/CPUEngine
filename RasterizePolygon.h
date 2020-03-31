@@ -19,9 +19,9 @@ extern unsigned pixels[W*H];
 typedef std::pair<double, double> SlopePair;
 void plot(unsigned x, unsigned y, const unsigned color)
 {
+  // We want to flip pos y to mean "up"
   pixels[(H-y)*W+x] = color;
 }
-
 
 // We deal only with counter-clockwise triangles
 // Therefore, see if it is horizontal & higher than the other points (p1 is left of p0)
