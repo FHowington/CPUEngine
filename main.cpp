@@ -72,7 +72,7 @@ int main() {
       vertex v = cross(*(std::get<0>(l)), *(std::get<1>(l)), *(std::get<2>(l)));
 
       // Angle of the light source
-      vertex light(0, -0.5, -.7);
+      vertex light(0, 0, -0.7);
 
       // Consider that positive z is "out" of the screen.
       // I have no idea what the convention is on other engines
