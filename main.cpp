@@ -10,6 +10,7 @@
 #include "mesh.h"
 
 unsigned pixels[W * H];
+unsigned zbuff[W * H];
 
 int main() {
   // Create a screen.
@@ -54,6 +55,8 @@ int main() {
   unsigned frame = 0;
   for(bool interrupted=false; !interrupted && frame < 1000; ++frame)
   {
+    for(auto& p: zbuff) p = 0;
+
     SDL_Event ev;
 
     while(SDL_PollEvent(&ev))
@@ -90,6 +93,7 @@ int main() {
         }
       }
     }
+
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);

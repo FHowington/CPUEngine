@@ -17,6 +17,7 @@ const unsigned halfW = W/2;
 const unsigned halfH = H/2;
 
 extern unsigned pixels[W*H];
+extern unsigned zbuff[W*H];
 
 typedef std::pair<double, double> SlopePair;
 void plot(unsigned x, unsigned y, const unsigned color)
@@ -24,7 +25,7 @@ void plot(unsigned x, unsigned y, const unsigned color)
   // We want to flip pos y to mean "up"
 #ifdef DEBUG
   if(pixels[(H-y)*W+x] != blank)
-    pixels[y*W+x] = duplicate;
+    pixels[(H-y)*W+x] = duplicate;
   else
 #endif
     pixels[(H-y)*W+x] = color;
@@ -109,7 +110,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   int w1_row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2_row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
 
-  unsigned x, y, xVal, xValInner, numInner, xInner;;
+  unsigned x, y, xVal, xValInner, numInner, xInner, numOuter;
   int w0, w1, w2;
 
   for (y = minY; y <= maxY; ++y) {
@@ -118,6 +119,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
     w2 = w2_row;
 
     numInner = (maxX - minX) / 8;
+    numOuter = (maxX - minX) % 8 + 1;
     for (xInner = 0; xInner < numInner; ++xInner) {
       xVal = 8 * xInner + minX;
 
@@ -129,7 +131,14 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 
         // If p is on or inside all edges, render pixel
         if ((w0 | w1 | w2) >= 0){
-          plot(xValInner, y, color);
+          float z = w0 * p0._z + w1 * p1._z + w2 * p2._z;
+          z /= (w0 + w1 + w2);
+          int zVal = z * 0xFFFFF;
+          zVal += 0xFFFFF;
+          if (zbuff[xValInner + W*y] < zVal) {
+            zbuff[xValInner + W*y] = zVal;
+            plot(xValInner, y, color);
+          }
         }
         w0 += A12;
         w1 += A20;
@@ -138,12 +147,20 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
     }
 
     xVal = 8 * numInner + minX;
-    for (x = 0; x < ((maxX - minX) % 8 + 1); ++x) {
+
+    for (x = 0; x < numOuter; ++x) {
       xValInner = xVal + x;
 
       // If p is on or inside all edges, render pixel
       if ((w0 | w1 | w2) >= 0) {
-        plot(xValInner, y, color);
+        float z = w0 * p0._z + w1 * p1._z + w2 * p2._z;
+        z /= (w0 + w1 + w2);
+        int zVal = z * 0xFFFFF;
+        zVal += 0xFFFFF;
+        if (zbuff[xValInner + W*y] < zVal) {
+          zbuff[xValInner + W*y] = zVal;
+          plot(xValInner, y, color);
+        }
       }
       w0 += A12;
       w1 += A20;
