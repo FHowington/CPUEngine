@@ -1,6 +1,7 @@
 //
 // Created by Forbes Howington on 3/20/20.
 //
+
 #pragma once
 #include <algorithm>
 #include <array>
@@ -48,12 +49,10 @@ inline int orient2d(const int x0, const int x1, const int x2, const int y0, cons
 }
 
 template <typename T>
-inline const T min3(const T& v0, const T& v1, const T& v2)
+inline const T min3(const T& v0, const T& v1, const T& v2, bool y = false)
 {
   const T result = v0 <= v1 ? (v0 <= v2 ? v0 : v2) : (v1 <= v2 ? v1 : v2);
-  if (result < 0)
-    return 0;
-  return result;
+  return y ? ((result > 0) ? result : 1) : (result > 0) ? result : 0;
 }
 
 template <typename T>
@@ -70,8 +69,9 @@ inline int directionality(const T& p0, const T& p1, const T& p2)
 }
 
 template <typename T>
-void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
+void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 {
+
 #ifdef DEBUG
   int direction = directionality(p0, p1, p2);
   if (direction < 0) {
@@ -80,50 +80,70 @@ void drawTri(const T& p0, const T& p1, const T& p2,  unsigned color)
   }
 #endif
 
-  unsigned x0 = p0._x * halfW + halfW;
-  unsigned x1 = p1._x * halfW + halfW;
-  unsigned x2 = p2._x * halfW + halfW;
+  const unsigned x0 = p0._x * halfW + halfW;
+  const unsigned x1 = p1._x * halfW + halfW;
+  const unsigned x2 = p2._x * halfW + halfW;
 
-  unsigned y0 = p0._y * halfH + halfH;
-  unsigned y1 = p1._y * halfH + halfH;
-  unsigned y2 = p2._y * halfH + halfH;
+  const unsigned y0 = p0._y * halfH + halfH;
+  const unsigned y1 = p1._y * halfH + halfH;
+  const unsigned y2 = p2._y * halfH + halfH;
 
-  int A01 = y0 - y1;
-  int A12 = y1 - y2;
-  int A20 = y2 - y0;
-  int B01 = x1 - x0;
-  int B12 = x2 - x1;
-  int B20 = x0 - x2;
+  const int A01 = y0 - y1;
+  const int A12 = y1 - y2;
+  const int A20 = y2 - y0;
+  const int B01 = x1 - x0;
+  const int B12 = x2 - x1;
+  const int B20 = x0 - x2;
 
+  const int minX = min3(x0, x1, x2);
+  const int minY = min3(y0, y1, y2, true);
 
-  int minX = min3(x0, x1, x2);
-  int minY = min3(y0, y1, y2);
-  if (!minY) {
-    minY = 1;
-  }
+  const int maxX = max3(x0, x1, x2, W);
+  const int maxY = max3(y0, y1, y2, H);
 
-  int maxX = max3(x0, x1, x2, W);
-  int maxY = max3(y0, y1, y2, H);
-
-  int bias0 = isTopLeft(p1, p2) ? 0 : -1;
-  int bias1 = isTopLeft(p2, p0) ? 0 : -1;
-  int bias2 = isTopLeft(p0, p1) ? 0 : -1;
+  const int bias0 = isTopLeft(p1, p2) ? 0 : -1;
+  const int bias1 = isTopLeft(p2, p0) ? 0 : -1;
+  const int bias2 = isTopLeft(p0, p1) ? 0 : -1;
 
   int w0_row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1_row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2_row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
 
-  unsigned x, y;
+  unsigned x, y, xVal, xValInner, numInner, xInner;;
+  int w0, w1, w2;
 
   for (y = minY; y <= maxY; ++y) {
-    int w0 = w0_row;
-    int w1 = w1_row;
-    int w2 = w2_row;
+    w0 = w0_row;
+    w1 = w1_row;
+    w2 = w2_row;
 
-    for (x = minX; x <= maxX; ++x) {
+    numInner = (maxX - minX) / 8;
+    for (xInner = 0; xInner < numInner; ++xInner) {
+      xVal = 8 * xInner + minX;
+
+      // We have AVX2, lets take advantage of it!
+      // We break the loop out to enable the compiler to vectorize it
+#pragma clang loop vectorize(enable) interleave(enable)
+      for (unsigned x = 0; x < 8; ++x) {
+        xValInner = xVal + x;
+
+        // If p is on or inside all edges, render pixel
+        if ((w0 | w1 | w2) >= 0){
+          plot(xValInner, y, color);
+        }
+        w0 += A12;
+        w1 += A20;
+        w2 += A01;
+      }
+    }
+
+    xVal = 8 * numInner + minX;
+    for (x = 0; x < ((maxX - minX) % 8 + 1); ++x) {
+      xValInner = xVal + x;
+
       // If p is on or inside all edges, render pixel
-      if (w0 >= 0 && w1 >= 0 && w2 >= 0){
-        plot(x, y, color);
+      if ((w0 | w1 | w2) >= 0) {
+        plot(xValInner, y, color);
       }
       w0 += A12;
       w1 += A20;
