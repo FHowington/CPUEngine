@@ -104,13 +104,14 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
     return;
   }
 
-  const int z0 = p0._z * 0xFFFFFF + 0xFFFFFF;
-  const int z1 = p1._z * 0xFFFFFF + 0xFFFFFF;
-  const int z2 = p2._z * 0xFFFFFF + 0xFFFFFF;
+  const int z0 = p0._z * 0xFFFFF + 0xFFFFF;
+  const int z1 = p1._z * 0xFFFFF + 0xFFFFF;
+  const int z2 = p2._z * 0xFFFFF + 0xFFFFF;
 
   const int A01 = y0 - y1;
   const int A12 = y1 - y2;
   const int A20 = y2 - y0;
+
   const int B01 = x1 - x0;
   const int B12 = x2 - x1;
   const int B20 = x0 - x2;
@@ -137,16 +138,20 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   // These need work...
   // The exact value of z, and our approximation, diverge over time. Not sure why.
 
-  int zdx = (p2._y *(p0._z - p1._z) + p1._y*(p2._z - p0._z) + p0._y*(p1._z - p0._z)) / (p2._x*(p1._y - p0._y) + p1._x*(p0._y-p2._y) + p0._x*(p2._y-p1._y));
+  int zdx = -((-((-y0 + y2) * (-z0 + z1)) + (-y0 + y1) * (-z0 + z2))/(-((-x0 + x2) * (-y0 + y1)) + (-x0 + x1) * (-y0 + y2)));
   int zdy = (-((-x0 + x2)* (-z0 + z1)) + (-x0 + x1)* (-z0 + z2))/(-((-x0 + x2)* (y1 - y0)) + (-x0 + x1) * (-y0 + y2));
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
+  //printf("zdx %d zdy %d\n", zdx, zdy);
   for (y = minY; y <= maxY; ++y) {
     w0 = w0_row;
     w1 = w1_row;
     w2 = w2_row;
     z = zOrig;
+
+    unsigned zt = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, y);
+    //printf("Y true: %d found %d\n", zt, z);
 
     numInner = (maxX - minX) / 8;
     numOuter = (maxX - minX) % 8 + 1;
@@ -159,10 +164,12 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 #pragma clang loop vectorize(enable) interleave(enable)
       for (unsigned x = 0; x < 8; ++x) {
         xValInner = xVal + x;
+        unsigned zt = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+        //printf("X true: %d found %d\n", zt, z);
+
         // If p is on or inside all edges, render pixel
         if ((w0 | w1 | w2) >= 0){
           // Uncomment for exact z values
-          z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[xValInner + W*y] < z) {
             zbuff[xValInner + W*y] = z;
             plot(xValInner, y, color);
@@ -183,7 +190,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
       // If p is on or inside all edges, render pixel
       if ((w0 | w1 | w2) >= 0) {
         // Uncomment for exact z values
-        z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+        //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (zbuff[xValInner + W*y] < z) {
           zbuff[xValInner + W*y] = z;
           plot(xValInner, y, color);
