@@ -136,10 +136,8 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 
 
   // These need work...
-  // The exact value of z, and our approximation, diverge over time. Not sure why.
-
-  int zdx = -((-((-y0 + y2) * (-z0 + z1)) + (-y0 + y1) * (-z0 + z2))/(-((-x0 + x2) * (-y0 + y1)) + (-x0 + x1) * (-y0 + y2)));
-  int zdy = (-((-x0 + x2)* (-z0 + z1)) + (-x0 + x1)* (-z0 + z2))/(-((-x0 + x2)* (y1 - y0)) + (-x0 + x1) * (-y0 + y2));
+  int zdx = -((-((A20) * (-z0 + z1)) + (-A01) * (-z0 + z2))/(-((-B20) * (-A01)) + (B01) * (A20)));
+  int zdy = (-((-B20)* (-z0 + z1)) + (B01)* (-z0 + z2))/(-((-B20)* (y1 - y0)) + (B01) * (A20));
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
@@ -150,7 +148,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
     w2 = w2_row;
     z = zOrig;
 
-    unsigned zt = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, y);
+    //unsigned zt = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, y);
     //printf("Y true: %d found %d\n", zt, z);
 
     numInner = (maxX - minX) / 8;
@@ -164,7 +162,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 #pragma clang loop vectorize(enable) interleave(enable)
       for (unsigned x = 0; x < 8; ++x) {
         xValInner = xVal + x;
-        unsigned zt = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+        //unsigned zt = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         //printf("X true: %d found %d\n", zt, z);
 
         // If p is on or inside all edges, render pixel
