@@ -133,11 +133,13 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   unsigned x, y, z, xVal, xValInner, numInner, xInner, numOuter;
   int w0, w1, w2;
 
+  int div = (((B20) * (-A01)) + (B01) * (A20));
+  int z10 = z1 - z0;
+  int z20 = z2 - z0;
 
+  int zdx = (A20 * z10 + A01 * z20) / div;
+  int zdy = (B20 * z10 + B01 * z20) / div;
 
-  // These need work...
-  int zdx = -((-((A20) * (-z0 + z1)) + (-A01) * (-z0 + z2))/(-((-B20) * (-A01)) + (B01) * (A20)));
-  int zdy = (-((-B20)* (-z0 + z1)) + (B01)* (-z0 + z2))/(-((-B20)* (y1 - y0)) + (B01) * (A20));
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
