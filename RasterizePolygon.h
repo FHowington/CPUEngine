@@ -71,20 +71,12 @@ inline int directionality(const T& p0, const T& p1, const T& p2)
 
 
 unsigned zPos(const unsigned cx, const unsigned bx, const unsigned ax, const unsigned cy, const unsigned by, const unsigned ay, const unsigned cz, const unsigned bz, const unsigned az, const unsigned x, const unsigned y) {
-  unsigned z = az;
-  unsigned div1 = (bx-ax) * (cy-ay) - (cx-ax) * (by-ay);
-  if (div1 == 0) {
-    return 0xFFFFFFFF;
-  }
-   unsigned div2 = (bx-ax)*(cy-ay) - (cx-ax) * (by-ay);
-  if (div1 == 0) {
-    return 0xFFFFFFFF;
-  }
-
-  z += ((bx - ax) * (cz - az) - (cx - ax) * (bz - az))*(y - ay)/div1     -      ((by-ay) * (cz-az) - (cy-ay)*(bz-az))*(x-ax)/div2;
-  return z;
+  return  az + ((bx - ax) * (cz - az) - (cx - ax) * (bz - az))*(y - ay)/ ((bx-ax) * (cy-ay) - (cx-ax) * (by-ay)) - ((by-ay) * (cz-az) - (cy-ay)*(bz-az))*(x-ax)/((bx-ax)*(cy-ay) - (cx-ax) * (by-ay));
 }
 
+inline bool colinear(const int x0, const int x1, const int x2, const int y0, const int y1,const int y2) {
+  return x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1) == 0;
+}
 
 template <typename T>
 void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
@@ -98,6 +90,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   }
 #endif
 
+
   const unsigned x0 = p0._x * halfW + halfW;
   const unsigned x1 = p1._x * halfW + halfW;
   const unsigned x2 = p2._x * halfW + halfW;
@@ -105,6 +98,11 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   const unsigned y0 = p0._y * halfH + halfH;
   const unsigned y1 = p1._y * halfH + halfH;
   const unsigned y2 = p2._y * halfH + halfH;
+
+  if (colinear(x0, x1, x2, y0, y1, y2)) {
+    return;
+  }
+
 
   const unsigned z0 = p0._z * 0xFFFF + 0xFFFF;
   const unsigned z1 = p1._z * 0xFFFF + 0xFFFF;
