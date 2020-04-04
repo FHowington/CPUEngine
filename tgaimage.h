@@ -80,4 +80,6 @@ public:
   bool read_tga_file(const char *filename);
   TGAColor get(int x, int y);
   bool set(int x, int y, TGAColor c);
+  const unsigned get_width() { return width; }
+  const unsigned get_height() { return height; }
 };

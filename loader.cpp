@@ -4,7 +4,7 @@
 
 #include "loader.h"
 
-void  Model::loadModel(const std::string& fileName) {
+void  Model::loadModel(const std::string& fileName, const unsigned width, const unsigned height) {
   std::string line;
   std::ifstream infile(fileName);
 
@@ -12,6 +12,8 @@ void  Model::loadModel(const std::string& fileName) {
     printf("File failed\n");
     return;
   }
+
+  std::vector<vertex> textures;
 
   // Implicit assumption that all faces come after the vertices so this may be done in a single pass
   while (std::getline(infile, line))
@@ -28,6 +30,19 @@ void  Model::loadModel(const std::string& fileName) {
       }
 
       vertices.emplace_back(x, y, z);
+
+    } else if (line.size() > 2 && line[0] == 'v' && line[1] == 't' && line[2] == ' ') {
+      line = line.substr(2, line.size());
+      std::istringstream iss(line);
+      float x;
+      float y;
+      if (!(iss >> x >> y)) {
+        printf("Parsing for textures failed at line: %s\n", line.c_str());
+        break;
+      }
+
+      textures.emplace_back(x, y, 0);
+
     } else if (line.size() > 1 && line[0] == 'f' && line[1] == ' ') {
 
       std::replace(line.begin(), line.end(), '/', ' ');
@@ -37,16 +52,32 @@ void  Model::loadModel(const std::string& fileName) {
       unsigned v0;
       unsigned v1;
       unsigned v2;
+
+      unsigned t0;
+      unsigned t1;
+      unsigned t2;
       unsigned trash;
 
-      if (!(iss >> v0 >> trash >> trash >> v1 >> trash >> trash >> v2)) {
+      if (!(iss >> v0 >> t0 >> trash >> v1 >> t1 >> trash >> v2 >> t2)) {
         printf("Parsing for faces failed at line: %s\n", line.c_str());
         break;
       }
 
-      faces.emplace_back(vertices[v0 - 1], vertices[v1 - 1], vertices[v2-1]);
+      faces.emplace_back(vertices[v0 - 1], vertices[v1 - 1], vertices[v2-1],
+                         textures.at(t0-1)._x * width, textures.at(t0-1)._y * height,
+                         textures.at(t1-1)._x * width, textures.at(t1-1)._y * height,
+                         textures.at(t2-1)._x * width, textures.at(t2-1)._y * height);
     }
   }
+}
+
+vertex& vertex::normalize(float l) {
+  float lnorm = norm();
+  lnorm = l/lnorm;
+  this->_x *= lnorm;
+  this->_y *= lnorm;
+  this->_z *= lnorm;
+  return *this;
 }
 
 vertex cross(const vertex& v0, const vertex& v1, const vertex& v2) {

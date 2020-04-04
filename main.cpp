@@ -21,9 +21,10 @@ int main() {
 
   TGAImage headtext;
   headtext.read_tga_file("african_head_diffuse.tga");
+
   printf("color %d\n", headtext.get(0,1000).val);
   printf("color %d\n", headtext.get(1000,0).val);
-  printf("color %d\n", headtext.get(1000,2000).val);
+  printf("color %d\n", headtext.get(1000,1200).val);
 
   bool wireframe = false;
 
@@ -56,7 +57,7 @@ int main() {
   //   SDL_RenderPresent(renderer);
   // }
 
-  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj");
+  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
   unsigned color = 0x3B0103A5;
 
   unsigned frame = 0;
