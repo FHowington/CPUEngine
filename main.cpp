@@ -5,6 +5,7 @@
 #include "RasterizePolygon.h"
 #include <vector>
 #include <array>
+#include "tgaimage.h"
 #include <SDL2/SDL.h>
 #include "Window.h"
 #include "mesh.h"
@@ -17,6 +18,12 @@ int main() {
   SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
+
+  TGAImage headtext;
+  headtext.read_tga_file("african_head_diffuse.tga");
+  printf("color %d\n", headtext.get(0,1000).val);
+  printf("color %d\n", headtext.get(1000,0).val);
+  printf("color %d\n", headtext.get(1000,2000).val);
 
   bool wireframe = false;
 
@@ -49,7 +56,7 @@ int main() {
   //   SDL_RenderPresent(renderer);
   // }
 
-  auto lines = getWireframe("/Users/forbes/CLionProjects/CPUEngine/african_head.obj");
+  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj");
   unsigned color = 0x3B0103A5;
 
   unsigned frame = 0;
@@ -65,11 +72,11 @@ int main() {
         case SDL_QUIT: interrupted = true; break;
       }
 
-    for (auto l : lines) {
+    for (auto t : head.getFaces()) {
 
 
       // We get the normal vector for every triangle
-      vertex v = cross(*(std::get<0>(l)), *(std::get<1>(l)), *(std::get<2>(l)));
+      vertex v = cross(t._v0, t._v1, t._v2);
 
       // Angle of the light source
       vertex light(0, 0, -0.7);
@@ -84,12 +91,12 @@ int main() {
 
       if (aoi > 0) {
         fcolor c(0, 255 * aoi, 255 * aoi, 255 * aoi);
-        drawTri(*std::get<0>(l), *std::get<1>(l), *std::get<2>(l), c);
+        drawTri(t._v0, t._v1, t._v2, c);
 
         if (wireframe) {
-          line(*std::get<0>(l), *std::get<1>(l),  0xFFFFFFF);
-          line(*std::get<1>(l), *std::get<2>(l),  0xFFFFFFF);
-          line(*std::get<2>(l), *std::get<0>(l),  0xFFFFFFF);
+          //line(*std::get<0>(l), *std::get<1>(l),  0xFFFFFFF);
+          //line(*std::get<1>(l), *std::get<2>(l),  0xFFFFFFF);
+          //line(*std::get<2>(l), *std::get<0>(l),  0xFFFFFFF);
         }
       }
     }

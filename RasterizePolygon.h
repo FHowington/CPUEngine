@@ -131,6 +131,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   int w2_row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
 
   unsigned x, y, z, xVal, xValInner, numInner, xInner, numOuter;
+
   int w0, w1, w2;
 
   int div = (((B20) * (-A01)) + (B01) * (A20));
@@ -139,7 +140,6 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 
   int zdx = (A20 * z10 + A01 * z20) / div;
   int zdy = (B20 * z10 + B01 * z20) / div;
-
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
@@ -202,6 +202,7 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
       z += zdx;
 
     }
+
     w0_row += B12;
     w1_row += B20;
     w2_row += B01;
