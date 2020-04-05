@@ -21,6 +21,7 @@ int main() {
 
   TGAImage headtext;
   headtext.read_tga_file("african_head_diffuse.tga");
+  headtext.flip_vertically();
   Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
 
   bool wireframe = false;

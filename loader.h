@@ -45,12 +45,12 @@ struct face {
   vertex& _v1;
   vertex& _v2;
 
-  unsigned _t0x;
-  unsigned _t1x;
-  unsigned _t2x;
-  unsigned _t0y;
-  unsigned _t1y;
-  unsigned _t2y;
+  int _t0x;
+  int _t1x;
+  int _t2x;
+  int _t0y;
+  int _t1y;
+  int _t2y;
 };
 
 class Model {
