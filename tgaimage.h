@@ -1,5 +1,6 @@
 #pragma once
 #include <fstream>
+#include "loader.h"
 
 #pragma pack(push,1)
 struct TGA_Header {
@@ -79,6 +80,7 @@ public:
   bool flip_vertically();
   bool read_tga_file(const char *filename);
   const TGAColor get(int x, int y) const;
+  const fcolor get_and_light(const int x, const int y, const float light) const;
   bool set(int x, int y, TGAColor c);
   const unsigned get_width() { return width; }
   const unsigned get_height() const { return height; }

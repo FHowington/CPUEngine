@@ -20,7 +20,7 @@ int main() {
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
   TGAImage headtext;
-  headtext.read_tga_file("african_head_diffuse.tga");
+  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/african_head_diffuse.tga");
   headtext.flip_vertically();
   Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
 
@@ -32,7 +32,7 @@ int main() {
   // {
   //   unsigned color = 0x3B0103A5;
 
-  //   //Process events.
+  //   //Process events.z
   //   SDL_Event ev;
   //   while(SDL_PollEvent(&ev))
   //     switch(ev.type)
@@ -89,9 +89,6 @@ int main() {
       float aoi = dot(v.normalize(), light);
 
       if (aoi > 0) {
-
-        // a r g b
-        //fcolor c(0, 0 * aoi, 255 * aoi, 0 * aoi);
         drawTri(t, aoi, headtext);
 
         if (wireframe) {

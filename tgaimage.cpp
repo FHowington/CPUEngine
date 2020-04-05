@@ -133,12 +133,16 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
   return true;
 }
 
-
 const TGAColor TGAImage::get(int x, int y) const {
   if (!data || x<0 || y<0 || x>=width || y>=height) {
     return TGAColor();
   }
   return TGAColor(data+(x+y*width)*bytespp, bytespp);
+}
+
+const fcolor TGAImage::get_and_light(const int x, const int y, const float light) const {
+  unsigned char* offset = data+(x+y*width)*bytespp;
+  return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
 bool TGAImage::set(int x, int y, TGAColor c) {

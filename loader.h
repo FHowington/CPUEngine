@@ -14,7 +14,8 @@
 
 struct fcolor {
   unsigned _color;
-  fcolor (uint8_t r, uint8_t g, uint8_t b, uint8_t a) : _color((r << 24) | (g << 16) | (b << 8) | a) {}
+  fcolor (uint8_t a, uint8_t r, uint8_t g, uint8_t b) : _color((a << 24) | (r << 16) | (g << 8) | b) {}
+  fcolor (const unsigned color) { _color = color; }
   operator unsigned() const { return _color; }
 };
 
