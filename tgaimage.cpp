@@ -134,7 +134,7 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
 }
 
 
-TGAColor TGAImage::get(int x, int y) {
+const TGAColor TGAImage::get(int x, int y) const {
   if (!data || x<0 || y<0 || x>=width || y>=height) {
     return TGAColor();
   }

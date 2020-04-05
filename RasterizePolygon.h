@@ -7,6 +7,7 @@
 #include <array>
 #include "loader.h"
 #include <SDL2/SDL.h>
+#include "tgaimage.h"
 #include <utility>
 #include <vector>
 #include "Window.h"
@@ -78,12 +79,12 @@ inline bool colinear(const int x0, const int x1, const int x2, const int y0, con
   return x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1) == 0;
 }
 
-template <typename T>
-void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
+void drawTri(const face& f,  const float light, const TGAImage& img)
 {
 
+
 #ifdef DEBUG
-  int direction = directionality(p0, p1, p2);
+  int direction = directionality(f._v0, f._v1, f._v2);
   if (direction < 0) {
     printf("Failed\n");
     return;
@@ -91,22 +92,22 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
 #endif
 
 
-  const int x0 = p0._x * halfW + halfW;
-  const int x1 = p1._x * halfW + halfW;
-  const int x2 = p2._x * halfW + halfW;
+  const int x0 = f._v0._x * halfW + halfW;
+  const int x1 = f._v1._x * halfW + halfW;
+  const int x2 = f._v2._x * halfW + halfW;
 
-  const int y0 = p0._y * halfH + halfH;
-  const int y1 = p1._y * halfH + halfH;
-  const int y2 = p2._y * halfH + halfH;
+  const int y0 = f._v0._y * halfH + halfH;
+  const int y1 = f._v1._y * halfH + halfH;
+  const int y2 = f._v2._y * halfH + halfH;
 
   // Prevent from wasting time on polygons that have no area
   if (colinear(x0, x1, x2, y0, y1, y2)) {
     return;
   }
 
-  const int z0 = p0._z * 0xFFFFF + 0xFFFFF;
-  const int z1 = p1._z * 0xFFFFF + 0xFFFFF;
-  const int z2 = p2._z * 0xFFFFF + 0xFFFFF;
+  const int z0 = f._v0._z * 0xFFFFF + 0xFFFFF; // Consider changing these into shifts, should be the same
+  const int z1 = f._v1._z * 0xFFFFF + 0xFFFFF;
+  const int z2 = f._v2._z * 0xFFFFF + 0xFFFFF;
 
   const int A01 = y0 - y1;
   const int A12 = y1 - y2;
@@ -122,13 +123,15 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
   const int maxX = max3(x0, x1, x2, (int)W);
   const int maxY = max3(y0, y1, y2, (int)H);
 
-  const int bias0 = isTopLeft(p1, p2) ? 0 : -1;
-  const int bias1 = isTopLeft(p2, p0) ? 0 : -1;
-  const int bias2 = isTopLeft(p0, p1) ? 0 : -1;
+  const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : -1;
+  const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
+  const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : -1;
 
   int w0_row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1_row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2_row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
+
+
 
   unsigned x, y, z, xVal, xValInner, numInner, xInner, numOuter;
 
@@ -168,13 +171,32 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
         //printf("X true: %d found %d\n", zt, z);
 
         // If p is on or inside all edges, render pixel
-        if ((w0 | w1 | w2) >= 0){
+        if ((w0 | w1 | w2) >= 0 &&  (w0 || w1 || w2)){
           // Uncomment for exact z values
           if (zbuff[xValInner + W*y] < z) {
             zbuff[xValInner + W*y] = z;
-            plot(xValInner, y, color);
+
+            unsigned xcol = f._t0x * w0 +  f._t1x * w1 +  f._t2x * w2;
+            unsigned ycol = f._t0y * w0 +  f._t1y * w1 +  f._t2y * w2;
+            unsigned wtot = w0 + w1 + w2;
+
+            xcol /= wtot;
+            ycol /= wtot;
+
+            TGAColor col0 = img.get(xcol, img.get_height()-ycol);
+            //TGAColor col1 = img.get(f._t1x, f._t1y);
+            //TGAColor col2 = img.get(f._t2x, f._t2y);
+
+            //printf("%d\n", wtot);
+            if (wtot == 0) {
+              printf("WAIT %d %d %d", w0, w1, w2);
+            }
+
+            fcolor c(0, col0.r * light, col0.g * light, col0.b * light);
+            plot(xValInner, y, c);
           }
         }
+
         w0 += A12;
         w1 += A20;
         w2 += A01;
@@ -188,12 +210,32 @@ void drawTri(const T& p0, const T& p1, const T& p2,  const unsigned color)
       xValInner = xVal + x;
 
       // If p is on or inside all edges, render pixel
-      if ((w0 | w1 | w2) >= 0) {
+      if ((w0 | w1 | w2) >= 0 && (w0 || w1 || w2)) {
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (zbuff[xValInner + W*y] < z) {
+
+
+            unsigned xcol = f._t0x * w0 +  f._t1x * w1 +  f._t2x * w2;
+            unsigned ycol = f._t0y * w0 +  f._t1y * w1 +  f._t2y * w2;
+            unsigned wtot = w0 + w1 + w2;
+
+            xcol /= wtot;
+            ycol /= wtot;
+
+            TGAColor col0 = img.get(xcol, img.get_height()-ycol);
+            //TGAColor col1 = img.get(f._t1x, f._t1y);
+            //TGAColor col2 = img.get(f._t2x, f._t2y);
+
+            //printf("%d\n", wtot);
+            if (wtot == 0) {
+              printf("WAIT %d %d %d", w0, w1, w2);
+            }
+
+            fcolor c(0, col0.r * light, col0.g * light, col0.b * light);
           zbuff[xValInner + W*y] = z;
-          plot(xValInner, y, color);
+          plot(xValInner, y, c);
+
         }
       }
       w0 += A12;

@@ -78,8 +78,8 @@ public:
   bool flip_horizontally();
   bool flip_vertically();
   bool read_tga_file(const char *filename);
-  TGAColor get(int x, int y);
+  const TGAColor get(int x, int y) const;
   bool set(int x, int y, TGAColor c);
   const unsigned get_width() { return width; }
-  const unsigned get_height() { return height; }
+  const unsigned get_height() const { return height; }
 };

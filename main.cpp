@@ -21,10 +21,7 @@ int main() {
 
   TGAImage headtext;
   headtext.read_tga_file("african_head_diffuse.tga");
-
-  printf("color %d\n", headtext.get(0,1000).val);
-  printf("color %d\n", headtext.get(1000,0).val);
-  printf("color %d\n", headtext.get(1000,1200).val);
+  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
 
   bool wireframe = false;
 
@@ -57,7 +54,6 @@ int main() {
   //   SDL_RenderPresent(renderer);
   // }
 
-  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
   unsigned color = 0x3B0103A5;
 
   unsigned frame = 0;
@@ -78,9 +74,10 @@ int main() {
 
       // We get the normal vector for every triangle
       vertex v = cross(t._v0, t._v1, t._v2);
+      TGAColor color2 = headtext.get(t._t0x, t._t0y);
 
       // Angle of the light source
-      vertex light(0, 0, -0.7);
+      vertex light(0, 0, -1);
 
       // Consider that positive z is "out" of the screen.
       // I have no idea what the convention is on other engines
@@ -91,8 +88,10 @@ int main() {
       float aoi = dot(v.normalize(), light);
 
       if (aoi > 0) {
-        fcolor c(0, 255 * aoi, 255 * aoi, 255 * aoi);
-        drawTri(t._v0, t._v1, t._v2, c);
+
+        // a r g b
+        //fcolor c(0, 0 * aoi, 255 * aoi, 0 * aoi);
+        drawTri(t, aoi, headtext);
 
         if (wireframe) {
           //line(*std::get<0>(l), *std::get<1>(l),  0xFFFFFFF);
