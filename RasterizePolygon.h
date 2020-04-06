@@ -4,9 +4,6 @@
 
 #pragma once
 
-#ifndef MY_HEADER_H
-#define MY_HEADER_H
-
 #include <algorithm>
 #include <array>
 #include "loader.h"
@@ -75,5 +72,3 @@ void drawTri(const face& f,  const float light, const TGAImage& img);
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
 void line(const vertex& v0, const vertex& v1, const unsigned color);
-
-#endif

@@ -1,14 +1,14 @@
 //
 // Created by Forbes Howington on 3/27/20.
 //
+#include <array>
+#include <chrono>
 #include <iostream>
 #include "RasterizePolygon.h"
-#include <vector>
-#include <array>
-#include "tgaimage.h"
 #include <SDL2/SDL.h>
+#include "tgaimage.h"
+#include <vector>
 #include "Window.h"
-#include "mesh.h"
 
 unsigned pixels[W * H];
 unsigned zbuff[W * H];
@@ -25,6 +25,7 @@ int main() {
   Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
 
   bool wireframe = false;
+  bool fps = false;
 
   // //This commented out code is for drawing triangles
   // std::vector< std::array<std::array<int,2>, 3> > triangles = CreateTriangleMesh(W,H,100);
@@ -55,30 +56,62 @@ int main() {
   //   SDL_RenderPresent(renderer);
   // }
 
-  unsigned color = 0x3B0103A5;
 
   unsigned frame = 0;
-  for(bool interrupted=false; !interrupted && frame < 1000; ++frame)
+  float x = 0;
+  float y = 0;
+  auto start = std::chrono::high_resolution_clock::now();
+
+  for(bool interrupted=false; !interrupted;)
   {
+    for(auto& p: pixels) p = 0;
     for(auto& p: zbuff) p = 0;
 
     SDL_Event ev;
-
     while(SDL_PollEvent(&ev))
       switch(ev.type)
       {
         case SDL_QUIT: interrupted = true; break;
+        case SDL_KEYDOWN:
+          switch (ev.key.keysym.sym)
+          {
+            case SDLK_DOWN:
+              if (y <= .95)
+              y += 0.05;
+              break;
+
+            case SDLK_UP:
+              if (y >= -0.95 )
+              y -= 0.05;
+              break;
+
+            case SDLK_LEFT:
+              if (x <= .95)
+              x += 0.05;
+              break;
+
+            case SDLK_RIGHT:
+              if (x >= -0.95 )
+              x -= 0.05;
+              break;
+
+            case SDLK_w:
+              wireframe = !wireframe;
+              break;
+
+            case SDLK_f:
+              fps = !fps;
+              break;
+          }
       }
 
     for (auto t : head.getFaces()) {
 
-
       // We get the normal vector for every triangle
       vertex v = cross(t._v0, t._v1, t._v2);
-      TGAColor color2 = headtext.get(t._t0x, t._t0y);
 
       // Angle of the light source
-      vertex light(0, 0, -1);
+      vertex light(x, y, -1);
 
       // Consider that positive z is "out" of the screen.
       // I have no idea what the convention is on other engines
@@ -86,15 +119,17 @@ int main() {
 
       // Then take the dot between the normal and the light
       // To determine the amount of lighting
+      vertex view(x, y, -1);
+
       float aoi = dot(v.normalize(), light);
 
       if (aoi > 0) {
         drawTri(t, aoi, headtext);
 
         if (wireframe) {
-          //line(*std::get<0>(l), *std::get<1>(l),  0xFFFFFFF);
-          //line(*std::get<1>(l), *std::get<2>(l),  0xFFFFFFF);
-          //line(*std::get<2>(l), *std::get<0>(l),  0xFFFFFFF);
+          line(t._v0, t._v1,  0xFFFFFFF);
+          line(t._v1, t._v2,  0xFFFFFFF);
+          line(t._v2, t._v0,  0xFFFFFFF);
         }
       }
     }
@@ -102,7 +137,20 @@ int main() {
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
-    SDL_Delay(1000/60);
+    if (fps) {
+      ++frame;
+      if (frame == 100) {
+        frame = 0;
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        float fps = (100.0 / duration.count()) * 1000000;
+        printf("%f FPS\n", fps);
+        start = std::chrono::high_resolution_clock::now();
+      }
+
+    } else {
+      SDL_Delay(1000/60);
+    }
   }
 
   return 0;

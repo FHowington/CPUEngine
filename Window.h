@@ -1,4 +1,4 @@
 #pragma once
 
-const unsigned W = 1920;
-const unsigned H = 1080;
+const unsigned W = 600;
+const unsigned H = 480;
