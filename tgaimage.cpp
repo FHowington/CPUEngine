@@ -145,6 +145,12 @@ const fcolor TGAImage::get_and_light(const int x, const int y, const float light
   return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
+
+const unsigned TGAImage::fast_get(const int x, const int y) const {
+  unsigned char* offset = data+(x+y*width)*bytespp;
+  return fcolor(0, offset[2], offset[1], offset[0]);
+}
+
 bool TGAImage::set(int x, int y, TGAColor c) {
   if (!data || x<0 || y<0 || x>=width || y>=height) {
     return false;

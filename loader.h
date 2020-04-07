@@ -15,7 +15,13 @@
 struct fcolor {
   static const unsigned blank = 0xFFFFFF;
   static const unsigned duplicate = 0xFFAA55;
-  unsigned _color;
+  union {
+    struct {
+      unsigned char b, g, r, a;
+    };
+    unsigned char raw[4];
+    unsigned _color;
+  };
   fcolor (uint8_t a, uint8_t r, uint8_t g, uint8_t b) : _color((a << 24) | (r << 16) | (g << 8) | b) {}
   fcolor (const unsigned color) { _color = color; }
   operator unsigned() const { return _color; }

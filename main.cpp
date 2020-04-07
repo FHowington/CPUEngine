@@ -137,6 +137,7 @@ int main() {
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
+
     if (fps) {
       ++frame;
       if (frame == 100) {
@@ -149,7 +150,7 @@ int main() {
       }
 
     } else {
-      SDL_Delay(1000/60);
+      //SDL_Delay(1000/60);
     }
   }
 
