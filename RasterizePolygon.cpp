@@ -1,6 +1,8 @@
 #include "RasterizePolygon.h"
 #include <immintrin.h>
 
+
+
 void drawTri(const face& f,  const float light, const TGAImage& img)
 {
 #ifdef DEBUG
@@ -80,6 +82,12 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float xCol;
   float yCol;
 
+  unsigned memsize = (maxX - minX) * (maxY - minY);
+
+  unsigned __attribute__((aligned(32))) zBuffTemp[memsize];
+  printf("mem %d\n", memsize);
+  memset ((void*)zBuffTemp, 0, memsize);
+
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0_row;
@@ -124,7 +132,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       __m256i xCol_add = _mm256_set_ps(7*xColDx, 6*xColDx, 5*xColDx, 4*xColDx, 3*xColDx, 2*xColDx, xColDx, 0);
       __m256i xColv = _mm256_add_ps(xCol_init, xCol_add);
 
-
       __m256i yCol_init = _mm256_set_ps(yCol, yCol, yCol, yCol, yCol, yCol, yCol ,yCol);
       __m256i yCol_add = _mm256_set_ps(7*yColDx, 6*yColDx, 5*yColDx, 4*yColDx, 3*yColDx, 2*yColDx, yColDx, 0);
       __m256i yColv = _mm256_add_ps(yCol_init, yCol_add);
@@ -136,20 +143,35 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       __m256i zv = _mm256_add_epi32(z_init, zdx_add);
 
       unsigned xVal2 = xVal + W*y;
-      //__m256i zbuffv = _mm256_set_epi32(zbuff[xVal2], zbuff[xVal2 + 1], zbuff[xVal2 + 2], zbuff[xVal2 + 3], zbuff[xVal2 + 4], zbuff[xVal2 + 5], zbuff[xVal2 + 6], zbuff[xVal2 + 7]);
       __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal2));
 
       //printf("FIRST %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv, 7), _mm256_extract_epi32(zbuffv, 6), _mm256_extract_epi32(zbuffv, 5), _mm256_extract_epi32(zbuffv, 4), _mm256_extract_epi32(zbuffv, 3), _mm256_extract_epi32(zbuffv, 2), _mm256_extract_epi32(zbuffv, 1), _mm256_extract_epi32(zbuffv, 0));
       //printf("%d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv2, 0), _mm256_extract_epi32(zbuffv2, 1), _mm256_extract_epi32(zbuffv2, 2), _mm256_extract_epi32(zbuffv2, 3), _mm256_extract_epi32(zbuffv2, 4), _mm256_extract_epi32(zbuffv2, 5), _mm256_extract_epi32(zbuffv2, 6), _mm256_extract_epi32(zbuffv2, 7));
 
       __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
+
       __m256i res3 = _mm256_and_si256(res2, res);
+
+      // We are ANDING with 0 for every value of vector that should not be updated
+      // Otherwise, we are updating
+      __m256i zupdate = _mm256_and_si256(res3, zv);
+      //printf("%d\n", *(zBuffTemp + (467*W) + 1108));
+      //printf("%d\n", *(zBuffTemp + (467*W) + 1116));
+      unsigned* memOffset = zBuffTemp + ((y - minY) * (maxX - minX) + xInner * 8);
+
+      _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
+
+
+
+
+
       // We need a clever way of doing the texture mapping
       // I think only doing the mapping if needed would be a big help..but I'm not sure how to do this
       // For now, just load the values in I guess. Consider doing lighting after.
 
 
       for (unsigned x = 0; x < 8; ++x) {
+        //printf("Usinging this");
         xValInner = xVal + x;
 
         // If p is on or inside all edges, render pixel
@@ -175,11 +197,12 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
             plot(xValInner, y, c);
             //}
         }
-
-
         xCol += xColDx;
         yCol += yColDx;
       }
+
+      // Fetching the colors cannot be done in parallel.
+      // Lets only get the, for the ones we care about.
 
       w0 += 8*A12;
       w1 += 8*A20;

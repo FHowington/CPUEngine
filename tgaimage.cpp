@@ -9,7 +9,7 @@ TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {
 }
 
 TGAImage::TGAImage(int w, int h, int bpp) : data(NULL), width(w), height(h), bytespp(bpp) {
-  unsigned long nbytes = width*height*bytespp;
+  unsigned long nbytes = width*height*4;
   data = new unsigned char[nbytes];
   memset(data, 0, nbytes);
 }
@@ -18,7 +18,7 @@ TGAImage::TGAImage(const TGAImage &img) {
   width = img.width;
   height = img.height;
   bytespp = img.bytespp;
-  unsigned long nbytes = width*height*bytespp;
+  unsigned long nbytes = width*height*4;
   data = new unsigned char[nbytes];
   memcpy(data, img.data, nbytes);
 }
@@ -53,7 +53,7 @@ bool TGAImage::read_tga_file(const char *filename) {
     std::cerr << "bad bpp (or width/height) value\n";
     return false;
   }
-  unsigned long nbytes = bytespp*width*height;
+  unsigned long nbytes = 4*width*height;
   data = new unsigned char[nbytes];
   if (3==header.datatypecode || 2==header.datatypecode) {
     in.read((char *)data, nbytes);
@@ -106,6 +106,11 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
         }
         for (int t=0; t<bytespp; t++)
           data[currentbyte++] = colorbuffer.raw[t];
+        if (bytespp < 4) {
+          for (unsigned idx = bytespp; idx < 4; ++idx) {
+            data[currentbyte++] = 0;
+          }
+        }
         currentpixel++;
         if (currentpixel>pixelcount) {
           std::cerr << "Too many pixels read\n";
@@ -122,6 +127,11 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
       for (int i=0; i<chunkheader; i++) {
         for (int t=0; t<bytespp; t++)
           data[currentbyte++] = colorbuffer.raw[t];
+        if (bytespp < 4) {
+          for (unsigned idx = bytespp; idx < 4; ++idx) {
+            data[currentbyte++] = 0;
+          }
+        }
         currentpixel++;
         if (currentpixel>pixelcount) {
           std::cerr << "Too many pixels read\n";
@@ -137,17 +147,17 @@ const TGAColor TGAImage::get(int x, int y) const {
   if (!data || x<0 || y<0 || x>=width || y>=height) {
     return TGAColor();
   }
-  return TGAColor(data+(x+y*width)*bytespp, bytespp);
+  return TGAColor(data+(x+y*width)*4, 3);
 }
 
 const fcolor TGAImage::get_and_light(const int x, const int y, const float light) const {
-  unsigned char* offset = data+(x+y*width)*bytespp;
+  unsigned char* offset = data+(x+y*width)*4;
   return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
 
 const unsigned TGAImage::fast_get(const int x, const int y) const {
-  unsigned char* offset = data+(x+y*width)*bytespp;
+  unsigned char* offset = data+(x+y*width)*4;
   return fcolor(0, offset[2], offset[1], offset[0]);
 }
 
