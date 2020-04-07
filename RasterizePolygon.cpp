@@ -106,47 +106,76 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       // Then, calculate color for each of these
       // Finally, apply to both zbuff and plot the results
 
+      __m256i min = _mm256_set_epi32(-1, -1, -1, -1, -1, -1, -1, -1);
+
       __m256i w0_init = _mm256_set_epi32(w0, w0, w0, w0, w0, w0, w0 ,w0);
-      __m256i a12_add = _mm256_set_epi32(0, A12, 2*A12, 3*A12, 4*A12, 5*A12, 6*A12, 7*A12);
+      __m256i a12_add = _mm256_set_epi32(7*A12, 6*A12, 5*A12, 4*A12, 3*A12, 2*A12, A12, 0);
       __m256i w0v = _mm256_add_epi32(w0_init, a12_add);
 
-
       __m256i w1_init = _mm256_set_epi32(w1, w1, w1, w1, w1, w1, w1 ,w1);
-      __m256i a20_add = _mm256_set_epi32(0, A20, 2*A20, 3*A20, 4*A20, 5*A20, 6*A20, 7*A20);
+      __m256i a20_add = _mm256_set_epi32(7*A20, 6*A20, 5*A20, 4*A20, 3*A20, 2*A20, A20, 0);
       __m256i w1v = _mm256_add_epi32(w1_init, a20_add);
 
       __m256i w2_init = _mm256_set_epi32(w2, w2, w2, w2, w2, w2, w2 ,w2);
-      __m256i a01_add = _mm256_set_epi32(0, A01, 2*A01, 3*A01, 4*A01, 5*A01, 6*A01, 7*A01);
+      __m256i a01_add = _mm256_set_epi32(7*A01, 6*A01, 5*A01, 4*A01, 3*A01, 2*A01, A01, 0);
       __m256i w2v = _mm256_add_epi32(w2_init, a01_add);
 
-      // printf("%d %d %d %d %d %d %d %d %d\n", wt, A12, _mm256_extract_epi32(w0, 7), _mm256_extract_epi32(w0, 6), _mm256_extract_epi32(w0, 5), _mm256_extract_epi32(w0, 4), _mm256_extract_epi32(w0, 3), _mm256_extract_epi32(w0, 2), _mm256_extract_epi32(w0, 1), _mm256_extract_epi32(w0, 0));
+      __m256i xCol_init = _mm256_set_ps(xCol, xCol, xCol, xCol, xCol, xCol, xCol ,xCol);
+      __m256i xCol_add = _mm256_set_ps(7*xColDx, 6*xColDx, 5*xColDx, 4*xColDx, 3*xColDx, 2*xColDx, xColDx, 0);
+      __m256i xColv = _mm256_add_ps(xCol_init, xCol_add);
+
+
+      __m256i yCol_init = _mm256_set_ps(yCol, yCol, yCol, yCol, yCol, yCol, yCol ,yCol);
+      __m256i yCol_add = _mm256_set_ps(7*yColDx, 6*yColDx, 5*yColDx, 4*yColDx, 3*yColDx, 2*yColDx, yColDx, 0);
+      __m256i yColv = _mm256_add_ps(yCol_init, yCol_add);
+
+      __m256i res = _mm256_cmpgt_epi32(_mm256_or_si256(w2v, _mm256_or_si256(w0v, w1v)), min);
+
+      __m256i z_init = _mm256_set_epi32(z, z, z, z, z, z, z ,z);
+      __m256i zdx_add = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+      __m256i zv = _mm256_add_epi32(z_init, zdx_add);
+
+      unsigned xVal2 = xVal + W*y;
+      //__m256i zbuffv = _mm256_set_epi32(zbuff[xVal2], zbuff[xVal2 + 1], zbuff[xVal2 + 2], zbuff[xVal2 + 3], zbuff[xVal2 + 4], zbuff[xVal2 + 5], zbuff[xVal2 + 6], zbuff[xVal2 + 7]);
+      __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal2));
+
+      //printf("FIRST %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv, 7), _mm256_extract_epi32(zbuffv, 6), _mm256_extract_epi32(zbuffv, 5), _mm256_extract_epi32(zbuffv, 4), _mm256_extract_epi32(zbuffv, 3), _mm256_extract_epi32(zbuffv, 2), _mm256_extract_epi32(zbuffv, 1), _mm256_extract_epi32(zbuffv, 0));
+      //printf("%d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv2, 0), _mm256_extract_epi32(zbuffv2, 1), _mm256_extract_epi32(zbuffv2, 2), _mm256_extract_epi32(zbuffv2, 3), _mm256_extract_epi32(zbuffv2, 4), _mm256_extract_epi32(zbuffv2, 5), _mm256_extract_epi32(zbuffv2, 6), _mm256_extract_epi32(zbuffv2, 7));
+
+      __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
+      __m256i res3 = _mm256_and_si256(res2, res);
+      // We need a clever way of doing the texture mapping
+      // I think only doing the mapping if needed would be a big help..but I'm not sure how to do this
+      // For now, just load the values in I guess. Consider doing lighting after.
+
+
       for (unsigned x = 0; x < 8; ++x) {
         xValInner = xVal + x;
+
         // If p is on or inside all edges, render pixel
 
-        if ((x == 0 && (_mm256_extract_epi32(w0v, 7) | _mm256_extract_epi32(w1v, 7) | _mm256_extract_epi32(w2v, 7)) >= 0) ||
-            (x == 1 && (_mm256_extract_epi32(w0v, 6) | _mm256_extract_epi32(w1v, 6) | _mm256_extract_epi32(w2v, 6)) >= 0) ||
-            (x == 2 && (_mm256_extract_epi32(w0v, 5) | _mm256_extract_epi32(w1v, 5) | _mm256_extract_epi32(w2v, 5)) >= 0) ||
-            (x == 3 && (_mm256_extract_epi32(w0v, 4) | _mm256_extract_epi32(w1v, 4) | _mm256_extract_epi32(w2v, 4)) >= 0) ||
-            (x == 4 && (_mm256_extract_epi32(w0v, 3) | _mm256_extract_epi32(w1v, 3) | _mm256_extract_epi32(w2v, 3)) >= 0) ||
-            (x == 5 && (_mm256_extract_epi32(w0v, 2) | _mm256_extract_epi32(w1v, 2) | _mm256_extract_epi32(w2v, 2)) >= 0) ||
-            (x == 6 && (_mm256_extract_epi32(w0v, 1) | _mm256_extract_epi32(w1v, 1) | _mm256_extract_epi32(w2v, 1)) >= 0) ||
-            (x == 7 && (_mm256_extract_epi32(w0v, 0) | _mm256_extract_epi32(w1v, 0) | _mm256_extract_epi32(w2v, 0)) >= 0)
-            )
+        if ((x == 7 && _mm256_extract_epi32(res3, 7)) ||
+            (x == 6 && _mm256_extract_epi32(res3, 6)) ||
+            (x == 5 && _mm256_extract_epi32(res3, 5)) ||
+            (x == 4 && _mm256_extract_epi32(res3, 4)) ||
+            (x == 3 && _mm256_extract_epi32(res3, 3)) ||
+            (x == 2 && _mm256_extract_epi32(res3, 2)) ||
+            (x == 1 && _mm256_extract_epi32(res3, 1)) ||
+            (x == 0 && _mm256_extract_epi32(res3, 0)))
         {
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-          if (zbuff[xValInner + W*y] < z) {
+          //if (zbuff[xValInner + W*y] < z) {
           // This is incredibly expensive. How can we do better?
           // One idea would be to instead vectorize it, though I'm not sure how.
-            fcolor c = img.get_and_light(xCol, yCol, light);
 
-            zbuff[xValInner + W*y] = z;
+            fcolor c = img.get_and_light(xCol, yCol, 1);
+
+            zbuff[xValInner + W*y] = 0;
             plot(xValInner, y, c);
-          }
+            //}
         }
 
-        z += zdx;
 
         xCol += xColDx;
         yCol += yColDx;
@@ -155,6 +184,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       w0 += 8*A12;
       w1 += 8*A20;
       w2 += 8*A01;
+      z += 8*zdx;
+
     }
 
     xVal = 8 * numInner + minX;
@@ -167,7 +198,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (zbuff[xValInner + W*y] < z) {
-          fcolor c = img.get_and_light(xCol, yCol, light);
+          fcolor c = img.get_and_light(xCol, yCol, 1);
           zbuff[xValInner + W*y] = z;
           plot(xValInner, y, c);
         }
