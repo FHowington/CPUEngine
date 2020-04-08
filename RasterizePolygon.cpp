@@ -148,8 +148,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   xCol = xCol_row;
   yCol = yCol_row;
 
-
-
   for (x = minX; x <= maxX; ++x) {
     w0_row = w0;
     w1_row = w1;
@@ -170,7 +168,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     __m256i w2_row_init = _mm256_set1_epi32(w2_row);
     w2_row_init = _mm256_add_epi32(w2_row_init, b01_add);
 
-
     for (yInner = 0; yInner < numInner; ++yInner) {
       __m256i xCol_row_init = _mm256_set1_ps(xCol_row);
       __m256i xCol_rowv = _mm256_add_ps(xCol_row_init, xCol_row_add);
@@ -181,7 +178,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       __m256i z_init = _mm256_set1_epi32(z);
       __m256i zv = _mm256_add_epi32(z_init, zdy_add);
 
-      // This will NOT WORK. NEED TO LOAD IN DIFFERENT DIRECTION
       unsigned offset = (yInner * 8 + minY) * W + x;
       __m256i zbuffv =   _mm256_set_epi32(zbuff[offset + 7*W], zbuff[offset + 6*W], zbuff[offset + 5*W], zbuff[offset + 4*W], zbuff[offset + 3*W], zbuff[offset + 2*W], zbuff[offset + W], zbuff[offset]);
 
