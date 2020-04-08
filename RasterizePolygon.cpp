@@ -83,11 +83,16 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float yCol;
 
   __m256i min = _mm256_set1_epi32(-1);
+
   __m256i a12_add = _mm256_set_epi32(7*A12, 6*A12, 5*A12, 4*A12, 3*A12, 2*A12, A12, 0);
   __m256i a12_add_8 = _mm256_set1_epi32(8*A12);
 
   __m256i a20_add = _mm256_set_epi32(7*A20, 6*A20, 5*A20, 4*A20, 3*A20, 2*A20, A20, 0);
+  __m256i a20_add_8 = _mm256_set1_epi32(8*A20);
+
   __m256i a01_add = _mm256_set_epi32(7*A01, 6*A01, 5*A01, 4*A01, 3*A01, 2*A01, A01, 0);
+  __m256i a01_add_8 = _mm256_set1_epi32(8*A01);
+
   __m256i zdx_add = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
   __m256i xCol_add = _mm256_set_ps(7*xColDx, 6*xColDx, 5*xColDx, 4*xColDx, 3*xColDx, 2*xColDx, xColDx, 0);
   __m256i yCol_add = _mm256_set_ps(7*yColDx, 6*yColDx, 5*yColDx, 4*yColDx, 3*yColDx, 2*yColDx, yColDx, 0);
@@ -103,11 +108,16 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned xDiff = maxX - minX;
 
+  __m256i ones = _mm256_set1_epi64x(-1);
+
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
   float __attribute__((aligned(32))) xColArr[8];
   float __attribute__((aligned(32))) yColArr[8];
 
+
   for (y = minY; y <= maxY; ++y) {
+    unsigned offset = W * y;
+
     w0 = w0_row;
     w1 = w1_row;
     w2 = w2_row;
@@ -118,8 +128,14 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     numInner = (maxX - minX) / 8;
     numOuter = (maxX - minX) % 8 + 1;
 
-      __m256i w0_init = _mm256_set1_epi32(w0);
-      w0_init = _mm256_add_epi32(w0_init, a12_add);
+    __m256i w0_init = _mm256_set1_epi32(w0);
+    w0_init = _mm256_add_epi32(w0_init, a12_add);
+
+    __m256i w1_init = _mm256_set1_epi32(w1);
+    w1_init = _mm256_add_epi32(w1_init, a20_add);
+
+    __m256i w2_init = _mm256_set1_epi32(w2);
+    w2_init = _mm256_add_epi32(w2_init, a01_add);
 
     for (xInner = 0; xInner < numInner; ++xInner) {
 
@@ -135,28 +151,17 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       // Next, Create mask of w0 | w1 w2 && zbuf thing
       // Then, calculate color for each of these
       // Finally, apply to both zbuff and plot the results
-      __m256i a12_init = _mm256_set1_epi32(A12);
-
-
-
-      __m256i w1_init = _mm256_set1_epi32(w1);
-      __m256i w1v = _mm256_add_epi32(w1_init, a20_add);
-
-      __m256i w2_init = _mm256_set1_epi32(w2);
-      __m256i w2v = _mm256_add_epi32(w2_init, a01_add);
 
       __m256i xCol_init = _mm256_set1_ps(xCol);
       __m256i xColv = _mm256_add_ps(xCol_init, xCol_add);
-      _mm256_stream_ps(xColArr, xColv);
 
       __m256i yCol_init = _mm256_set1_ps(yCol);
       __m256i yColv = _mm256_add_ps(yCol_init, yCol_add);
-      _mm256_stream_ps(yColArr, yColv);
 
       __m256i z_init = _mm256_set1_epi32(z);
       __m256i zv = _mm256_add_epi32(z_init, zdx_add);
 
-      unsigned xVal2 = xVal + W * y;
+      unsigned xVal2 = xVal + offset;
       __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal2));
 
       __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
@@ -164,33 +169,47 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       // We are now inside both if statements
       // We are ANDING with 0 for every value of vector that should not be updated
       // Otherwise, we are updating
-      __m256i zupdate = _mm256_and_si256(_mm256_and_si256(res2,  _mm256_cmpgt_epi32(_mm256_or_si256(w2v, _mm256_or_si256(w0_init, w1v)), min)), zv);
+      __m256i zupdate = _mm256_and_si256(_mm256_and_si256(res2,  _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min)), zv);
 
       // Copying results into the array, we can now check each value
       // Every non-zero value in this array represents a z value that is updated
       // and should therefore get new color
 
       //Thought: check if zupdate is all zeros. If not, then do vector color mult stuff!!!
-      _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
 
-      for (unsigned x = 0; x < 8; ++x) {
-        if (zBuffTemp[x]) {
-          xValInner = xVal + x;
-          fcolor c = img.fast_get(xColArr[x], yColArr[x]);
-          zbuff[xValInner + W*y] = zBuffTemp[x];
-          plot(xValInner, y, c);
+
+
+      // If this is 1, it indicates that all z values are zero
+      int route = _mm256_testz_si256(ones, zupdate);
+
+      if (!route) {
+        _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
+        _mm256_stream_ps(yColArr, yColv);
+        _mm256_stream_ps(xColArr, xColv);
+
+        for (unsigned x = 0; x < 8; ++x) {
+          if (zBuffTemp[x]) {
+            xValInner = xVal + x;
+            fcolor c = img.fast_get(xColArr[x], yColArr[x]);
+            zbuff[xValInner + offset] = zBuffTemp[x];
+            plot(xValInner, y, c);
+          }
         }
       }
 
-      w0 += A12_8;
-      w1 += A20_8;
-      w2 += A01_8;
       z += zdx_8;
       xCol += xColDx_8;
       yCol += yColDx_8;
-      w0_init = _mm256_add_epi32(w0_init, a12_add_8);
 
+      if (xInner < numInner - 1) {
+        w0_init = _mm256_add_epi32(w0_init, a12_add_8);
+        w1_init = _mm256_add_epi32(w1_init, a20_add_8);
+        w2_init = _mm256_add_epi32(w2_init, a01_add_8);
+      }
     }
+    w0 += A12_8 * numInner;
+    w1 += A20_8 * numInner;
+    w2 += A01_8 * numInner;
 
     xVal = 8 * numInner + minX;
 
@@ -201,9 +220,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       if ((w0 | w1 | w2) >= 0) {
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-        if (zbuff[xValInner + W*y] < z) {
+        if (zbuff[xValInner + offset] < z) {
           fcolor c = img.get_and_light(xCol, yCol, 1);
-          zbuff[xValInner + W*y] = z;
+          zbuff[xValInner + offset] = z;
           plot(xValInner, y, c);
         }
       }
