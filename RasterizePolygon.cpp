@@ -45,13 +45,13 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     return;
   }
 
-  const int A01 = y0 - y1;
-  const int A12 = y1 - y2;
-  const int A20 = y2 - y0;
+  const short A01 = y0 - y1;
+  const short A12 = y1 - y2;
+  const short A20 = y2 - y0;
 
-  const int B01 = x1 - x0;
-  const int B12 = x2 - x1;
-  const int B20 = x0 - x2;
+  const short B01 = x1 - x0;
+  const short B12 = x2 - x1;
+  const short B20 = x0 - x2;
 
   const int z0 = f._v0._z * 0xFFFFF + 0xFFFFF; // Consider changing these into shifts, should be the same
   const int z1 = f._v1._z * 0xFFFFF + 0xFFFFF;
@@ -65,8 +65,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
-  const int zdx = (A20 * z10 + A01 * z20) / div;
-  const int zdy = (B20 * z10 + B01 * z20) / div;
+  const short zdx = (A20 * z10 + A01 * z20) / div;
+  const short zdy = (B20 * z10 + B01 * z20) / div;
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
@@ -83,6 +83,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float yCol;
 
   const __m256i min = _mm256_set1_epi32(-1);
+  const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
   __m256i ones = _mm256_set1_epi64x(-1);
 
@@ -91,7 +93,11 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float __attribute__((aligned(32))) xColArr[8];
   float __attribute__((aligned(32))) yColArr[8];
 
-  if ((maxX - minX) > (maxY - minY)) {
+
+  unsigned xDiff = maxX - minX;
+  unsigned yDiff = maxY - minY;
+
+  if (xDiff > yDiff) {
     __m256i zdx_add;
     __m256i xCol_add;
     __m256i yCol_add;
@@ -117,10 +123,13 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
 
     // We will enter inner loop at least once, otherwise numInner is always 0
-    if (maxX - minX > 7) {
+    if (xDiff > 7) {
       zdx_add = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
-      xCol_add = _mm256_set_ps(7*xColDx, 6*xColDx, 5*xColDx, 4*xColDx, 3*xColDx, 2*xColDx, xColDx, 0);
-      yCol_add = _mm256_set_ps(7*yColDx, 6*yColDx, 5*yColDx, 4*yColDx, 3*yColDx, 2*yColDx, yColDx, 0);
+
+      xCol_add = _mm256_set1_ps(xColDx);
+      xCol_add = _mm256_mul_ps(scaleFloat, xCol_add);
+      yCol_add = _mm256_set1_ps(yColDx);
+      yCol_add = _mm256_mul_ps(scaleFloat, yCol_add);
 
       A12_8 = 8*A12;
       A20_8 = 8*A20;
@@ -129,13 +138,16 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       xColDx_8 = 8*xColDx;
       yColDx_8 = 8*yColDx;
 
-      a12_add = _mm256_set_epi32(7*A12, 6*A12, 5*A12, 4*A12, 3*A12, 2*A12, A12, 0);
+      a12_add = _mm256_set1_epi32(A12);
+      a12_add = _mm256_mullo_epi32(a12_add, scale);
       a12_add_8 = _mm256_set1_epi32(8*A12);
 
-      a20_add = _mm256_set_epi32(7*A20, 6*A20, 5*A20, 4*A20, 3*A20, 2*A20, A20, 0);
+      a20_add = _mm256_set1_epi32(A20);
+      a20_add = _mm256_mullo_epi32(a20_add, scale);
       a20_add_8 = _mm256_set1_epi32(8*A20);
 
-      a01_add = _mm256_set_epi32(7*A01, 6*A01, 5*A01, 4*A01, 3*A01, 2*A01, A01, 0);
+      a01_add = _mm256_set1_epi32(A01);
+      a01_add = _mm256_mullo_epi32(a01_add, scale);
       a01_add_8 = _mm256_set1_epi32(8*A01);
     }
 
@@ -188,20 +200,17 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         if (!zAllZero) {
           __m256i z_init = _mm256_set1_epi32(z);
           __m256i zv = _mm256_add_epi32(z_init, zdx_add);
-          __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
 
-          zupdate = _mm256_and_si256(_mm256_and_si256(res2, _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min)), zv);
+          zupdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min)), zv);
 
           // If this is 1, it indicates that all z values are zero
           route = _mm256_testz_si256(ones, zupdate);
-          }
-
-          if (zAllZero) {
-            // All z values are zero
-            // Only want to see what the barycentric coords are for each index
-            zupdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min);
-            route = _mm256_testz_si256(ones, zupdate);
-          }
+        } else {
+          // All z values are zero
+          // Only want to see what the barycentric coords are for each index
+          zupdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min);
+          route = _mm256_testz_si256(ones, zupdate);
+        }
 
         if (!route) {
           if (zAllZero) {
@@ -274,6 +283,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       yCol_row += yColDy;
     }
   } else {
+
     int B12_8;
     int B20_8;
     int B01_8;
@@ -305,21 +315,29 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     xCol = xCol_row;
     yCol = yCol_row;
 
-
-    if (maxY - minY > 7) {
+    if (yDiff > 7) {
+      //zdy_add = _mm256_set1_ps(zdy);
+      //zdy_add = _mm256_mul_ps(zdy_add, scaleFloat);
       zdy_add = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
-      xCol_row_add = _mm256_set_ps(7*xColDy, 6*xColDy, 5*xColDy, 4*xColDy, 3*xColDy, 2*xColDy, xColDy, 0);
-      yCol_row_add = _mm256_set_ps(7*yColDy, 6*yColDy, 5*yColDy, 4*yColDy, 3*yColDy, 2*yColDy, yColDy, 0);
+      xCol_row_add = _mm256_set1_ps(xColDy);
+      xCol_row_add = _mm256_mul_ps(scaleFloat, xCol_row_add);
+      yCol_row_add = _mm256_set1_ps(yColDy);
+      yCol_row_add = _mm256_mul_ps(scaleFloat, yCol_row_add);
 
-      b12_add = _mm256_set_epi32(7*B12, 6*B12, 5*B12, 4*B12, 3*B12, 2*B12, B12, 0);
+
+      b12_add = _mm256_set1_epi32(B12);
+      b12_add = _mm256_mullo_epi32(b12_add, scale);
       b12_add_8 = _mm256_set1_epi32(8*B12);
 
-      b20_add = _mm256_set_epi32(7*B20, 6*B20, 5*B20, 4*B20, 3*B20, 2*B20, B20, 0);
+
+      b20_add = _mm256_set1_epi32(B20);
+      b20_add = _mm256_mullo_epi32(b20_add, scale);
       b20_add_8 = _mm256_set1_epi32(8*B20);
 
-      b01_add = _mm256_set_epi32(7*B01, 6*B01, 5*B01, 4*B01, 3*B01, 2*B01, B01, 0);
-      b01_add_8 = _mm256_set1_epi32(8*B01);
 
+      b01_add = _mm256_set1_epi32(B01);
+      b01_add = _mm256_mullo_epi32(b01_add, scale);
+      b01_add_8 = _mm256_set1_epi32(8*B01);
 
       B12_8 = 8*B12;
       B20_8 = 8*B20;
@@ -353,22 +371,37 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       }
 
       for (yInner = 0; yInner < numInner; ++yInner) {
-        __m256i z_init = _mm256_set1_epi32(z);
-        __m256i zv = _mm256_add_epi32(z_init, zdy_add);
 
         unsigned offset = (yInner * 8 + minY) * W + x;
+
+        // Switch this to a gather instruction
         __m256i zbuffv =   _mm256_set_epi32(zbuff[offset + 7*W], zbuff[offset + 6*W], zbuff[offset + 5*W], zbuff[offset + 4*W], zbuff[offset + 3*W], zbuff[offset + 2*W], zbuff[offset + W], zbuff[offset]);
+        int zAllZero = _mm256_testz_si256(ones, zbuffv);
 
+        int route;
+        __m256i zupdate;
 
-        // We are now inside both if statements
-        // We are ANDING with 0 for every value of vector that should not be updated
-        // Otherwise, we are updating
-        __m256i zupdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2_row_init, _mm256_or_si256(w0_row_init, w1_row_init)), min)), zv);
+        if (!zAllZero) {
+          __m256i z_init = _mm256_set1_epi32(z);
+          __m256i zv = _mm256_add_epi32(z_init, zdy_add);
+          zupdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2_row_init, _mm256_or_si256(w0_row_init, w1_row_init)), min)), zv);
 
-        // If this is 1, it indicates that all z values are zero
-        int route = _mm256_testz_si256(ones, zupdate);
+          // If this is 1, it indicates that all z values are zero
+          route = _mm256_testz_si256(ones, zupdate);
+        } else {
+          // All z values are zero
+          // Only want to see what the barycentric coords are for each index
+          zupdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2_row_init, _mm256_or_si256(w0_row_init, w1_row_init)), min);
+          route = _mm256_testz_si256(ones, zupdate);
+        }
 
         if (!route) {
+          if (zAllZero) {
+            __m256i z_init = _mm256_set1_epi32(z);
+            __m256i zv = _mm256_add_epi32(z_init, zdy_add);
+            zupdate = _mm256_and_si256(zv, zupdate);
+          }
+
           __m256i xCol_row_init = _mm256_set1_ps(xCol_row);
           __m256i xCol_rowv = _mm256_add_ps(xCol_row_init, xCol_row_add);
 
