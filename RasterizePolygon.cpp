@@ -57,7 +57,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z1 = f._v1._z * 0xFFFFF + 0xFFFFF;
   const int z2 = f._v2._z * 0xFFFFF + 0xFFFFF;
 
-  unsigned x, y, z, xVal, xValInner, numInner, xInner, numOuter;
+  unsigned x, y, z, xVal, xValInner, numInner, xInner, numOuter, yValInner, yInner;
 
   int w0, w1, w2;
 
@@ -98,12 +98,37 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   __m256i yCol_add = _mm256_set_ps(7*yColDx, 6*yColDx, 5*yColDx, 4*yColDx, 3*yColDx, 2*yColDx, yColDx, 0);
 
 
+
+
+  __m256i b12_add = _mm256_set_epi32(7*B12, 6*B12, 5*B12, 4*B12, 3*B12, 2*B12, B12, 0);
+  __m256i b12_add_8 = _mm256_set1_epi32(8*B12);
+
+  __m256i b20_add = _mm256_set_epi32(7*B20, 6*B20, 5*B20, 4*B20, 3*B20, 2*B20, B20, 0);
+  __m256i b20_add_8 = _mm256_set1_epi32(8*B20);
+
+  __m256i b01_add = _mm256_set_epi32(7*B01, 6*B01, 5*B01, 4*B01, 3*B01, 2*B01, B01, 0);
+  __m256i b01_add_8 = _mm256_set1_epi32(8*B01);
+
+  __m256i zdy_add = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
+  __m256i xCol_row_add = _mm256_set_ps(7*xColDy, 6*xColDy, 5*xColDy, 4*xColDy, 3*xColDy, 2*xColDy, xColDy, 0);
+  __m256i yCol_row_add = _mm256_set_ps(7*yColDy, 6*yColDy, 5*yColDy, 4*yColDy, 3*yColDy, 2*yColDy, yColDy, 0);
+
+
+
   int A12_8 = 8*A12;
   int A20_8 = 8*A20;
   int A01_8 = 8*A01;
   int zdx_8 = 8*zdx;
   float xColDx_8 = 8*xColDx;
   float yColDx_8 = 8*yColDx;
+
+
+  int B12_8 = 8*B12;
+  int B20_8 = 8*B20;
+  int B01_8 = 8*B01;
+  int zdy_8 = 8*zdy;
+  float xColDy_8 = 8*xColDy;
+  float yColDy_8 = 8*yColDy;
 
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned xDiff = maxX - minX;
@@ -115,123 +140,120 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float __attribute__((aligned(32))) yColArr[8];
 
 
-  for (y = minY; y <= maxY; ++y) {
-    unsigned offset = W * y;
 
-    w0 = w0_row;
-    w1 = w1_row;
-    w2 = w2_row;
+  // For row only
+  w0 = w0_row;
+  w1 = w1_row;
+  w2 = w2_row;
+  xCol = xCol_row;
+  yCol = yCol_row;
+
+
+
+  for (x = minX; x <= maxX; ++x) {
+    w0_row = w0;
+    w1_row = w1;
+    w2_row = w2;
     z = zOrig;
-    xCol = xCol_row;
-    yCol = yCol_row;
+    xCol_row = xCol;
+    yCol_row = yCol;
 
-    numInner = (maxX - minX) / 8;
-    numOuter = (maxX - minX) % 8 + 1;
+    numInner = (maxY - minY) / 8;
+    numOuter = (maxY - minY) % 8 + 1;
 
-    __m256i w0_init = _mm256_set1_epi32(w0);
-    w0_init = _mm256_add_epi32(w0_init, a12_add);
+    __m256i w0_row_init = _mm256_set1_epi32(w0_row);
+    w0_row_init = _mm256_add_epi32(w0_row_init, b12_add);
 
-    __m256i w1_init = _mm256_set1_epi32(w1);
-    w1_init = _mm256_add_epi32(w1_init, a20_add);
+    __m256i w1_row_init = _mm256_set1_epi32(w1_row);
+    w1_row_init = _mm256_add_epi32(w1_row_init, b20_add);
 
-    __m256i w2_init = _mm256_set1_epi32(w2);
-    w2_init = _mm256_add_epi32(w2_init, a01_add);
-
-    xVal = minX;
-    for (xInner = 0; xInner < numInner; ++xInner) {
+    __m256i w2_row_init = _mm256_set1_epi32(w2_row);
+    w2_row_init = _mm256_add_epi32(w2_row_init, b01_add);
 
 
-      // We have AVX2, lets take advantage of it!
-      // We break the loop out to enable the compiler to vectorize it!
-      //#pragma clang loop vectorize(enable) interleave(enable)
+    for (yInner = 0; yInner < numInner; ++yInner) {
+      __m256i xCol_row_init = _mm256_set1_ps(xCol_row);
+      __m256i xCol_rowv = _mm256_add_ps(xCol_row_init, xCol_row_add);
 
-      // Step 1:
-      // Calculate w0, w1, w2, xCol, yCol
-      // For all 8 cases.
-      // Next, Create mask of w0 | w1 w2 && zbuf thing
-      // Then, calculate color for each of these
-      // Finally, apply to both zbuff and plot the results
-
-      __m256i xCol_init = _mm256_set1_ps(xCol);
-      __m256i xColv = _mm256_add_ps(xCol_init, xCol_add);
-
-      __m256i yCol_init = _mm256_set1_ps(yCol);
-      __m256i yColv = _mm256_add_ps(yCol_init, yCol_add);
+      __m256i yCol_row_init = _mm256_set1_ps(yCol_row);
+      __m256i yCol_rowv = _mm256_add_ps(yCol_row_init, yCol_row_add);
 
       __m256i z_init = _mm256_set1_epi32(z);
-      __m256i zv = _mm256_add_epi32(z_init, zdx_add);
+      __m256i zv = _mm256_add_epi32(z_init, zdy_add);
 
-      __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+      // This will NOT WORK. NEED TO LOAD IN DIFFERENT DIRECTION
+      unsigned offset = (yInner * 8 + minY) * W + x;
+      __m256i zbuffv =   _mm256_set_epi32(zbuff[offset + 7*W], zbuff[offset + 6*W], zbuff[offset + 5*W], zbuff[offset + 4*W], zbuff[offset + 3*W], zbuff[offset + 2*W], zbuff[offset + W], zbuff[offset]);
 
-      __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
 
       // We are now inside both if statements
       // We are ANDING with 0 for every value of vector that should not be updated
       // Otherwise, we are updating
-      __m256i zupdate = _mm256_and_si256(_mm256_and_si256(res2,  _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min)), zv);
+      __m256i zupdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2_row_init, _mm256_or_si256(w0_row_init, w1_row_init)), min)), zv);
 
       // If this is 1, it indicates that all z values are zero
       int route = _mm256_testz_si256(ones, zupdate);
 
       if (!route) {
         _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
-        _mm256_stream_ps(yColArr, yColv);
-        _mm256_stream_ps(xColArr, xColv);
+        _mm256_stream_ps(yColArr, yCol_rowv);
+        _mm256_stream_ps(xColArr, xCol_rowv);
 
-        for (unsigned x = 0; x < 8; ++x) {
-          if (zBuffTemp[x]) {
-            xValInner = xVal + x;
-            fcolor c = img.fast_get(xColArr[x], yColArr[x]);
-            zbuff[xValInner + offset] = zBuffTemp[x];
-            plot(xValInner, y, c);
+        for (unsigned y = 0; y < 8; ++y) {
+          if (zBuffTemp[y]) {
+            yValInner = yInner * 8 + y + minY;
+            fcolor c = img.fast_get(xColArr[y], yColArr[y]);
+            //fcolor c(0,255 - 30*y, 0, 255-30*y);
+
+            zbuff[yValInner * W + x] = zBuffTemp[y];
+            plot(x, yValInner, c);
           }
         }
       }
 
-      z += zdx_8;
-      xCol += xColDx_8;
-      yCol += yColDx_8;
-      xVal += 8;
+      z += zdy_8;
+      xCol_row += xColDy_8;
+      yCol_row += yColDy_8;
 
 
-      if (xInner < numInner - 1) {
-        w0_init = _mm256_add_epi32(w0_init, a12_add_8);
-        w1_init = _mm256_add_epi32(w1_init, a20_add_8);
-        w2_init = _mm256_add_epi32(w2_init, a01_add_8);
+      if (yInner < numInner - 1) {
+        w0_row_init = _mm256_add_epi32(w0_row_init, b12_add_8);
+        w1_row_init = _mm256_add_epi32(w1_row_init, b20_add_8);
+        w2_row_init = _mm256_add_epi32(w2_row_init, b01_add_8);
       }
     }
 
-    w0 += A12_8 * numInner;
-    w1 += A20_8 * numInner;
-    w2 += A01_8 * numInner;
+    w0_row += B12_8 * numInner;
+    w1_row += B20_8 * numInner;
+    w2_row += B01_8 * numInner;
 
-    for (x = 0; x < numOuter; ++x) {
-      xValInner = xVal + x;
+    for (y = 0; y < numOuter; ++y) {
+      yValInner = minY + y + 8 * numInner;
 
       // If p is on or inside all edges, render pixel
-      if ((w0 | w1 | w2) >= 0) {
+      if ((w0_row | w1_row | w2_row) >= 0) {
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-        if (zbuff[xValInner + offset] < z) {
-          fcolor c = img.get_and_light(xCol, yCol, 1);
-          zbuff[xValInner + offset] = z;
-          plot(xValInner, y, c);
+        if (zbuff[yValInner * W + x] < z) {
+          fcolor c = img.get_and_light(xCol_row, yCol_row, 1);
+          zbuff[yValInner * W + x] = z;
+          plot(x, yValInner, c);
         }
       }
-      w0 += A12;
-      w1 += A20;
-      w2 += A01;
-      z += zdx;
-      xCol += xColDx;
-      yCol += yColDx;
+      w0_row += B12;
+      w1_row += B20;
+      w2_row += B01;
+      z += zdy;
+      xCol_row += xColDy;
+      yCol_row += yColDy;
     }
 
-    w0_row += B12;
-    w1_row += B20;
-    w2_row += B01;
-    zOrig += zdy;
-    xCol_row += xColDy;
-    yCol_row += yColDy;
+    w0 += A12;
+    w1 += A20;
+    w2 += A01;
+    zOrig += zdx;
+    xCol += xColDx;
+    yCol += yColDx;
   }
 }
 
