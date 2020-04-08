@@ -137,9 +137,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     __m256i w2_init = _mm256_set1_epi32(w2);
     w2_init = _mm256_add_epi32(w2_init, a01_add);
 
+    xVal = minX;
     for (xInner = 0; xInner < numInner; ++xInner) {
 
-      xVal = 8 * xInner + minX;
 
       // We have AVX2, lets take advantage of it!
       // We break the loop out to enable the compiler to vectorize it!
@@ -161,8 +161,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       __m256i z_init = _mm256_set1_epi32(z);
       __m256i zv = _mm256_add_epi32(z_init, zdx_add);
 
-      unsigned xVal2 = xVal + offset;
-      __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal2));
+      __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
 
       __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
 
@@ -170,14 +169,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       // We are ANDING with 0 for every value of vector that should not be updated
       // Otherwise, we are updating
       __m256i zupdate = _mm256_and_si256(_mm256_and_si256(res2,  _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min)), zv);
-
-      // Copying results into the array, we can now check each value
-      // Every non-zero value in this array represents a z value that is updated
-      // and should therefore get new color
-
-      //Thought: check if zupdate is all zeros. If not, then do vector color mult stuff!!!
-
-
 
       // If this is 1, it indicates that all z values are zero
       int route = _mm256_testz_si256(ones, zupdate);
@@ -200,6 +191,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       z += zdx_8;
       xCol += xColDx_8;
       yCol += yColDx_8;
+      xVal += 8;
+
 
       if (xInner < numInner - 1) {
         w0_init = _mm256_add_epi32(w0_init, a12_add_8);
@@ -207,11 +200,10 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         w2_init = _mm256_add_epi32(w2_init, a01_add_8);
       }
     }
+
     w0 += A12_8 * numInner;
     w1 += A20_8 * numInner;
     w2 += A01_8 * numInner;
-
-    xVal = 8 * numInner + minX;
 
     for (x = 0; x < numOuter; ++x) {
       xValInner = xVal + x;
