@@ -82,12 +82,13 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float xCol;
   float yCol;
 
-  unsigned memsize = (maxX - minX) * (maxY - minY);
 
-  unsigned __attribute__((aligned(32))) zBuffTemp[memsize];
-  printf("mem %d\n", memsize);
-  memset ((void*)zBuffTemp, 0, memsize);
+  // We want to always have our accessed aligned on 32 byte boundaries
+  unsigned xDiff = maxX - minX;
 
+  unsigned __attribute__((aligned(32))) zBuffTemp[8];
+  float __attribute__((aligned(32))) xColArr[8];
+  float __attribute__((aligned(32))) yColArr[8];
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0_row;
@@ -101,6 +102,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     numOuter = (maxX - minX) % 8 + 1;
 
     for (xInner = 0; xInner < numInner; ++xInner) {
+      memset ((void*)zBuffTemp, 0, 8);
+
       xVal = 8 * xInner + minX;
 
       // We have AVX2, lets take advantage of it!
@@ -131,10 +134,12 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       __m256i xCol_init = _mm256_set_ps(xCol, xCol, xCol, xCol, xCol, xCol, xCol ,xCol);
       __m256i xCol_add = _mm256_set_ps(7*xColDx, 6*xColDx, 5*xColDx, 4*xColDx, 3*xColDx, 2*xColDx, xColDx, 0);
       __m256i xColv = _mm256_add_ps(xCol_init, xCol_add);
+      _mm256_stream_ps(xColArr, xColv);
 
       __m256i yCol_init = _mm256_set_ps(yCol, yCol, yCol, yCol, yCol, yCol, yCol ,yCol);
       __m256i yCol_add = _mm256_set_ps(7*yColDx, 6*yColDx, 5*yColDx, 4*yColDx, 3*yColDx, 2*yColDx, yColDx, 0);
       __m256i yColv = _mm256_add_ps(yCol_init, yCol_add);
+      _mm256_stream_ps(yColArr, yColv);
 
       __m256i res = _mm256_cmpgt_epi32(_mm256_or_si256(w2v, _mm256_or_si256(w0v, w1v)), min);
 
@@ -145,69 +150,40 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       unsigned xVal2 = xVal + W*y;
       __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal2));
 
-      //printf("FIRST %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv, 7), _mm256_extract_epi32(zbuffv, 6), _mm256_extract_epi32(zbuffv, 5), _mm256_extract_epi32(zbuffv, 4), _mm256_extract_epi32(zbuffv, 3), _mm256_extract_epi32(zbuffv, 2), _mm256_extract_epi32(zbuffv, 1), _mm256_extract_epi32(zbuffv, 0));
-      //printf("%d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv2, 0), _mm256_extract_epi32(zbuffv2, 1), _mm256_extract_epi32(zbuffv2, 2), _mm256_extract_epi32(zbuffv2, 3), _mm256_extract_epi32(zbuffv2, 4), _mm256_extract_epi32(zbuffv2, 5), _mm256_extract_epi32(zbuffv2, 6), _mm256_extract_epi32(zbuffv2, 7));
-
       __m256i res2 = _mm256_cmpgt_epi32(zv, zbuffv);
 
+
+      // We are now inside both if statements
       __m256i res3 = _mm256_and_si256(res2, res);
 
       // We are ANDING with 0 for every value of vector that should not be updated
       // Otherwise, we are updating
       __m256i zupdate = _mm256_and_si256(res3, zv);
-      //printf("%d\n", *(zBuffTemp + (467*W) + 1108));
-      //printf("%d\n", *(zBuffTemp + (467*W) + 1116));
-      unsigned* memOffset = zBuffTemp + ((y - minY) * (maxX - minX) + xInner * 8);
 
+      // Copying results into the array, we can now check each value
+      // Every non-zero value in this array represents a z value that is updated
+      // and should therefore get new color
+
+      //Thought: check if zupdate is all zeros. If not, then do vector color mult stuff!!!
       _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
 
-
-
-
-
-      // We need a clever way of doing the texture mapping
-      // I think only doing the mapping if needed would be a big help..but I'm not sure how to do this
-      // For now, just load the values in I guess. Consider doing lighting after.
-
-
       for (unsigned x = 0; x < 8; ++x) {
-        //printf("Usinging this");
-        xValInner = xVal + x;
-
-        // If p is on or inside all edges, render pixel
-
-        if ((x == 7 && _mm256_extract_epi32(res3, 7)) ||
-            (x == 6 && _mm256_extract_epi32(res3, 6)) ||
-            (x == 5 && _mm256_extract_epi32(res3, 5)) ||
-            (x == 4 && _mm256_extract_epi32(res3, 4)) ||
-            (x == 3 && _mm256_extract_epi32(res3, 3)) ||
-            (x == 2 && _mm256_extract_epi32(res3, 2)) ||
-            (x == 1 && _mm256_extract_epi32(res3, 1)) ||
-            (x == 0 && _mm256_extract_epi32(res3, 0)))
-        {
-          // Uncomment for exact z values
-          //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-          //if (zbuff[xValInner + W*y] < z) {
-          // This is incredibly expensive. How can we do better?
-          // One idea would be to instead vectorize it, though I'm not sure how.
-
-            fcolor c = img.get_and_light(xCol, yCol, 1);
-
-            zbuff[xValInner + W*y] = 0;
-            plot(xValInner, y, c);
-            //}
+        if (zBuffTemp[x]) {
+          xValInner = xVal + x;
+          fcolor c = img.get_and_light(xColArr[x], yColArr[x], 1);
+          zbuff[xValInner + W*y] = zBuffTemp[x];
+          plot(xValInner, y, c);
         }
-        xCol += xColDx;
-        yCol += yColDx;
       }
 
       // Fetching the colors cannot be done in parallel.
       // Lets only get the, for the ones we care about.
-
       w0 += 8*A12;
       w1 += 8*A20;
       w2 += 8*A01;
       z += 8*zdx;
+      xCol += 8*xColDx;
+      yCol += 8*yColDx;
 
     }
 
