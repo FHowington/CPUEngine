@@ -57,7 +57,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z1 = f._v1._z * 0xFFFFF + 0xFFFFF;
   const int z2 = f._v2._z * 0xFFFFF + 0xFFFFF;
 
-  unsigned x, y, z, xVal, xValInner, numInner, xInner, numOuter, yValInner, yInner;
+  unsigned x, y, z, xVal, yVal, numInner, inner, numOuter;
 
   int w0, w1, w2;
 
@@ -177,7 +177,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       }
 
       xVal = minX;
-      for (xInner = 0; xInner < numInner; ++xInner) {
+      for (inner = 0; inner < numInner; ++inner) {
         // We have AVX2, lets take advantage of it!
         // We break the loop out to enable the compiler to vectorize it!
         //#pragma clang loop vectorize(enable) interleave(enable)
@@ -231,20 +231,21 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
           for (unsigned x = 0; x < 8; ++x) {
             if (zBuffTemp[x]) {
-              xValInner = xVal + x;
               fcolor c = img.fast_get(xColArr[x], yColArr[x]);
-              zbuff[xValInner + offset] = zBuffTemp[x];
-              plot(xValInner, y, c);
+              zbuff[xVal + offset] = zBuffTemp[x];
+              plot(xVal, y, c);
             }
+            ++xVal;
           }
+        } else {
+          xVal += 8;
         }
 
         z += zdx8;
         xCol += xColDx8;
         yCol += yColDx8;
-        xVal += 8;
 
-        if (xInner < numInner - 1) {
+        if (inner < numInner - 1) {
           w0Init = _mm256_add_epi32(w0Init, a12Add8);
           w1Init = _mm256_add_epi32(w1Init, a20Add8);
           w2Init = _mm256_add_epi32(w2Init, a01Add8);
@@ -257,16 +258,15 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       w2 += A01 * inner8;
 
       for (x = 0; x < numOuter; ++x) {
-        xValInner = xVal + x;
 
         // If p is on or inside all edges, render pixel
         if ((w0 | w1 | w2) >= 0) {
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-          if (zbuff[xValInner + offset] < z) {
+          if (zbuff[xVal + offset] < z) {
             fcolor c = img.get_and_light(xCol, yCol, 1);
-            zbuff[xValInner + offset] = z;
-            plot(xValInner, y, c);
+            zbuff[xVal + offset] = z;
+            plot(xVal, y, c);
           }
         }
         w0 += A12;
@@ -275,6 +275,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         z += zdx;
         xCol += xColDx;
         yCol += yColDx;
+        ++xVal;
       }
 
       w0Row += B12;
@@ -363,9 +364,11 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         w2RowInit = _mm256_add_epi32(w2RowInit, b01Add);
       }
 
-      for (yInner = 0; yInner < numInner; ++yInner) {
+      yVal = minY;
 
-        unsigned offset = (yInner * 8 + minY) * W + x;
+      unsigned offset = minY * W + x;
+
+      for (inner = 0; inner < numInner; ++inner) {
 
         __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
         int zAllZero = _mm256_testz_si256(ones, zbuffv);
@@ -406,24 +409,27 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
           for (unsigned y = 0; y < 8; ++y) {
             if (zBuffTemp[y]) {
-              yValInner = yInner * 8 + y + minY;
               fcolor c = img.fast_get(xColArr[y], yColArr[y]);
 
-              zbuff[yValInner * W + x] = zBuffTemp[y];
-              plot(x, yValInner, c);
+              zbuff[yVal * W + x] = zBuffTemp[y];
+              plot(x, yVal, c);
             }
+            ++yVal;
           }
+        } else {
+          yVal += 8;
         }
 
         z += zdy8;
         xColRow += xColDy8;
         yColRow += yColDy8;
 
-        if (yInner < numInner - 1) {
+        if (inner < numInner - 1) {
           w0RowInit = _mm256_add_epi32(w0RowInit, b12Add8);
           w1RowInit = _mm256_add_epi32(w1RowInit, b20Add8);
           w2RowInit = _mm256_add_epi32(w2RowInit, b01Add8);
         }
+        offset += 8*W;
       }
 
       unsigned inner8 = numInner * 8;
@@ -432,21 +438,15 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       w1Row += B20 * inner8;
       w2Row += B01 * inner8;
 
-      yValInner = minY + inner8;
-
       for (y = 0; y < numOuter; ++y) {
-        //if (numOuter > 3) {
-        //  printf("Vectorrize me!\n");
-        //}
-
         // If p is on or inside all edges, render pixel
         if ((w0Row | w1Row | w2Row) >= 0) {
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-          if (zbuff[yValInner * W + x] < z) {
+          if (zbuff[yVal * W + x] < z) {
             fcolor c = img.fast_get(xColRow, yColRow);
-            zbuff[yValInner * W + x] = z;
-            plot(x, yValInner, c);
+            zbuff[yVal * W + x] = z;
+            plot(x, yVal, c);
           }
         }
         w0Row += B12;
@@ -455,7 +455,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         z += zdy;
         xColRow += xColDy;
         yColRow += yColDy;
-        ++yValInner;
+        ++yVal;
       }
 
       w0 += A12;
