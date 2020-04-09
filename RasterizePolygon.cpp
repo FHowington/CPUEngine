@@ -65,8 +65,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
-  const short zdx = (A20 * z10 + A01 * z20) / div;
-  const short zdy = (B20 * z10 + B01 * z20) / div;
+  const int zdx = (A20 * z10 + A01 * z20) / div;
+  const int zdy = (B20 * z10 + B01 * z20) / div;
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
@@ -86,6 +86,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
+  __m256i loadOffset = _mm256_set1_epi32(W);
+  loadOffset = _mm256_mullo_epi32(scale, loadOffset);
+
   __m256i ones = _mm256_set1_epi64x(-1);
 
   // We want to always have our accessed aligned on 32 byte boundaries
@@ -93,9 +96,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float __attribute__((aligned(32))) xColArr[8];
   float __attribute__((aligned(32))) yColArr[8];
 
-
-  unsigned xDiff = maxX - minX;
-  unsigned yDiff = maxY - minY;
+  const unsigned xDiff = maxX - minX;
+  const unsigned yDiff = maxY - minY;
 
   if (xDiff > yDiff) {
     __m256i zdx_add;
@@ -316,8 +318,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     yCol = yCol_row;
 
     if (yDiff > 7) {
-      //zdy_add = _mm256_set1_ps(zdy);
-      //zdy_add = _mm256_mul_ps(zdy_add, scaleFloat);
       zdy_add = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
       xCol_row_add = _mm256_set1_ps(xColDy);
       xCol_row_add = _mm256_mul_ps(scaleFloat, xCol_row_add);
@@ -375,7 +375,11 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         unsigned offset = (yInner * 8 + minY) * W + x;
 
         // Switch this to a gather instruction
-        __m256i zbuffv =   _mm256_set_epi32(zbuff[offset + 7*W], zbuff[offset + 6*W], zbuff[offset + 5*W], zbuff[offset + 4*W], zbuff[offset + 3*W], zbuff[offset + 2*W], zbuff[offset + W], zbuff[offset]);
+        //__m256i zbuffv = _mm256_set_epi32(zbuff[offset + 7*W], zbuff[offset + 6*W], zbuff[offset + 5*W], zbuff[offset + 4*W], zbuff[offset + 3*W], zbuff[offset + 2*W], zbuff[offset + W], zbuff[offset]);
+        __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
+        //printf("This: %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv, 0), _mm256_extract_epi32(zbuffv, 1), _mm256_extract_epi32(zbuffv, 2), _mm256_extract_epi32(zbuffv, 3), _mm256_extract_epi32(zbuffv, 4), _mm256_extract_epi32(zbuffv, 5), _mm256_extract_epi32(zbuffv, 6), _mm256_extract_epi32(zbuffv, 7));
+
+        //printf("vs: %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv2, 0), _mm256_extract_epi32(zbuffv2, 1), _mm256_extract_epi32(zbuffv2, 2), _mm256_extract_epi32(zbuffv2, 3), _mm256_extract_epi32(zbuffv2, 4), _mm256_extract_epi32(zbuffv2, 5), _mm256_extract_epi32(zbuffv2, 6), _mm256_extract_epi32(zbuffv2, 7));
         int zAllZero = _mm256_testz_si256(ones, zbuffv);
 
         int route;
@@ -441,6 +445,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       w2_row += B01_8 * numInner;
 
       for (y = 0; y < numOuter; ++y) {
+        //if (numOuter > 3) {
+        //  printf("Vecotrize me!\n");
+        //}
         yValInner = minY + y + 8 * numInner;
 
         // If p is on or inside all edges, render pixel
@@ -448,7 +455,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[yValInner * W + x] < z) {
-            fcolor c = img.get_and_light(xCol_row, yCol_row, 1);
+            fcolor c = img.fast_get(xCol_row, yCol_row);
             zbuff[yValInner * W + x] = z;
             plot(x, yValInner, c);
           }
