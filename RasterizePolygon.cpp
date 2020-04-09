@@ -133,9 +133,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       yCol_add = _mm256_set1_ps(yColDx);
       yCol_add = _mm256_mul_ps(scaleFloat, yCol_add);
 
-      A12_8 = 8*A12;
-      A20_8 = 8*A20;
-      A01_8 = 8*A01;
       zdx_8 = 8*zdx;
       xColDx_8 = 8*xColDx;
       yColDx_8 = 8*yColDx;
@@ -208,6 +205,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // If this is 1, it indicates that all z values are zero
           route = _mm256_testz_si256(ones, zupdate);
         } else {
+
           // All z values are zero
           // Only want to see what the barycentric coords are for each index
           zupdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min);
@@ -252,9 +250,10 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         }
       }
 
-      w0 += A12_8 * numInner;
-      w1 += A20_8 * numInner;
-      w2 += A01_8 * numInner;
+      unsigned inner8 = 8 * numInner;
+      w0 += A12 * inner8;
+      w1 += A20 * inner8;
+      w2 += A01 * inner8;
 
       for (x = 0; x < numOuter; ++x) {
         xValInner = xVal + x;
@@ -285,10 +284,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       yCol_row += yColDy;
     }
   } else {
-
-    int B12_8;
-    int B20_8;
-    int B01_8;
     int zdy_8;
     float xColDy_8;
     float yColDy_8;
@@ -339,9 +334,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       b01_add = _mm256_mullo_epi32(b01_add, scale);
       b01_add_8 = _mm256_set1_epi32(8*B01);
 
-      B12_8 = 8*B12;
-      B20_8 = 8*B20;
-      B01_8 = 8*B01;
       zdy_8 = 8*zdy;
       xColDy_8 = 8*xColDy;
       yColDy_8 = 8*yColDy;
@@ -374,12 +366,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         unsigned offset = (yInner * 8 + minY) * W + x;
 
-        // Switch this to a gather instruction
-        //__m256i zbuffv = _mm256_set_epi32(zbuff[offset + 7*W], zbuff[offset + 6*W], zbuff[offset + 5*W], zbuff[offset + 4*W], zbuff[offset + 3*W], zbuff[offset + 2*W], zbuff[offset + W], zbuff[offset]);
         __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
-        //printf("This: %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv, 0), _mm256_extract_epi32(zbuffv, 1), _mm256_extract_epi32(zbuffv, 2), _mm256_extract_epi32(zbuffv, 3), _mm256_extract_epi32(zbuffv, 4), _mm256_extract_epi32(zbuffv, 5), _mm256_extract_epi32(zbuffv, 6), _mm256_extract_epi32(zbuffv, 7));
-
-        //printf("vs: %d %d %d %d %d %d %d %d\n", _mm256_extract_epi32(zbuffv2, 0), _mm256_extract_epi32(zbuffv2, 1), _mm256_extract_epi32(zbuffv2, 2), _mm256_extract_epi32(zbuffv2, 3), _mm256_extract_epi32(zbuffv2, 4), _mm256_extract_epi32(zbuffv2, 5), _mm256_extract_epi32(zbuffv2, 6), _mm256_extract_epi32(zbuffv2, 7));
         int zAllZero = _mm256_testz_si256(ones, zbuffv);
 
         int route;
@@ -432,7 +419,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         xCol_row += xColDy_8;
         yCol_row += yColDy_8;
 
-
         if (yInner < numInner - 1) {
           w0_row_init = _mm256_add_epi32(w0_row_init, b12_add_8);
           w1_row_init = _mm256_add_epi32(w1_row_init, b20_add_8);
@@ -440,15 +426,18 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         }
       }
 
-      w0_row += B12_8 * numInner;
-      w1_row += B20_8 * numInner;
-      w2_row += B01_8 * numInner;
+      unsigned inner8 = numInner * 8;
+
+      w0_row += B12 * inner8;
+      w1_row += B20 * inner8;
+      w2_row += B01 * inner8;
+
+      yValInner = minY + inner8;
 
       for (y = 0; y < numOuter; ++y) {
         //if (numOuter > 3) {
         //  printf("Vecotrize me!\n");
         //}
-        yValInner = minY + y + 8 * numInner;
 
         // If p is on or inside all edges, render pixel
         if ((w0_row | w1_row | w2_row) >= 0) {
@@ -466,6 +455,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         z += zdy;
         xCol_row += xColDy;
         yCol_row += yColDy;
+        ++yValInner;
       }
 
       w0 += A12;
