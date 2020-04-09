@@ -36,11 +36,11 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
   const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : -1;
 
-  int w0_row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
-  int w1_row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
-  int w2_row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
+  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
+  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
+  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
 
-  float wTotal = w0_row + w1_row + w2_row;
+  float wTotal = w0Row + w1Row + w2Row;
   if (!wTotal) {
     return;
   }
@@ -70,8 +70,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
-  float xCol_row = (f._t0x * w0_row + f._t1x * w1_row + f._t2x * w2_row) / wTotal;
-  float yCol_row = (f._t0y * w0_row + f._t1y * w1_row + f._t2y * w2_row) / wTotal;
+  float xColRow = (f._t0x * w0Row + f._t1x * w1Row + f._t2x * w2Row) / wTotal;
+  float yColRow = (f._t0y * w0Row + f._t1y * w1Row + f._t2y * w2Row) / wTotal;
 
   const float xColDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
   const float yColDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
@@ -100,79 +100,80 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const unsigned yDiff = maxY - minY;
 
   if (xDiff > yDiff) {
-    __m256i zdx_add;
-    __m256i xCol_add;
-    __m256i yCol_add;
-    __m256i w0_init;
-    __m256i w1_init;
-    __m256i w2_init;
+    __m256i zdxAdd;
+    __m256i xColAdd;
+    __m256i yColAdd;
+    __m256i w0Init;
+    __m256i w1Init;
+    __m256i w2Init;
 
-    int A12_8 = 0;
-    int A20_8 = 0;
-    int A01_8 = 0;
-    int zdx_8 = 0;
-    float xColDx_8 = 0;
-    float yColDx_8 = 0;
+    int A128 = 0;
+    int A208 = 0;
+    int A018 = 0;
+    int zdx8 = 0;
+    float xColDx8 = 0;
+    float yColDx8 = 0;
 
-    __m256i a12_add;
-    __m256i a12_add_8;
+    __m256i a12Add;
+    __m256i a12Add8;
 
-    __m256i a20_add;
-    __m256i a20_add_8;
+    __m256i a20Add;
+    __m256i a20Add8;
 
-    __m256i a01_add;
-    __m256i a01_add_8;
+    __m256i a01Add;
+    __m256i a01Add8;
 
 
     // We will enter inner loop at least once, otherwise numInner is always 0
     if (xDiff > 7) {
-      zdx_add = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+      zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
 
-      xCol_add = _mm256_set1_ps(xColDx);
-      xCol_add = _mm256_mul_ps(scaleFloat, xCol_add);
-      yCol_add = _mm256_set1_ps(yColDx);
-      yCol_add = _mm256_mul_ps(scaleFloat, yCol_add);
+      xColAdd = _mm256_set1_ps(xColDx);
+      xColAdd = _mm256_mul_ps(scaleFloat, xColAdd);
 
-      zdx_8 = 8*zdx;
-      xColDx_8 = 8*xColDx;
-      yColDx_8 = 8*yColDx;
+      yColAdd = _mm256_set1_ps(yColDx);
+      yColAdd = _mm256_mul_ps(scaleFloat, yColAdd);
 
-      a12_add = _mm256_set1_epi32(A12);
-      a12_add = _mm256_mullo_epi32(a12_add, scale);
-      a12_add_8 = _mm256_set1_epi32(8*A12);
+      zdx8 = 8*zdx;
+      xColDx8 = 8*xColDx;
+      yColDx8 = 8*yColDx;
 
-      a20_add = _mm256_set1_epi32(A20);
-      a20_add = _mm256_mullo_epi32(a20_add, scale);
-      a20_add_8 = _mm256_set1_epi32(8*A20);
+      a12Add = _mm256_set1_epi32(A12);
+      a12Add = _mm256_mullo_epi32(a12Add, scale);
+      a12Add8 = _mm256_set1_epi32(8*A12);
 
-      a01_add = _mm256_set1_epi32(A01);
-      a01_add = _mm256_mullo_epi32(a01_add, scale);
-      a01_add_8 = _mm256_set1_epi32(8*A01);
+      a20Add = _mm256_set1_epi32(A20);
+      a20Add = _mm256_mullo_epi32(a20Add, scale);
+      a20Add8 = _mm256_set1_epi32(8*A20);
+
+      a01Add = _mm256_set1_epi32(A01);
+      a01Add = _mm256_mullo_epi32(a01Add, scale);
+      a01Add8 = _mm256_set1_epi32(8*A01);
     }
 
     for (y = minY; y <= maxY; ++y) {
       unsigned offset = W * y;
 
-      w0 = w0_row;
-      w1 = w1_row;
-      w2 = w2_row;
+      w0 = w0Row;
+      w1 = w1Row;
+      w2 = w2Row;
       z = zOrig;
-      xCol = xCol_row;
-      yCol = yCol_row;
+      xCol = xColRow;
+      yCol = yColRow;
 
       numInner = (maxX - minX) / 8;
       numOuter = (maxX - minX) % 8 + 1;
 
 
       if (numInner) {
-        w0_init = _mm256_set1_epi32(w0);
-        w0_init = _mm256_add_epi32(w0_init, a12_add);
+        w0Init = _mm256_set1_epi32(w0);
+        w0Init = _mm256_add_epi32(w0Init, a12Add);
 
-        w1_init = _mm256_set1_epi32(w1);
-        w1_init = _mm256_add_epi32(w1_init, a20_add);
+        w1Init = _mm256_set1_epi32(w1);
+        w1Init = _mm256_add_epi32(w1Init, a20Add);
 
-        w2_init = _mm256_set1_epi32(w2);
-        w2_init = _mm256_add_epi32(w2_init, a01_add);
+        w2Init = _mm256_set1_epi32(w2);
+        w2Init = _mm256_add_epi32(w2Init, a01Add);
       }
 
       xVal = minX;
@@ -194,37 +195,37 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         int zAllZero = _mm256_testz_si256(ones, zbuffv);
 
         int route;
-        __m256i zupdate;
+        __m256i zUpdate;
 
         if (!zAllZero) {
-          __m256i z_init = _mm256_set1_epi32(z);
-          __m256i zv = _mm256_add_epi32(z_init, zdx_add);
+          __m256i zInit = _mm256_set1_epi32(z);
+          __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
 
-          zupdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min)), zv);
+          zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
           // If this is 1, it indicates that all z values are zero
-          route = _mm256_testz_si256(ones, zupdate);
+          route = _mm256_testz_si256(ones, zUpdate);
         } else {
 
           // All z values are zero
           // Only want to see what the barycentric coords are for each index
-          zupdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2_init, _mm256_or_si256(w0_init, w1_init)), min);
-          route = _mm256_testz_si256(ones, zupdate);
+          zUpdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min);
+          route = _mm256_testz_si256(ones, zUpdate);
         }
 
         if (!route) {
           if (zAllZero) {
-            __m256i z_init = _mm256_set1_epi32(z);
-            __m256i zv = _mm256_add_epi32(z_init, zdx_add);
-            zupdate = _mm256_and_si256(zv, zupdate);
+            __m256i zInit = _mm256_set1_epi32(z);
+            __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
+            zUpdate = _mm256_and_si256(zv, zUpdate);
           }
-          __m256i xCol_init = _mm256_set1_ps(xCol);
-          __m256i xColv = _mm256_add_ps(xCol_init, xCol_add);
+          __m256i xColInit = _mm256_set1_ps(xCol);
+          __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
 
-          __m256i yCol_init = _mm256_set1_ps(yCol);
-          __m256i yColv = _mm256_add_ps(yCol_init, yCol_add);
+          __m256i yColInit = _mm256_set1_ps(yCol);
+          __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
 
-          _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
+          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
           _mm256_stream_ps(yColArr, yColv);
           _mm256_stream_ps(xColArr, xColv);
 
@@ -238,15 +239,15 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           }
         }
 
-        z += zdx_8;
-        xCol += xColDx_8;
-        yCol += yColDx_8;
+        z += zdx8;
+        xCol += xColDx8;
+        yCol += yColDx8;
         xVal += 8;
 
         if (xInner < numInner - 1) {
-          w0_init = _mm256_add_epi32(w0_init, a12_add_8);
-          w1_init = _mm256_add_epi32(w1_init, a20_add_8);
-          w2_init = _mm256_add_epi32(w2_init, a01_add_8);
+          w0Init = _mm256_add_epi32(w0Init, a12Add8);
+          w1Init = _mm256_add_epi32(w1Init, a20Add8);
+          w2Init = _mm256_add_epi32(w2Init, a01Add8);
         }
       }
 
@@ -276,90 +277,90 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         yCol += yColDx;
       }
 
-      w0_row += B12;
-      w1_row += B20;
-      w2_row += B01;
+      w0Row += B12;
+      w1Row += B20;
+      w2Row += B01;
       zOrig += zdy;
-      xCol_row += xColDy;
-      yCol_row += yColDy;
+      xColRow += xColDy;
+      yColRow += yColDy;
     }
   } else {
-    int zdy_8;
-    float xColDy_8;
-    float yColDy_8;
+    int zdy8;
+    float xColDy8;
+    float yColDy8;
 
-    __m256i zdy_add;
-    __m256i xCol_row_add;
-    __m256i yCol_row_add;
-    __m256i w0_row_init;
-    __m256i w1_row_init;
-    __m256i w2_row_init;
+    __m256i zdyAdd;
+    __m256i xColRowAdd;
+    __m256i yColRowAdd;
+    __m256i w0RowInit;
+    __m256i w1RowInit;
+    __m256i w2RowInit;
 
 
-    __m256i b12_add;
-    __m256i b12_add_8;
+    __m256i b12Add;
+    __m256i b12Add8;
 
-    __m256i b20_add;
-    __m256i b20_add_8;
+    __m256i b20Add;
+    __m256i b20Add8;
 
-    __m256i b01_add;
-    __m256i b01_add_8;
+    __m256i b01Add;
+    __m256i b01Add8;
 
     // For row only
-    w0 = w0_row;
-    w1 = w1_row;
-    w2 = w2_row;
-    xCol = xCol_row;
-    yCol = yCol_row;
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+    xCol = xColRow;
+    yCol = yColRow;
 
     if (yDiff > 7) {
-      zdy_add = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
-      xCol_row_add = _mm256_set1_ps(xColDy);
-      xCol_row_add = _mm256_mul_ps(scaleFloat, xCol_row_add);
-      yCol_row_add = _mm256_set1_ps(yColDy);
-      yCol_row_add = _mm256_mul_ps(scaleFloat, yCol_row_add);
+      zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
+      xColRowAdd = _mm256_set1_ps(xColDy);
+      xColRowAdd = _mm256_mul_ps(scaleFloat, xColRowAdd);
+      yColRowAdd = _mm256_set1_ps(yColDy);
+      yColRowAdd = _mm256_mul_ps(scaleFloat, yColRowAdd);
 
 
-      b12_add = _mm256_set1_epi32(B12);
-      b12_add = _mm256_mullo_epi32(b12_add, scale);
-      b12_add_8 = _mm256_set1_epi32(8*B12);
+      b12Add = _mm256_set1_epi32(B12);
+      b12Add = _mm256_mullo_epi32(b12Add, scale);
+      b12Add8 = _mm256_set1_epi32(8*B12);
 
 
-      b20_add = _mm256_set1_epi32(B20);
-      b20_add = _mm256_mullo_epi32(b20_add, scale);
-      b20_add_8 = _mm256_set1_epi32(8*B20);
+      b20Add = _mm256_set1_epi32(B20);
+      b20Add = _mm256_mullo_epi32(b20Add, scale);
+      b20Add8 = _mm256_set1_epi32(8*B20);
 
 
-      b01_add = _mm256_set1_epi32(B01);
-      b01_add = _mm256_mullo_epi32(b01_add, scale);
-      b01_add_8 = _mm256_set1_epi32(8*B01);
+      b01Add = _mm256_set1_epi32(B01);
+      b01Add = _mm256_mullo_epi32(b01Add, scale);
+      b01Add8 = _mm256_set1_epi32(8*B01);
 
-      zdy_8 = 8*zdy;
-      xColDy_8 = 8*xColDy;
-      yColDy_8 = 8*yColDy;
+      zdy8 = 8*zdy;
+      xColDy8 = 8*xColDy;
+      yColDy8 = 8*yColDy;
     }
 
 
     for (x = minX; x <= maxX; ++x) {
-      w0_row = w0;
-      w1_row = w1;
-      w2_row = w2;
+      w0Row = w0;
+      w1Row = w1;
+      w2Row = w2;
       z = zOrig;
-      xCol_row = xCol;
-      yCol_row = yCol;
+      xColRow = xCol;
+      yColRow = yCol;
 
       numInner = (maxY - minY) / 8;
       numOuter = (maxY - minY) % 8 + 1;
 
       if (numInner) {
-        w0_row_init = _mm256_set1_epi32(w0_row);
-        w0_row_init = _mm256_add_epi32(w0_row_init, b12_add);
+        w0RowInit = _mm256_set1_epi32(w0Row);
+        w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
 
-        w1_row_init = _mm256_set1_epi32(w1_row);
-        w1_row_init = _mm256_add_epi32(w1_row_init, b20_add);
+        w1RowInit = _mm256_set1_epi32(w1Row);
+        w1RowInit = _mm256_add_epi32(w1RowInit, b20Add);
 
-        w2_row_init = _mm256_set1_epi32(w2_row);
-        w2_row_init = _mm256_add_epi32(w2_row_init, b01_add);
+        w2RowInit = _mm256_set1_epi32(w2Row);
+        w2RowInit = _mm256_add_epi32(w2RowInit, b01Add);
       }
 
       for (yInner = 0; yInner < numInner; ++yInner) {
@@ -370,44 +371,43 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         int zAllZero = _mm256_testz_si256(ones, zbuffv);
 
         int route;
-        __m256i zupdate;
+        __m256i zUpdate;
 
         if (!zAllZero) {
-          __m256i z_init = _mm256_set1_epi32(z);
-          __m256i zv = _mm256_add_epi32(z_init, zdy_add);
-          zupdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2_row_init, _mm256_or_si256(w0_row_init, w1_row_init)), min)), zv);
+          __m256i zInit = _mm256_set1_epi32(z);
+          __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
+          zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
           // If this is 1, it indicates that all z values are zero
-          route = _mm256_testz_si256(ones, zupdate);
+          route = _mm256_testz_si256(ones, zUpdate);
         } else {
           // All z values are zero
           // Only want to see what the barycentric coords are for each index
-          zupdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2_row_init, _mm256_or_si256(w0_row_init, w1_row_init)), min);
-          route = _mm256_testz_si256(ones, zupdate);
+          zUpdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min);
+          route = _mm256_testz_si256(ones, zUpdate);
         }
 
         if (!route) {
           if (zAllZero) {
-            __m256i z_init = _mm256_set1_epi32(z);
-            __m256i zv = _mm256_add_epi32(z_init, zdy_add);
-            zupdate = _mm256_and_si256(zv, zupdate);
+            __m256i zInit = _mm256_set1_epi32(z);
+            __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
+            zUpdate = _mm256_and_si256(zv, zUpdate);
           }
 
-          __m256i xCol_row_init = _mm256_set1_ps(xCol_row);
-          __m256i xCol_rowv = _mm256_add_ps(xCol_row_init, xCol_row_add);
+          __m256i xColRowInit = _mm256_set1_ps(xColRow);
+          __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
 
-          __m256i yCol_row_init = _mm256_set1_ps(yCol_row);
-          __m256i yCol_rowv = _mm256_add_ps(yCol_row_init, yCol_row_add);
+          __m256i yColRowInit = _mm256_set1_ps(yColRow);
+          __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
 
-          _mm256_stream_si256((__m256i *)(zBuffTemp), zupdate);
-          _mm256_stream_ps(yColArr, yCol_rowv);
-          _mm256_stream_ps(xColArr, xCol_rowv);
+          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+          _mm256_stream_ps(yColArr, yColRowv);
+          _mm256_stream_ps(xColArr, xColRowv);
 
           for (unsigned y = 0; y < 8; ++y) {
             if (zBuffTemp[y]) {
               yValInner = yInner * 8 + y + minY;
               fcolor c = img.fast_get(xColArr[y], yColArr[y]);
-              //fcolor c(0,255 - 30*y, 0, 255-30*y);
 
               zbuff[yValInner * W + x] = zBuffTemp[y];
               plot(x, yValInner, c);
@@ -415,46 +415,46 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           }
         }
 
-        z += zdy_8;
-        xCol_row += xColDy_8;
-        yCol_row += yColDy_8;
+        z += zdy8;
+        xColRow += xColDy8;
+        yColRow += yColDy8;
 
         if (yInner < numInner - 1) {
-          w0_row_init = _mm256_add_epi32(w0_row_init, b12_add_8);
-          w1_row_init = _mm256_add_epi32(w1_row_init, b20_add_8);
-          w2_row_init = _mm256_add_epi32(w2_row_init, b01_add_8);
+          w0RowInit = _mm256_add_epi32(w0RowInit, b12Add8);
+          w1RowInit = _mm256_add_epi32(w1RowInit, b20Add8);
+          w2RowInit = _mm256_add_epi32(w2RowInit, b01Add8);
         }
       }
 
       unsigned inner8 = numInner * 8;
 
-      w0_row += B12 * inner8;
-      w1_row += B20 * inner8;
-      w2_row += B01 * inner8;
+      w0Row += B12 * inner8;
+      w1Row += B20 * inner8;
+      w2Row += B01 * inner8;
 
       yValInner = minY + inner8;
 
       for (y = 0; y < numOuter; ++y) {
         //if (numOuter > 3) {
-        //  printf("Vecotrize me!\n");
+        //  printf("Vectorrize me!\n");
         //}
 
         // If p is on or inside all edges, render pixel
-        if ((w0_row | w1_row | w2_row) >= 0) {
+        if ((w0Row | w1Row | w2Row) >= 0) {
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[yValInner * W + x] < z) {
-            fcolor c = img.fast_get(xCol_row, yCol_row);
+            fcolor c = img.fast_get(xColRow, yColRow);
             zbuff[yValInner * W + x] = z;
             plot(x, yValInner, c);
           }
         }
-        w0_row += B12;
-        w1_row += B20;
-        w2_row += B01;
+        w0Row += B12;
+        w1Row += B20;
+        w2Row += B01;
         z += zdy;
-        xCol_row += xColDy;
-        yCol_row += yColDy;
+        xColRow += xColDy;
+        yColRow += yColDy;
         ++yValInner;
       }
 
