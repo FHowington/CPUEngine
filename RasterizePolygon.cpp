@@ -13,6 +13,13 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   }
 #endif
 
+
+  static const __m256i min = _mm256_set1_epi32(-1);
+  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
+
+
   const int x0 = f._v0._x * halfW + halfW;
   const int x1 = f._v1._x * halfW + halfW;
   const int x2 = f._v2._x * halfW + halfW;
@@ -82,12 +89,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   float xCol;
   float yCol;
 
-  const __m256i min = _mm256_set1_epi32(-1);
-  const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-
-  __m256i loadOffset = _mm256_set1_epi32(W);
-  loadOffset = _mm256_mullo_epi32(scale, loadOffset);
 
   __m256i ones = _mm256_set1_epi64x(-1);
 
