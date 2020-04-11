@@ -9,6 +9,7 @@
 #include "tgaimage.h"
 #include <vector>
 #include "Window.h"
+#include "geometry.h"
 
 unsigned pixels[W * H];
 unsigned zbuff[W * H];
@@ -108,10 +109,10 @@ int main() {
     for (auto t : head.getFaces()) {
 
       // We get the normal vector for every triangle
-      vertex v = cross(t._v0, t._v1, t._v2);
+      vertex<float> v = cross(t._v0, t._v1, t._v2);
 
       // Angle of the light source
-      vertex light(x, y, -1);
+      vertex<float> light(x, y, -1);
 
       // Consider that positive z is "out" of the screen.
       // I have no idea what the convention is on other engines
@@ -119,7 +120,6 @@ int main() {
 
       // Then take the dot between the normal and the light
       // To determine the amount of lighting
-      vertex view(x, y, -1);
 
       float aoi = dot(v.normalize(), light);
 

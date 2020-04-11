@@ -1,7 +1,73 @@
 #include "RasterizePolygon.h"
 #include <immintrin.h>
+#include "geometry.h"
+
+template <>
+template <>
+auto fMatrix<4,4>::operator*<4,4>(const fMatrix<4,4>& rhs) const {
+  // This needs to be vectorized
+  fMatrix<4,4> result;
+
+  for (int i=0; i<4; i++) {
+    for (int j=0; j<4; j++) {
+      float res = 0;
+      for (int k=0; k<4; k++) {
+        res += _m[i * 4 + k] * rhs._m[k * 4 + j];
+      }
+      result._m[i * 4 + j] = res;
+    }
+  }
+  return result;
+}
+
+template <>
+template <>
+auto fMatrix<4,4>::operator*<4,1>(const fMatrix<4,1>& rhs) const {
+  // This needs to be vectorized
+  fMatrix<4,1> result;
+
+  for (int i=0; i<4; i++) {
+    float res = 0;
+    for (int k=0; k<4; k++) {
+      res += _m[i * 4 + k] * rhs._m[k];
+    }
+    result._m[i] = res;
+  }
+  return result;
+}
+
+const unsigned depth = 0XFFFFF;
 
 
+vertex<int> fm2v(const fMatrix<4,4>& m) {
+  return vertex<int>(m.at(0,0)/m.at(3,0), m.at(1,0)/m.at(3,0), m.at(2,0)/m.at(3,0));
+}
+
+fMatrix<4,4> fv2m(const vertex<float>& v) {
+  fMatrix<4,4> m;
+  m.set(0, 0, v._x);
+  m.set(1, 0, v._y);
+  m.set(2, 0, v._z);
+  m.set(3, 0, 1);
+  return m;
+}
+
+const fMatrix<4,4> fviewport(const int x, const int y, const int w, const int h) {
+  fMatrix m = fMatrix<4,4>::identity();
+  m.set(0, 3, x+w/2.f);
+  m.set(1, 3, y+h/2.f);
+  m.set(2, 3, depth/2.f);
+  m.set(0, 0, w/2.f);
+  m.set(1, 1, h/2.f);
+  m.set(2, 2, depth/2.f);
+  return m;
+}
+
+fMatrix<4,4> fgetProjection(float focalLength) {
+  fMatrix m = fMatrix<4,4>::identity();
+  m.set(3, 2, focalLength);
+  return m;
+}
 
 void drawTri(const face& f,  const float light, const TGAImage& img)
 {
@@ -19,14 +85,31 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
 
+  static const fMatrix<4,4> fViewPort = fviewport(W/8, H/8, W*3/4, H*3/4);
+  static const vertex<float> fcamera(0,0,3);
+  static const fMatrix fProjection = fgetProjection(-1.f/fcamera._z);
+  static const fMatrix fviewthing = fViewPort * fProjection;
 
-  const int x0 = f._v0._x * halfW + halfW;
-  const int x1 = f._v1._x * halfW + halfW;
-  const int x2 = f._v2._x * halfW + halfW;
 
-  const int y0 = f._v0._y * halfH + halfH;
-  const int y1 = f._v1._y * halfH + halfH;
-  const int y2 = f._v2._y * halfH + halfH;
+
+  vertex<float> fv0(f._v0._x, f._v0._y, f._v0._z);
+  vertex<float> fv1(f._v1._x, f._v1._y, f._v1._z);
+  vertex<float> fv2(f._v2._x, f._v2._y, f._v2._z);
+
+
+  vertex<int> fv0i(fm2v(fviewthing*fv2m(fv0)));
+  vertex<int> fv1i(fm2v(fviewthing*fv2m(fv1)));
+  vertex<int> fv2i(fm2v(fviewthing*fv2m(fv2)));
+
+
+  const int x0 = fv0i._x;
+  const int x1 = fv1i._x;
+  const int x2 = fv2i._x;
+
+  const int y0 = fv0i._y;
+  const int y1 = fv1i._y;
+  const int y2 = fv2i._y;
+
 
   // Prevent from wasting time on polygons that have no area
   if (colinear(x0, x1, x2, y0, y1, y2)) {
@@ -60,9 +143,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const short B12 = x2 - x1;
   const short B20 = x0 - x2;
 
-  const int z0 = f._v0._z * 0xFFFFF + 0xFFFFF; // Consider changing these into shifts, should be the same
-  const int z1 = f._v1._z * 0xFFFFF + 0xFFFFF;
-  const int z2 = f._v2._z * 0xFFFFF + 0xFFFFF;
+  const int z0 = fv0i._z; // Consider changing these into shifts, should be the same
+  const int z1 = fv1i._z;
+  const int z2 = fv2i._z;
 
   unsigned x, y, z, xVal, yVal, numInner, inner, numOuter;
 
@@ -469,7 +552,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   }
 }
 
-void line(const vertex& v0, const vertex& v1, const unsigned color) {
+void line(const vertex<float>& v0, const vertex<float>& v1, const unsigned color) {
   // We must find whether x is longer, or y is longer
   // If true, indicates that x will have pixels on same row
 

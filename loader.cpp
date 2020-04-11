@@ -13,7 +13,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
     return;
   }
 
-  std::vector<vertex> textures;
+  std::vector<vertex<float>> textures;
 
   // Implicit assumption that all faces come after the vertices so this may be done in a single pass
   while (std::getline(infile, line))
@@ -69,27 +69,4 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
                          textures.at(t2-1)._x * width, textures.at(t2-1)._y * height);
     }
   }
-}
-
-vertex& vertex::normalize(float l) {
-  float lnorm = norm();
-  lnorm = l/lnorm;
-  this->_x *= lnorm;
-  this->_y *= lnorm;
-  this->_z *= lnorm;
-  return *this;
-}
-
-vertex cross(const vertex& v0, const vertex& v1, const vertex& v2) {
-  vertex l(v1._x - v0._x, v1._y - v0._y, v1._z - v0._z);
-  vertex r(v1._x - v2._x, v1._y - v2._y, v1._z - v2._z);
-  vertex v;
-  v._x = (l._y * r._z) - (l._z * r._y);
-  v._y = (l._z * r._x) - (l._x * r._z);
-  v._z = (l._x * r._y) - (l._y * r._x);
-  return v;
-}
-
-float dot(const vertex& l, const vertex& r) {
-  return l._x * r._x + l._y * r._y + l._z * r._z;
 }

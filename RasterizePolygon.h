@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include "geometry.h"
 #include "loader.h"
 #include <SDL2/SDL.h>
 #include "tgaimage.h"
@@ -18,6 +19,7 @@ const unsigned halfH = H/2;
 
 extern unsigned pixels[W*H];
 extern unsigned zbuff[W*H];
+
 
 typedef std::pair<double, double> SlopePair;
 void plot(unsigned x, unsigned y, const unsigned color);
@@ -71,4 +73,4 @@ void drawTri(const face& f,  const float light, const TGAImage& img);
 
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
-void line(const vertex& v0, const vertex& v1, const unsigned color);
+void line(const vertex<float>& v0, const vertex<float>& v1, const unsigned color);
