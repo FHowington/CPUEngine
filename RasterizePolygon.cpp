@@ -182,6 +182,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
     const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
     const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
+
     __m256i w0Init;
     __m256i w1Init;
     __m256i w2Init;
