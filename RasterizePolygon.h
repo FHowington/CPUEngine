@@ -43,10 +43,10 @@ inline int orient2d(const int x0, const int x1, const int x2, const int y0, cons
 }
 
 template <typename T>
-inline const T min3(const T& v0, const T& v1, const T& v2, bool y = false)
+inline const T min3(const T& v0, const T& v1, const T& v2)
 {
-  const T result = v0 <= v1 ? (v0 <= v2 ? v0 : v2) : (v1 <= v2 ? v1 : v2);
-  return y ? ((result > 0) ? result : 1) : (result > 0) ? result : 0;
+  T result = v0 <= v1 ? (v0 <= v2 ? v0 : v2) : (v1 <= v2 ? v1 : v2);
+  return (result > 0) ? result : 0;
 }
 
 template <typename T>

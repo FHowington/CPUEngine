@@ -56,8 +56,8 @@ const fMatrix<4,4> viewport(const int x, const int y, const int w, const int h) 
   m.set(0, 3, x+w/2.f);
   m.set(1, 3, y+h/2.f);
   m.set(2, 3, depth/2.f);
-  m.set(0, 0, w/1.5f);
-  m.set(1, 1, h/1.5f);
+  m.set(0, 0, w/.8f);
+  m.set(1, 1, h/1.4f);
   m.set(2, 2, depth/1.5f);
   return m;
 }
@@ -109,10 +109,10 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   }
 
   const int minX = min3(x0, x1, x2);
-  const int minY = min3(y0, y1, y2, true);
+  const int minY = min3(y0, y1, y2);
 
   const int maxX = max3(x0, x1, x2, (int)W);
-  const int maxY = max3(y0, y1, y2, (int)H);
+  const int maxY = max3(y0, y1, y2, (int)H - 1);
 
   if (maxX <= minX || maxY <= minY) {
     return;
