@@ -79,12 +79,14 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   }
 #endif
 
+  // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
   static const __m256i ones = _mm256_set1_epi64x(-1);
 
+  // TODO: Convert to more understandable numbers
   static const fMatrix<4,4> ViewPort = viewport(W/8, H/8, W*3/4, H*3/4);
 
   static const vertex<float> camera(0,0,3);
@@ -114,10 +116,14 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int maxX = max3(x0, x1, x2, (int)W);
   const int maxY = max3(y0, y1, y2, (int)H - 1);
 
+
+  // Same idea. These have no area (happens when triangle is outside of viewing area)
   if (maxX <= minX || maxY <= minY) {
     return;
   }
 
+  // Bias to make sure only top or left edges fall on line
+  // TODO: Vectorize to prevent data dependant branching
   const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : -1;
   const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
   const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : -1;
@@ -126,11 +132,15 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
 
+
+  // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
   if (!wTotal) {
     return;
   }
 
+
+  // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
   const short A12 = y1 - y2;
   const short A20 = y2 - y0;
@@ -151,20 +161,28 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
+  // Change in z for change in row/column
+  // Obtained by taking partial derivative with respect to x or y from equation of a plane
+  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
+  // Using these deltas, we interpolate over face of the whole triangle
   const int zdx = (A20 * z10 + A01 * z20) / div;
   const int zdy = (B20 * z10 + B01 * z20) / div;
 
+  // Likewise from solving for z with equation of a plane
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
+  // X and y values for the TEXTURE at the starting coordinates
   float xColRow = (f._t0x * w0Row + f._t1x * w1Row + f._t2x * w2Row) / wTotal;
   float yColRow = (f._t0y * w0Row + f._t1y * w1Row + f._t2y * w2Row) / wTotal;
 
+  // Change in the texture coordinated for x/y, used for interpolation
   const float xColDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
   const float yColDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
 
   const float xColDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
   const float yColDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
 
+  // Current texture coordinates
   float xCol;
   float yCol;
 
@@ -176,6 +194,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const unsigned xDiff = maxX - minX;
   const unsigned yDiff = maxY - minY;
 
+
+  // If the traingle is wider than tall, we want to vectorize on x
+  // Otherwise, we vectorize on y
   if (xDiff > yDiff) {
     const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
     const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
@@ -230,7 +251,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         // We break the loop out to enable the compiler to vectorize it!
         //#pragma clang loop vectorize(enable) interleave(enable)
 
-        // Step 1:
         // Calculate w0, w1, w2, xCol, yCol
         // For all 8 cases.
         // Next, Create mask of w0 | w1 w2 && zbuf thing
