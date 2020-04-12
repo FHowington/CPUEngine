@@ -3,6 +3,7 @@
 //
 
 #include "loader.h"
+#include "geometry.h"
 
 void  Model::loadModel(const std::string& fileName, const unsigned width, const unsigned height) {
   std::string line;

@@ -4,7 +4,7 @@
 #include <array>
 #include <chrono>
 #include <iostream>
-#include "RasterizePolygon.h"
+#include "rasterize.h"
 #include <SDL2/SDL.h>
 #include "tgaimage.h"
 #include <vector>
