@@ -83,20 +83,17 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
+  static const __m256i ones = _mm256_set1_epi64x(-1);
 
   static const fMatrix<4,4> ViewPort = viewport(W/8, H/8, W*3/4, H*3/4);
+
   static const vertex<float> camera(0,0,3);
   static const fMatrix Projection = getProjection(0.f/camera._z);
   static const fMatrix viewthing = ViewPort * Projection;
 
-  vertex<float> v0(f._v0._x, f._v0._y, f._v0._z);
-  vertex<float> v1(f._v1._x, f._v1._y, f._v1._z);
-  vertex<float> v2(f._v2._x, f._v2._y, f._v2._z);
-
-
-  vertex<int> v0i(m2v(viewthing*v2m(v0)));
-  vertex<int> v1i(m2v(viewthing*v2m(v1)));
-  vertex<int> v2i(m2v(viewthing*v2m(v2)));
+  const vertex<int> v0i(m2v(viewthing*v2m(f._v0)));
+  const vertex<int> v1i(m2v(viewthing*v2m(f._v1)));
+  const vertex<int> v2i(m2v(viewthing*v2m(f._v2)));
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -116,6 +113,10 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
   const int maxX = max3(x0, x1, x2, (int)W);
   const int maxY = max3(y0, y1, y2, (int)H);
+
+  if (maxX <= minX || maxY <= minY) {
+    return;
+  }
 
   const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : -1;
   const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
@@ -138,7 +139,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const short B12 = x2 - x1;
   const short B20 = x0 - x2;
 
-  const int z0 = v0i._z; // Consider changing these into shifts, should be the same
+  const int z0 = v0i._z;
   const int z1 = v1i._z;
   const int z2 = v2i._z;
 
@@ -166,9 +167,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
   float xCol;
   float yCol;
-
-
-  __m256i ones = _mm256_set1_epi64x(-1);
 
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
@@ -241,20 +239,20 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
 
         // If z is all zeros, skip a bunch of this
-        __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+        const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
         __m256i zUpdate;
 
-        __m256i zInit = _mm256_set1_epi32(z);
-        __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
+        const __m256i zInit = _mm256_set1_epi32(z);
+        const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
 
         zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
 
-        __m256i xColInit = _mm256_set1_ps(xCol);
-        __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
+        const __m256i xColInit = _mm256_set1_ps(xCol);
+        const __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
 
-        __m256i yColInit = _mm256_set1_ps(yCol);
-        __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
+        const __m256i yColInit = _mm256_set1_ps(yCol);
+        const __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
 
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
         _mm256_stream_ps(yColArr, yColv);
@@ -369,20 +367,20 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
       for (inner = 0; inner < numInner; ++inner) {
 
-        __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
+        const __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
 
         __m256i zUpdate;
 
-        __m256i zInit = _mm256_set1_epi32(z);
-        __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
+        const __m256i zInit = _mm256_set1_epi32(z);
+        const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
         zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
 
-        __m256i xColRowInit = _mm256_set1_ps(xColRow);
-        __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
+        const __m256i xColRowInit = _mm256_set1_ps(xColRow);
+        const __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
 
-        __m256i yColRowInit = _mm256_set1_ps(yColRow);
-        __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
+        const __m256i yColRowInit = _mm256_set1_ps(yColRow);
+        const __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
 
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
         _mm256_stream_ps(yColArr, yColRowv);
