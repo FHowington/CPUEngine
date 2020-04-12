@@ -56,8 +56,8 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   m.set(0, 3, x+w/2.f);
   m.set(1, 3, y+h/2.f);
   m.set(2, 3, depth/2.f);
-  m.set(0, 0, w/.8f);
-  m.set(1, 1, h/1.4f);
+  m.set(0, 0, w/1.5f);
+  m.set(1, 1, h/1.5f);
   m.set(2, 2, depth/1.5f);
   return m;
 }
@@ -282,7 +282,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         for (unsigned x = 0; x < 8; ++x) {
           if (zBuffTemp[x]) {
-            fcolor c = img.fast_get(xColArr[x], yColArr[x]);
+            fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
             zbuff[xVal + offset] = zBuffTemp[x];
             plot(xVal, y, c);
           }
@@ -312,7 +312,11 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[xVal + offset] < z) {
-            fcolor c = img.get_and_light(xCol, yCol, 1);
+            fcolor c = img.get_and_light(xCol, yCol, light);
+            // Can we do better than this niave approach?
+            // TODO: Vectorize all 8 simulatenously, perhaps.
+            // Although this would require we fetch all colors, which is extremely expensive
+            // Instead: Maybe keep track of all pixels updated, then vectorize that!
             zbuff[xVal + offset] = z;
             plot(xVal, y, c);
           }
@@ -410,8 +414,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         for (unsigned y = 0; y < 8; ++y) {
           if (zBuffTemp[y]) {
-            fcolor c = img.fast_get(xColArr[y], yColArr[y]);
-
+            fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
             zbuff[yVal * W + x] = zBuffTemp[y];
             plot(x, yVal, c);
           }
@@ -442,7 +445,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[yVal * W + x] < z) {
-            fcolor c = img.fast_get(xColRow, yColRow);
+            fcolor c = img.get_and_light(xColRow, yColRow, light);
             zbuff[yVal * W + x] = z;
             plot(x, yVal, c);
           }
