@@ -38,12 +38,11 @@ auto fMatrix<4,4>::operator*<4,1>(const fMatrix<4,1>& rhs) const {
 
 const unsigned depth = 0XFFFFF;
 
-
-vertex<int> fm2v(const fMatrix<4,4>& m) {
+vertex<int> m2v(const fMatrix<4,4>& m) {
   return vertex<int>(m.at(0,0)/m.at(3,0), m.at(1,0)/m.at(3,0), m.at(2,0)/m.at(3,0));
 }
 
-fMatrix<4,4> fv2m(const vertex<float>& v) {
+fMatrix<4,4> v2m(const vertex<float>& v) {
   fMatrix<4,4> m;
   m.set(0, 0, v._x);
   m.set(1, 0, v._y);
@@ -52,18 +51,18 @@ fMatrix<4,4> fv2m(const vertex<float>& v) {
   return m;
 }
 
-const fMatrix<4,4> fviewport(const int x, const int y, const int w, const int h) {
+const fMatrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   fMatrix m = fMatrix<4,4>::identity();
   m.set(0, 3, x+w/2.f);
   m.set(1, 3, y+h/2.f);
   m.set(2, 3, depth/2.f);
-  m.set(0, 0, w/2.f);
-  m.set(1, 1, h/2.f);
-  m.set(2, 2, depth/2.f);
+  m.set(0, 0, w/1.5f);
+  m.set(1, 1, h/1.5f);
+  m.set(2, 2, depth/1.5f);
   return m;
 }
 
-fMatrix<4,4> fgetProjection(float focalLength) {
+fMatrix<4,4> getProjection(float focalLength) {
   fMatrix m = fMatrix<4,4>::identity();
   m.set(3, 2, focalLength);
   return m;
@@ -71,6 +70,7 @@ fMatrix<4,4> fgetProjection(float focalLength) {
 
 void drawTri(const face& f,  const float light, const TGAImage& img)
 {
+
 #ifdef DEBUG
   int direction = directionality(f._v0, f._v1, f._v2);
   if (direction < 0) {
@@ -79,37 +79,32 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   }
 #endif
 
-
   static const __m256i min = _mm256_set1_epi32(-1);
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
 
-  static const fMatrix<4,4> fViewPort = fviewport(W/8, H/8, W*3/4, H*3/4);
-  static const vertex<float> fcamera(0,0,3);
-  static const fMatrix fProjection = fgetProjection(-1.f/fcamera._z);
-  static const fMatrix fviewthing = fViewPort * fProjection;
+  static const fMatrix<4,4> ViewPort = viewport(W/8, H/8, W*3/4, H*3/4);
+  static const vertex<float> camera(0,0,3);
+  static const fMatrix Projection = getProjection(0.f/camera._z);
+  static const fMatrix viewthing = ViewPort * Projection;
+
+  vertex<float> v0(f._v0._x, f._v0._y, f._v0._z);
+  vertex<float> v1(f._v1._x, f._v1._y, f._v1._z);
+  vertex<float> v2(f._v2._x, f._v2._y, f._v2._z);
 
 
+  vertex<int> v0i(m2v(viewthing*v2m(v0)));
+  vertex<int> v1i(m2v(viewthing*v2m(v1)));
+  vertex<int> v2i(m2v(viewthing*v2m(v2)));
 
-  vertex<float> fv0(f._v0._x, f._v0._y, f._v0._z);
-  vertex<float> fv1(f._v1._x, f._v1._y, f._v1._z);
-  vertex<float> fv2(f._v2._x, f._v2._y, f._v2._z);
+  const int x0 = v0i._x;
+  const int x1 = v1i._x;
+  const int x2 = v2i._x;
 
-
-  vertex<int> fv0i(fm2v(fviewthing*fv2m(fv0)));
-  vertex<int> fv1i(fm2v(fviewthing*fv2m(fv1)));
-  vertex<int> fv2i(fm2v(fviewthing*fv2m(fv2)));
-
-
-  const int x0 = fv0i._x;
-  const int x1 = fv1i._x;
-  const int x2 = fv2i._x;
-
-  const int y0 = fv0i._y;
-  const int y1 = fv1i._y;
-  const int y2 = fv2i._y;
-
+  const int y0 = v0i._y;
+  const int y1 = v1i._y;
+  const int y2 = v2i._y;
 
   // Prevent from wasting time on polygons that have no area
   if (colinear(x0, x1, x2, y0, y1, y2)) {
@@ -143,9 +138,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const short B12 = x2 - x1;
   const short B20 = x0 - x2;
 
-  const int z0 = fv0i._z; // Consider changing these into shifts, should be the same
-  const int z1 = fv1i._z;
-  const int z2 = fv2i._z;
+  const int z0 = v0i._z; // Consider changing these into shifts, should be the same
+  const int z1 = v1i._z;
+  const int z2 = v2i._z;
 
   unsigned x, y, z, xVal, yVal, numInner, inner, numOuter;
 
@@ -184,56 +179,28 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const unsigned yDiff = maxY - minY;
 
   if (xDiff > yDiff) {
-    __m256i zdxAdd;
-    __m256i xColAdd;
-    __m256i yColAdd;
+    const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+    const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
+    const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
     __m256i w0Init;
     __m256i w1Init;
     __m256i w2Init;
 
-    int A128 = 0;
-    int A208 = 0;
-    int A018 = 0;
-    int zdx8 = 0;
-    float xColDx8 = 0;
-    float yColDx8 = 0;
+    const  int zdx8 = 8*zdx;
+    const float xColDx8 = 8*xColDx;
+    const float yColDx8 = 8*yColDx;
 
-    __m256i a12Add;
-    __m256i a12Add8;
+    const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
+    const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
 
-    __m256i a20Add;
-    __m256i a20Add8;
+    const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
+    const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
 
-    __m256i a01Add;
-    __m256i a01Add8;
+    const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
+    const __m256i a01Add8 =  _mm256_set1_epi32(8*A01);
 
 
     // We will enter inner loop at least once, otherwise numInner is always 0
-    if (xDiff > 7) {
-      zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
-
-      xColAdd = _mm256_set1_ps(xColDx);
-      xColAdd = _mm256_mul_ps(scaleFloat, xColAdd);
-
-      yColAdd = _mm256_set1_ps(yColDx);
-      yColAdd = _mm256_mul_ps(scaleFloat, yColAdd);
-
-      zdx8 = 8*zdx;
-      xColDx8 = 8*xColDx;
-      yColDx8 = 8*yColDx;
-
-      a12Add = _mm256_set1_epi32(A12);
-      a12Add = _mm256_mullo_epi32(a12Add, scale);
-      a12Add8 = _mm256_set1_epi32(8*A12);
-
-      a20Add = _mm256_set1_epi32(A20);
-      a20Add = _mm256_mullo_epi32(a20Add, scale);
-      a20Add8 = _mm256_set1_epi32(8*A20);
-
-      a01Add = _mm256_set1_epi32(A01);
-      a01Add = _mm256_mullo_epi32(a01Add, scale);
-      a01Add8 = _mm256_set1_epi32(8*A01);
-    }
 
     for (y = minY; y <= maxY; ++y) {
       unsigned offset = W * y;
@@ -249,16 +216,14 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       numOuter = (maxX - minX) % 8 + 1;
 
 
-      if (numInner) {
-        w0Init = _mm256_set1_epi32(w0);
-        w0Init = _mm256_add_epi32(w0Init, a12Add);
+      w0Init = _mm256_set1_epi32(w0);
+      w0Init = _mm256_add_epi32(w0Init, a12Add);
 
-        w1Init = _mm256_set1_epi32(w1);
-        w1Init = _mm256_add_epi32(w1Init, a20Add);
+      w1Init = _mm256_set1_epi32(w1);
+      w1Init = _mm256_add_epi32(w1Init, a20Add);
 
-        w2Init = _mm256_set1_epi32(w2);
-        w2Init = _mm256_add_epi32(w2Init, a01Add);
-      }
+      w2Init = _mm256_set1_epi32(w2);
+      w2Init = _mm256_add_epi32(w2Init, a01Add);
 
       xVal = minX;
       for (inner = 0; inner < numInner; ++inner) {
@@ -276,53 +241,31 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         // If z is all zeros, skip a bunch of this
         __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
-        int zAllZero = _mm256_testz_si256(ones, zbuffv);
-
-        int route;
         __m256i zUpdate;
 
-        if (!zAllZero) {
-          __m256i zInit = _mm256_set1_epi32(z);
-          __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
+        __m256i zInit = _mm256_set1_epi32(z);
+        __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
 
-          zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
+        zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
-          // If this is 1, it indicates that all z values are zero
-          route = _mm256_testz_si256(ones, zUpdate);
-        } else {
 
-          // All z values are zero
-          // Only want to see what the barycentric coords are for each index
-          zUpdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min);
-          route = _mm256_testz_si256(ones, zUpdate);
-        }
+        __m256i xColInit = _mm256_set1_ps(xCol);
+        __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
 
-        if (!route) {
-          if (zAllZero) {
-            __m256i zInit = _mm256_set1_epi32(z);
-            __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
-            zUpdate = _mm256_and_si256(zv, zUpdate);
+        __m256i yColInit = _mm256_set1_ps(yCol);
+        __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
+
+        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        _mm256_stream_ps(yColArr, yColv);
+        _mm256_stream_ps(xColArr, xColv);
+
+        for (unsigned x = 0; x < 8; ++x) {
+          if (zBuffTemp[x]) {
+            fcolor c = img.fast_get(xColArr[x], yColArr[x]);
+            zbuff[xVal + offset] = zBuffTemp[x];
+            plot(xVal, y, c);
           }
-          __m256i xColInit = _mm256_set1_ps(xCol);
-          __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
-
-          __m256i yColInit = _mm256_set1_ps(yCol);
-          __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
-
-          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
-          _mm256_stream_ps(yColArr, yColv);
-          _mm256_stream_ps(xColArr, xColv);
-
-          for (unsigned x = 0; x < 8; ++x) {
-            if (zBuffTemp[x]) {
-              fcolor c = img.fast_get(xColArr[x], yColArr[x]);
-              zbuff[xVal + offset] = zBuffTemp[x];
-              plot(xVal, y, c);
-            }
-            ++xVal;
-          }
-        } else {
-          xVal += 8;
+          ++xVal;
         }
 
         z += zdx8;
@@ -370,26 +313,27 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       yColRow += yColDy;
     }
   } else {
-    int zdy8;
-    float xColDy8;
-    float yColDy8;
+    const int zdy8 = 8*zdy;
+    const float xColDy8 = 8*xColDy;
+    const float yColDy8 = 8*yColDy;
 
-    __m256i zdyAdd;
-    __m256i xColRowAdd;
-    __m256i yColRowAdd;
+    const __m256i zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
+    const __m256i xColRowAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(xColDy));
+    const  __m256i yColRowAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yColDy));
+
     __m256i w0RowInit;
     __m256i w1RowInit;
     __m256i w2RowInit;
 
 
-    __m256i b12Add;
-    __m256i b12Add8;
+    const __m256i b12Add = _mm256_mullo_epi32(_mm256_set1_epi32(B12), scale);
+    const __m256i b12Add8 = _mm256_set1_epi32(8*B12);
 
-    __m256i b20Add;
-    __m256i b20Add8;
+    const __m256i b20Add = _mm256_mullo_epi32(_mm256_set1_epi32(B20), scale);
+    const __m256i b20Add8 = _mm256_set1_epi32(8*B20);
 
-    __m256i b01Add;
-    __m256i b01Add8;
+    const __m256i b01Add = _mm256_mullo_epi32(_mm256_set1_epi32(B01), scale);
+    const __m256i b01Add8 = _mm256_set1_epi32(8*B01);
 
     // For row only
     w0 = w0Row;
@@ -397,34 +341,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
     w2 = w2Row;
     xCol = xColRow;
     yCol = yColRow;
-
-    if (yDiff > 7) {
-      zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
-      xColRowAdd = _mm256_set1_ps(xColDy);
-      xColRowAdd = _mm256_mul_ps(scaleFloat, xColRowAdd);
-      yColRowAdd = _mm256_set1_ps(yColDy);
-      yColRowAdd = _mm256_mul_ps(scaleFloat, yColRowAdd);
-
-
-      b12Add = _mm256_set1_epi32(B12);
-      b12Add = _mm256_mullo_epi32(b12Add, scale);
-      b12Add8 = _mm256_set1_epi32(8*B12);
-
-
-      b20Add = _mm256_set1_epi32(B20);
-      b20Add = _mm256_mullo_epi32(b20Add, scale);
-      b20Add8 = _mm256_set1_epi32(8*B20);
-
-
-      b01Add = _mm256_set1_epi32(B01);
-      b01Add = _mm256_mullo_epi32(b01Add, scale);
-      b01Add8 = _mm256_set1_epi32(8*B01);
-
-      zdy8 = 8*zdy;
-      xColDy8 = 8*xColDy;
-      yColDy8 = 8*yColDy;
-    }
-
 
     for (x = minX; x <= maxX; ++x) {
       w0Row = w0;
@@ -437,16 +353,14 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       numInner = (maxY - minY) / 8;
       numOuter = (maxY - minY) % 8 + 1;
 
-      if (numInner) {
-        w0RowInit = _mm256_set1_epi32(w0Row);
-        w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
+      w0RowInit = _mm256_set1_epi32(w0Row);
+      w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
 
-        w1RowInit = _mm256_set1_epi32(w1Row);
-        w1RowInit = _mm256_add_epi32(w1RowInit, b20Add);
+      w1RowInit = _mm256_set1_epi32(w1Row);
+      w1RowInit = _mm256_add_epi32(w1RowInit, b20Add);
 
-        w2RowInit = _mm256_set1_epi32(w2Row);
-        w2RowInit = _mm256_add_epi32(w2RowInit, b01Add);
-      }
+      w2RowInit = _mm256_set1_epi32(w2Row);
+      w2RowInit = _mm256_add_epi32(w2RowInit, b01Add);
 
       yVal = minY;
 
@@ -455,53 +369,32 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       for (inner = 0; inner < numInner; ++inner) {
 
         __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
-        int zAllZero = _mm256_testz_si256(ones, zbuffv);
 
-        int route;
         __m256i zUpdate;
 
-        if (!zAllZero) {
-          __m256i zInit = _mm256_set1_epi32(z);
-          __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
-          zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
+        __m256i zInit = _mm256_set1_epi32(z);
+        __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
+        zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
-          // If this is 1, it indicates that all z values are zero
-          route = _mm256_testz_si256(ones, zUpdate);
-        } else {
-          // All z values are zero
-          // Only want to see what the barycentric coords are for each index
-          zUpdate = _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min);
-          route = _mm256_testz_si256(ones, zUpdate);
-        }
 
-        if (!route) {
-          if (zAllZero) {
-            __m256i zInit = _mm256_set1_epi32(z);
-            __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
-            zUpdate = _mm256_and_si256(zv, zUpdate);
+        __m256i xColRowInit = _mm256_set1_ps(xColRow);
+        __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
+
+        __m256i yColRowInit = _mm256_set1_ps(yColRow);
+        __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
+
+        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        _mm256_stream_ps(yColArr, yColRowv);
+        _mm256_stream_ps(xColArr, xColRowv);
+
+        for (unsigned y = 0; y < 8; ++y) {
+          if (zBuffTemp[y]) {
+            fcolor c = img.fast_get(xColArr[y], yColArr[y]);
+
+            zbuff[yVal * W + x] = zBuffTemp[y];
+            plot(x, yVal, c);
           }
-
-          __m256i xColRowInit = _mm256_set1_ps(xColRow);
-          __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
-
-          __m256i yColRowInit = _mm256_set1_ps(yColRow);
-          __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
-
-          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
-          _mm256_stream_ps(yColArr, yColRowv);
-          _mm256_stream_ps(xColArr, xColRowv);
-
-          for (unsigned y = 0; y < 8; ++y) {
-            if (zBuffTemp[y]) {
-              fcolor c = img.fast_get(xColArr[y], yColArr[y]);
-
-              zbuff[yVal * W + x] = zBuffTemp[y];
-              plot(x, yVal, c);
-            }
-            ++yVal;
-          }
-        } else {
-          yVal += 8;
+          ++yVal;
         }
 
         z += zdy8;
