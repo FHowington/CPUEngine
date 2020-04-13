@@ -15,8 +15,8 @@ struct matrix {
   float _m[N * M];
 
   static matrix identity();
-  template <unsigned I, unsigned J>
-  auto operator*(const matrix<I, J>& rhs) const;
+  template <unsigned O>
+  matrix<N,O> operator*(const matrix<M,O>& rhs) const;
 
   float at(const unsigned i, const unsigned j) const { return _m[M * i + j]; }
   void set(const unsigned i, const unsigned j, const float val) { _m[M * i + j] = val; }

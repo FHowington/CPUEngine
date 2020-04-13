@@ -4,7 +4,7 @@
 
 template <>
 template <>
-auto matrix<4,4>::operator*<4,4>(const matrix<4,4>& rhs) const {
+matrix<4,4> matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const {
   // This needs to be vectorized
   matrix<4,4> result;
 
@@ -17,12 +17,13 @@ auto matrix<4,4>::operator*<4,4>(const matrix<4,4>& rhs) const {
       result._m[i * 4 + j] = res;
     }
   }
+
   return result;
 }
 
 template <>
 template <>
-auto matrix<4,4>::operator*<4,1>(const matrix<4,1>& rhs) const {
+matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& rhs) const {
   // This needs to be vectorized
   matrix<4,1> result;
 
@@ -38,16 +39,16 @@ auto matrix<4,4>::operator*<4,1>(const matrix<4,1>& rhs) const {
 
 const unsigned depth = 0XFFFFF;
 
-vertex<int> m2v(const matrix<4,4>& m) {
-  return vertex<int>(m.at(0,0)/m.at(3,0), m.at(1,0)/m.at(3,0), m.at(2,0)/m.at(3,0));
+vertex<int> m2v(const matrix<4,1>& m) {
+  return vertex<int>(m.at(0,0)/m.at(0,3), m.at(0,1)/m.at(0,3), m.at(0,2)/m.at(0,3));
 }
 
-matrix<4,4> v2m(const vertex<float>& v) {
-  matrix<4,4> m;
+matrix<4,1> v2m(const vertex<float>& v) {
+  matrix<4,1> m;
   m.set(0, 0, v._x);
-  m.set(1, 0, v._y);
-  m.set(2, 0, v._z);
-  m.set(3, 0, 1);
+  m.set(0, 1, v._y);
+  m.set(0, 2, v._z);
+  m.set(0, 3, 1);
   return m;
 }
 
@@ -92,6 +93,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   static const vertex<float> camera(0,0,3);
   static const matrix Projection = getProjection(0.f/camera._z);
   static const matrix viewthing = ViewPort * Projection;
+
+  matrix<4,1> t1 = v2m(f._v0);
+  matrix<4,1> t2 = viewthing.operator*<1>(t1);
 
   const vertex<int> v0i(m2v(viewthing*v2m(f._v0)));
   const vertex<int> v1i(m2v(viewthing*v2m(f._v1)));
@@ -282,7 +286,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         for (unsigned x = 0; x < 8; ++x) {
           if (zBuffTemp[x]) {
-            fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
+            const fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
             zbuff[xVal + offset] = zBuffTemp[x];
             plot(xVal, y, c);
           }
@@ -312,7 +316,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[xVal + offset] < z) {
-            fcolor c = img.get_and_light(xCol, yCol, light);
+            const fcolor c = img.get_and_light(xCol, yCol, light);
             // Can we do better than this niave approach?
             // TODO: Vectorize all 8 simulatenously, perhaps.
             // Although this would require we fetch all colors, which is extremely expensive
@@ -414,7 +418,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         for (unsigned y = 0; y < 8; ++y) {
           if (zBuffTemp[y]) {
-            fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
+            const fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
             zbuff[yVal * W + x] = zBuffTemp[y];
             plot(x, yVal, c);
           }
@@ -445,7 +449,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[yVal * W + x] < z) {
-            fcolor c = img.get_and_light(xColRow, yColRow, light);
+            const fcolor c = img.get_and_light(xColRow, yColRow, light);
             zbuff[yVal * W + x] = z;
             plot(x, yVal, c);
           }
