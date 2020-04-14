@@ -12,7 +12,7 @@
 // This defines a 4x4 matrix
 template <unsigned N, unsigned M>
 struct matrix {
-  float _m[N * M];
+  float __attribute__((aligned(16))) _m[N * M];
 
   static matrix identity();
   template <unsigned O>
