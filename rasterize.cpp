@@ -2,60 +2,46 @@
 #include "geometry.h"
 #include "rasterize.h"
 
-template <>
-template <>
-matrix<4,4> matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const {
-  // This needs to be vectorized
-  matrix<4,4> result;
-
-  for (int i=0; i<4; i++) {
-    for (int j=0; j<4; j++) {
-      float res = 0;
-      for (int k=0; k<4; k++) {
-        res += _m[i * 4 + k] * rhs._m[k * 4 + j];
-      }
-      result._m[i * 4 + j] = res;
-    }
-  }
-
-  return result;
-}
-
-template <>
-template <>
-matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& rhs) const {
-  // This needs to be vectorized
-  matrix<4,1> result;
+const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
+  // Basically a streamlined approach to the above
+  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
+  static float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(rhs._m[3], rhs._m[2], rhs._m[1], rhs._m[0]);
-  __m128 v2 = _mm_set_ps(_m[15], _m[10], _m[5], _m[0]);
+  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
+  __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[12], _m[11], _m[6], _m[1]);
+  v2 = _mm_set_ps(m._m[12], m._m[11], m._m[6], m._m[1]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[13], _m[8], _m[7], _m[2]);
+  v2 = _mm_set_ps(m._m[13], m._m[8], m._m[7], m._m[2]);
   res = _mm_fmadd_ps(v1, v2, res);
 
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[14], _m[9], _m[4], _m[3]);
+  v2 = _mm_set_ps(m._m[14], m._m[9], m._m[4], m._m[3]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  _mm_stream_ps(result._m, res);
 
-  return result;
+  v1 = _mm_permute_ps(res, 0b11111111);
+  res = _mm_div_ps(res, v1);
+
+  _mm_stream_ps(result, res);
+
+  return vertex<int>(result[0], result[1], result[2]);
 }
 
 const unsigned depth = 0XFFFFF;
 
+
 vertex<int> m2v(const matrix<4,1>& m) {
   return vertex<int>(m.at(0,0)/m.at(0,3), m.at(0,1)/m.at(0,3), m.at(0,2)/m.at(0,3));
 }
+
 
 matrix<4,1> v2m(const vertex<float>& v) {
   matrix<4,1> m;
@@ -108,12 +94,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   static const matrix Projection = getProjection(0.f/camera._z);
   static const matrix viewthing = ViewPort * Projection;
 
-  matrix<4,1> t1 = v2m(f._v0);
-  matrix<4,1> t2 = viewthing.operator*<1>(t1);
-
-  const vertex<int> v0i(m2v(viewthing*v2m(f._v0)));
-  const vertex<int> v1i(m2v(viewthing*v2m(f._v1)));
-  const vertex<int> v2i(m2v(viewthing*v2m(f._v2)));
+  const vertex<int> v0i(multToVector(viewthing, f._v0));
+  const vertex<int> v1i(multToVector(viewthing, f._v1));
+  const vertex<int> v2i(multToVector(viewthing, f._v2));
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
