@@ -41,9 +41,13 @@ struct fcolor {
 
 template <typename T>
 struct vertex {
-  T _x;
-  T _y;
-  T _z;
+  union {
+    struct {
+      T _x, _y, _z, _e;
+    };
+    T raw[4];
+  };
+
 
   vertex (const T x, const T y, const T z) : _x(x), _y(y), _z(z) {}
   vertex () : _x(), _y(), _z() {};

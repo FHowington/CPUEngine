@@ -12,7 +12,7 @@
 #include "geometry.h"
 
 unsigned pixels[W * H];
-unsigned zbuff[W * H];
+int zbuff[W * H];
 
 int main() {
   // Create a screen.
@@ -36,7 +36,7 @@ int main() {
   for(bool interrupted=false; !interrupted;)
   {
     for(auto& p: pixels) p = 0;
-    for(auto& p: zbuff) p = 0;
+    for(auto& p: zbuff) p = std::numeric_limits<int>::min();
 
     SDL_Event ev;
     while(SDL_PollEvent(&ev))

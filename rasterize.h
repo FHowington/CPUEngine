@@ -18,7 +18,7 @@ const unsigned halfW = W/2;
 const unsigned halfH = H/2;
 
 extern unsigned pixels[W*H];
-extern unsigned zbuff[W*H];
+extern int zbuff[W*H];
 
 
 typedef std::pair<double, double> SlopePair;

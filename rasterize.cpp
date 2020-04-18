@@ -2,13 +2,14 @@
 #include "geometry.h"
 #include "rasterize.h"
 
+
 const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
-  // Basically a streamlined approach to the above
+  // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
-  static float __attribute__((aligned(16))) result[4];
+  float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
+  __m128 v1 = _mm_set_ps(1, v._z - 5, v._y, v._x);
   __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
@@ -21,11 +22,9 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   v2 = _mm_set_ps(m._m[13], m._m[8], m._m[7], m._m[2]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-
   v1 = _mm_permute_ps(v1, 0b00111001);
   v2 = _mm_set_ps(m._m[14], m._m[9], m._m[4], m._m[3]);
   res = _mm_fmadd_ps(v1, v2, res);
-
 
   v1 = _mm_permute_ps(res, 0b11111111);
   res = _mm_div_ps(res, v1);
@@ -35,12 +34,7 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   return vertex<int>(result[0], result[1], result[2]);
 }
 
-const unsigned depth = 0XFFFFF;
-
-
-vertex<int> m2v(const matrix<4,1>& m) {
-  return vertex<int>(m.at(0,0)/m.at(0,3), m.at(0,1)/m.at(0,3), m.at(0,2)/m.at(0,3));
-}
+const unsigned depth = 0XFFFF;
 
 
 matrix<4,1> v2m(const vertex<float>& v) {
@@ -91,7 +85,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   static const matrix<4,4> ViewPort = viewport(W/8, H/8, W*3/4, H*3/4);
 
   static const vertex<float> camera(0,0,3);
-  static const matrix Projection = getProjection(0.f/camera._z);
+  static const matrix Projection = getProjection(-1.f/camera._z);
   static const matrix viewthing = ViewPort * Projection;
 
   const vertex<int> v0i(multToVector(viewthing, f._v0));
@@ -224,9 +218,11 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
 
     // We will enter inner loop at least once, otherwise numInner is always 0
+    unsigned offset = minY * W;
+    float textureOffset = yColRow;
 
     for (y = minY; y <= maxY; ++y) {
-      unsigned offset = W * y;
+      float yColDy4 = 4 * yColDy;
 
       w0 = w0Row;
       w1 = w1Row;
@@ -260,16 +256,12 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
         // Then, calculate color for each of these
         // Finally, apply to both zbuff and plot the results
 
-
-        // If z is all zeros, skip a bunch of this
         const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
-        __m256i zUpdate;
+
 
         const __m256i zInit = _mm256_set1_epi32(z);
         const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
-
-        zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
-
+        const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
         const __m256i xColInit = _mm256_set1_ps(xCol);
         const __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
@@ -337,6 +329,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
       zOrig += zdy;
       xColRow += xColDy;
       yColRow += yColDy;
+      offset += W;
+      textureOffset += yColDy4;
     }
   } else {
     const int zdy8 = 8*zdy;
@@ -396,11 +390,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         const __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
 
-        __m256i zUpdate;
-
         const __m256i zInit = _mm256_set1_epi32(z);
         const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
-        zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
+        const  __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
 
         const __m256i xColRowInit = _mm256_set1_ps(xColRow);
