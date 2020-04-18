@@ -9,7 +9,7 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z - 5, v._y, v._x);
+  __m128 v1 = _mm_set_ps(1, v._z - 1, v._y, v._x);
   __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
@@ -148,9 +148,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z1 = v1i._z;
   const int z2 = v2i._z;
 
-  unsigned x, y, z, xVal, yVal, numInner, inner, numOuter;
+  unsigned x, y, xVal, yVal, numInner, inner, numOuter;
 
-  int w0, w1, w2;
+  int w0, w1, w2, z;
 
   const int div = (((B20) * (-A01)) + (B01) * (A20));
   const int z10 = z1 - z0;
