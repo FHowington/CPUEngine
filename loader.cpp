@@ -45,29 +45,45 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
       textures.emplace_back(x, y, 0);
 
     } else if (line.size() > 1 && line[0] == 'f' && line[1] == ' ') {
+      if (line.find("/") != std::string::npos) {
 
-      std::replace(line.begin(), line.end(), '/', ' ');
-      line = line.substr(1, line.size());
+        std::replace(line.begin(), line.end(), '/', ' ');
+        line = line.substr(1, line.size());
 
-      std::istringstream iss(line);
-      unsigned v0;
-      unsigned v1;
-      unsigned v2;
+        std::istringstream iss(line);
+        unsigned v0;
+        unsigned v1;
+        unsigned v2;
 
-      unsigned t0;
-      unsigned t1;
-      unsigned t2;
-      unsigned trash;
+        unsigned t0;
+        unsigned t1;
+        unsigned t2;
+        unsigned trash;
 
-      if (!(iss >> v0 >> t0 >> trash >> v1 >> t1 >> trash >> v2 >> t2)) {
-        printf("Parsing for faces failed at line: %s\n", line.c_str());
-        break;
+        if (!(iss >> v0 >> t0 >> trash >> v1 >> t1 >> trash >> v2 >> t2)) {
+          printf("Parsing for faces failed at line: %s\n", line.c_str());
+          break;
+        }
+
+        faces.emplace_back(vertices[v0 - 1], vertices[v1 - 1], vertices[v2-1],
+                           textures.at(t0-1)._x * width, textures.at(t0-1)._y * height,
+                           textures.at(t1-1)._x * width, textures.at(t1-1)._y * height,
+                           textures.at(t2-1)._x * width, textures.at(t2-1)._y * height);
+      } else {
+        line = line.substr(1, line.size());
+        std::istringstream iss(line);
+
+        unsigned v0;
+        unsigned v1;
+        unsigned v2;
+
+        if (!(iss >> v0 >> v1 >> v2)) {
+          printf("Parsing for faces failed at line: %s\n", line.c_str());
+          break;
+        }
+
+        faces.emplace_back(vertices[v0 - 1], vertices[v1 - 1], vertices[v2-1]);
       }
-
-      faces.emplace_back(vertices[v0 - 1], vertices[v1 - 1], vertices[v2-1],
-                         textures.at(t0-1)._x * width, textures.at(t0-1)._y * height,
-                         textures.at(t1-1)._x * width, textures.at(t1-1)._y * height,
-                         textures.at(t2-1)._x * width, textures.at(t2-1)._y * height);
     }
   }
 }

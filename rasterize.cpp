@@ -9,7 +9,7 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z - 1, v._y, v._x);
+  __m128 v1 = _mm_set_ps(1, v._z - 2, v._y, v._x);
   __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
@@ -34,7 +34,7 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   return vertex<int>(result[0], result[1], result[2]);
 }
 
-const unsigned depth = 0XFFFF;
+const unsigned depth = 0XFFFFF;
 
 
 matrix<4,1> v2m(const vertex<float>& v) {
@@ -51,8 +51,8 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   m.set(0, 3, x+w/2.f);
   m.set(1, 3, y+h/2.f);
   m.set(2, 3, depth/2.f);
-  m.set(0, 0, w/1.5f);
-  m.set(1, 1, h/1.5f);
+  m.set(0, 0, w);
+  m.set(1, 1, h);
   m.set(2, 2, depth/1.5f);
   return m;
 }
@@ -111,17 +111,16 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int maxX = max3(x0, x1, x2, (int)W);
   const int maxY = max3(y0, y1, y2, (int)H - 1);
 
-
   // Same idea. These have no area (happens when triangle is outside of viewing area)
-  if (maxX <= minX || maxY <= minY) {
+  if (maxX < minX || maxY < minY) {
     return;
   }
 
   // Bias to make sure only top or left edges fall on line
   // TODO: Vectorize to prevent data dependant branching
-  const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : -1;
-  const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
-  const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : -1;
+  const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : 1;
+  const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : 1;
+  const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : 1;
 
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
@@ -130,10 +129,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
   // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
-  if (!wTotal) {
-    return;
-  }
-
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
@@ -147,6 +142,12 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
   const int z0 = v0i._z;
   const int z1 = v1i._z;
   const int z2 = v2i._z;
+
+  // If all three are positive, the object is behind the camera
+  if ((v0i._z | v1i._z | v2i._z) > 0) {
+    return;
+  }
+
 
   unsigned x, y, xVal, yVal, numInner, inner, numOuter;
 
@@ -275,7 +276,8 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         for (unsigned x = 0; x < 8; ++x) {
           if (zBuffTemp[x]) {
-            const fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
+            //const fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
+            const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
             zbuff[xVal + offset] = zBuffTemp[x];
             plot(xVal, y, c);
           }
@@ -305,7 +307,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[xVal + offset] < z) {
-            const fcolor c = img.get_and_light(xCol, yCol, light);
+            //const fcolor c = img.get_and_light(xCol, yCol, light);
+            const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
             // Can we do better than this niave approach?
             // TODO: Vectorize all 8 simulatenously, perhaps.
             // Although this would require we fetch all colors, which is extremely expensive
@@ -407,7 +411,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
 
         for (unsigned y = 0; y < 8; ++y) {
           if (zBuffTemp[y]) {
-            const fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
+            //const fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
+            const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
             zbuff[yVal * W + x] = zBuffTemp[y];
             plot(x, yVal, c);
           }
@@ -438,7 +444,9 @@ void drawTri(const face& f,  const float light, const TGAImage& img)
           // Uncomment for exact z values
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[yVal * W + x] < z) {
-            const fcolor c = img.get_and_light(xColRow, yColRow, light);
+            //const fcolor c = img.get_and_light(xColRow, yColRow, light);
+            const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
             zbuff[yVal * W + x] = z;
             plot(x, yVal, c);
           }
