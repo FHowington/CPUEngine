@@ -69,8 +69,12 @@ inline bool colinear(const int x0, const int x1, const int x2, const int y0, con
   return x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1) == 0;
 }
 
-void drawTri(const face& f,  const float light, const TGAImage& img);
+void drawTri(const face& f,  const float light, const TGAImage& img, const matrix<4,4>& viewMatrix);
 
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
 void line(const vertex<float>& v0, const vertex<float>& v1, const unsigned color);
+
+const matrix<4,4> getProjection(float focalLength);
+
+const matrix<4,4> viewport(const int x, const int y, const int w, const int h);

@@ -21,9 +21,9 @@ int main() {
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
   TGAImage headtext;
-  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/african_head_diffuse.tga");
+  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/diablo3_pose_diffuse.tga");
   headtext.flip_vertically();
-  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
+  Model head("/Users/forbes/CLionProjects/CPUEngine/diablo3_pose.obj", headtext.get_width(), headtext.get_height());
 
   bool wireframe = false;
   bool fps = false;
@@ -76,6 +76,15 @@ int main() {
           }
       }
 
+
+    // TODO: Convert to more understandable numbers
+    static const matrix<4,4> ViewPort = viewport(W/8, H/8, W*3/4, H*3/4);
+
+    static const vertex<float> camera(0,0,3);
+    static const matrix Projection = getProjection(-2.f/camera._z);
+    static const matrix viewMatrix = ViewPort * Projection;
+
+
     for (auto t : head.getFaces()) {
 
       // We get the normal vector for every triangle
@@ -103,7 +112,7 @@ int main() {
       }
 
       if (seen > 0) {
-        drawTri(t, aoi, headtext);
+        drawTri(t, aoi, headtext, viewMatrix);
 
         if (wireframe) {
           line(t._v0, t._v1,  0xFFFFFFF);
