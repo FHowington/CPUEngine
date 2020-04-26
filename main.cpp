@@ -78,12 +78,7 @@ int main() {
 
 
     // TODO: Convert to more understandable numbers
-    static const matrix<4,4> ViewPort = viewport(W/8, H/8, W*3/4, H*3/4);
-
-    static const vertex<float> camera(0,0,3);
-    static const matrix Projection = getProjection(-2.f/camera._z);
-    static const matrix viewMatrix = ViewPort * Projection;
-
+    static const matrix<4,4> viewMatrix = viewport((W/8) + (W*3/4) / 2.0, (H/8) + (H*3/4) / 2.0, W*3/4, H*3/4);
 
     for (auto t : head.getFaces()) {
 

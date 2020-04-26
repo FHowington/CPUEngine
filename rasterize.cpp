@@ -9,7 +9,7 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z - 2, v._y, v._x);
+  __m128 v1 = _mm_set_ps(1, v._z - 3, v._y, v._x);
   __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
@@ -48,13 +48,18 @@ matrix<4,1> v2m(const vertex<float>& v) {
 
 const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   matrix m = matrix<4,4>::identity();
-  m.set(0, 3, x+w/2.f);
-  m.set(1, 3, y+h/2.f);
+  float focalLength = -2.0/3.0;
+  m.set(0, 3, x);
+  m.set(1, 3, y);
   m.set(2, 3, depth/2.f);
   m.set(0, 0, w);
   m.set(1, 1, h);
-  m.set(2, 2, depth/1.5f);
-  m.set(3, 2, -1/3);
+
+  m.set(0, 2, focalLength * x);
+  m.set(1, 2, focalLength * y);
+  m.set(2, 2, depth/1.5f + focalLength * depth/2.f);
+  m.set(3, 2, focalLength);
+
   return m;
 }
 
