@@ -3,6 +3,38 @@
 #include "rasterize.h"
 
 
+const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v) {
+  // Basically a streamlined approach to the vector multiplication
+  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
+  matrix<4,1> ret;
+
+  __m128 res = _mm_set1_ps(0.0);
+  __m128 v1 = _mm_set_ps(1, v._z - 3, v._y, v._x);
+  __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(m._m[12], m._m[11], m._m[6], m._m[1]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(m._m[13], m._m[8], m._m[7], m._m[2]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(m._m[14], m._m[9], m._m[4], m._m[3]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(res, 0b11111111);
+  res = _mm_div_ps(res, v1);
+
+  _mm_stream_ps(ret._m, res);
+
+  return ret;
+}
+
+
 const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
@@ -46,6 +78,10 @@ matrix<4,1> v2m(const vertex<float>& v) {
   return m;
 }
 
+inline vertex<int> m2v(const matrix<4,1> m) {
+  return vertex<int>(m._m[0], m._m[1], m._m[2]);
+}
+
 const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   matrix m = matrix<4,4>::identity();
   float focalLength = -2.0/3.0;
@@ -86,9 +122,14 @@ void drawTri(const face& f,  const float light, const TGAImage& img, const matri
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
   static const __m256i ones = _mm256_set1_epi64x(-1);
 
-  const vertex<int> v0i(multToVector(viewMatrix, f._v0));
-  const vertex<int> v1i(multToVector(viewMatrix, f._v1));
-  const vertex<int> v2i(multToVector(viewMatrix, f._v2));
+  static matrix<4,4> translate = matrix<4,4>::identity();
+  translate.set(0, 3, 200);
+  translate.set(1, 3, -300);
+  translate.set(2, 3, -5);
+
+  const vertex<int> v0i(m2v(translate * multToProject(viewMatrix, f._v0)));
+  const vertex<int> v1i(m2v(translate * multToProject(viewMatrix, f._v1)));
+  const vertex<int> v2i(m2v(translate * multToProject(viewMatrix, f._v2)));
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
