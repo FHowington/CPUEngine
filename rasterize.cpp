@@ -35,13 +35,145 @@ const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v) {
 }
 
 
-const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
+bool gluInvertMatrix(const float m[16], float invOut[16])
+{
+    float inv[16], det;
+    int i;
+
+    inv[0] = m[5]  * m[10] * m[15] -
+             m[5]  * m[11] * m[14] -
+             m[9]  * m[6]  * m[15] +
+             m[9]  * m[7]  * m[14] +
+             m[13] * m[6]  * m[11] -
+             m[13] * m[7]  * m[10];
+
+    inv[4] = -m[4]  * m[10] * m[15] +
+              m[4]  * m[11] * m[14] +
+              m[8]  * m[6]  * m[15] -
+              m[8]  * m[7]  * m[14] -
+              m[12] * m[6]  * m[11] +
+              m[12] * m[7]  * m[10];
+
+    inv[8] = m[4]  * m[9] * m[15] -
+             m[4]  * m[11] * m[13] -
+             m[8]  * m[5] * m[15] +
+             m[8]  * m[7] * m[13] +
+             m[12] * m[5] * m[11] -
+             m[12] * m[7] * m[9];
+
+    inv[12] = -m[4]  * m[9] * m[14] +
+               m[4]  * m[10] * m[13] +
+               m[8]  * m[5] * m[14] -
+               m[8]  * m[6] * m[13] -
+               m[12] * m[5] * m[10] +
+               m[12] * m[6] * m[9];
+
+    inv[1] = -m[1]  * m[10] * m[15] +
+              m[1]  * m[11] * m[14] +
+              m[9]  * m[2] * m[15] -
+              m[9]  * m[3] * m[14] -
+              m[13] * m[2] * m[11] +
+              m[13] * m[3] * m[10];
+
+    inv[5] = m[0]  * m[10] * m[15] -
+             m[0]  * m[11] * m[14] -
+             m[8]  * m[2] * m[15] +
+             m[8]  * m[3] * m[14] +
+             m[12] * m[2] * m[11] -
+             m[12] * m[3] * m[10];
+
+    inv[9] = -m[0]  * m[9] * m[15] +
+              m[0]  * m[11] * m[13] +
+              m[8]  * m[1] * m[15] -
+              m[8]  * m[3] * m[13] -
+              m[12] * m[1] * m[11] +
+              m[12] * m[3] * m[9];
+
+    inv[13] = m[0]  * m[9] * m[14] -
+              m[0]  * m[10] * m[13] -
+              m[8]  * m[1] * m[14] +
+              m[8]  * m[2] * m[13] +
+              m[12] * m[1] * m[10] -
+              m[12] * m[2] * m[9];
+
+    inv[2] = m[1]  * m[6] * m[15] -
+             m[1]  * m[7] * m[14] -
+             m[5]  * m[2] * m[15] +
+             m[5]  * m[3] * m[14] +
+             m[13] * m[2] * m[7] -
+             m[13] * m[3] * m[6];
+
+    inv[6] = -m[0]  * m[6] * m[15] +
+              m[0]  * m[7] * m[14] +
+              m[4]  * m[2] * m[15] -
+              m[4]  * m[3] * m[14] -
+              m[12] * m[2] * m[7] +
+              m[12] * m[3] * m[6];
+
+    inv[10] = m[0]  * m[5] * m[15] -
+              m[0]  * m[7] * m[13] -
+              m[4]  * m[1] * m[15] +
+              m[4]  * m[3] * m[13] +
+              m[12] * m[1] * m[7] -
+              m[12] * m[3] * m[5];
+
+    inv[14] = -m[0]  * m[5] * m[14] +
+               m[0]  * m[6] * m[13] +
+               m[4]  * m[1] * m[14] -
+               m[4]  * m[2] * m[13] -
+               m[12] * m[1] * m[6] +
+               m[12] * m[2] * m[5];
+
+    inv[3] = -m[1] * m[6] * m[11] +
+              m[1] * m[7] * m[10] +
+              m[5] * m[2] * m[11] -
+              m[5] * m[3] * m[10] -
+              m[9] * m[2] * m[7] +
+              m[9] * m[3] * m[6];
+
+    inv[7] = m[0] * m[6] * m[11] -
+             m[0] * m[7] * m[10] -
+             m[4] * m[2] * m[11] +
+             m[4] * m[3] * m[10] +
+             m[8] * m[2] * m[7] -
+             m[8] * m[3] * m[6];
+
+    inv[11] = -m[0] * m[5] * m[11] +
+               m[0] * m[7] * m[9] +
+               m[4] * m[1] * m[11] -
+               m[4] * m[3] * m[9] -
+               m[8] * m[1] * m[7] +
+               m[8] * m[3] * m[5];
+
+    inv[15] = m[0] * m[5] * m[10] -
+              m[0] * m[6] * m[9] -
+              m[4] * m[1] * m[10] +
+              m[4] * m[2] * m[9] +
+              m[8] * m[1] * m[6] -
+              m[8] * m[2] * m[5];
+
+    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+    if (det == 0)
+        return false;
+
+    det = 1.0 / det;
+
+    for (i = 0; i < 16; i++)
+        invOut[i] = inv[i] * det;
+
+    return true;
+}
+
+
+
+const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
   float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z - 3, v._y, v._x);
+  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
   __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
@@ -58,12 +190,9 @@ const vertex<int> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   v2 = _mm_set_ps(m._m[14], m._m[9], m._m[4], m._m[3]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  v1 = _mm_permute_ps(res, 0b11111111);
-  res = _mm_div_ps(res, v1);
-
   _mm_stream_ps(result, res);
 
-  return vertex<int>(result[0], result[1], result[2]);
+  return vertex<float>(result[0], result[1], result[2]);
 }
 
 const unsigned depth = 0XFFFFF;
@@ -80,6 +209,10 @@ matrix<4,1> v2m(const vertex<float>& v) {
 
 inline vertex<int> m2v(const matrix<4,1> m) {
   return vertex<int>(m._m[0], m._m[1], m._m[2]);
+}
+
+inline vertex<float> m2vf(const matrix<4,1> m) {
+  return vertex<float>(m._m[0], m._m[1], m._m[2]);
 }
 
 const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
@@ -114,6 +247,7 @@ void drawTri(const face& f,  const float light, const TGAImage& img, const matri
     return;
   }
 #endif
+  matrix<4,4> rot = matrix<4,4>::rotation(0, 0, 0.5);
 
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
@@ -122,14 +256,24 @@ void drawTri(const face& f,  const float light, const TGAImage& img, const matri
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
   static const __m256i ones = _mm256_set1_epi64x(-1);
 
-  static matrix<4,4> translate = matrix<4,4>::identity();
-  translate.set(0, 3, 200);
-  translate.set(1, 3, -300);
-  translate.set(2, 3, -5);
+  rot.set(0, 3, .1);
+  rot.set(1, 3, -.2);
+  rot.set(2, 3, 0);
 
-  const vertex<int> v0i(m2v(translate * multToProject(viewMatrix, f._v0)));
-  const vertex<int> v1i(m2v(translate * multToProject(viewMatrix, f._v1)));
-  const vertex<int> v2i(m2v(translate * multToProject(viewMatrix, f._v2)));
+
+  matrix<4,4> rot2 = matrix<4,4>::rotation(0, 0, .4);
+  matrix<4,4> rot3;
+  rot2.set(1, 3, .6);
+  rot2.set(0, 3, .6);
+
+
+  assert(gluInvertMatrix(rot2._m, rot3._m));
+
+
+
+  const vertex<int> v0i(m2v(multToProject(viewMatrix, multToVector(rot3, f._v0))));
+  const vertex<int> v1i(m2v(multToProject(viewMatrix, multToVector(rot3, f._v1))));
+  const vertex<int> v2i(m2v(multToProject(viewMatrix, multToVector(rot3, f._v2))));
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;

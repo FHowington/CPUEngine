@@ -5,12 +5,22 @@
 template <>
 matrix<4,4> matrix<4,4>::identity() {
   matrix<4,4> res;
+  memset(res._m, 0, 64);
   for (unsigned idx = 0; idx < 4; ++idx) {
     res._m[idx * 4 + idx] = 1;
   }
   return res;
 }
 
+template <>
+matrix<4,4> matrix<4,4>::rotation(double rotX, double rotY, double rotZ) {
+  matrix<4,4> res = identity();
+  res.set(0, 0, cos(rotZ));
+  res.set(0, 1, -sin(rotZ));
+  res.set(1, 0, sin(rotZ));
+  res.set(1, 1, cos(rotZ));
+  return res;
+}
 
 template <>
 template <>
