@@ -78,3 +78,5 @@ void line(const vertex<float>& v0, const vertex<float>& v1, const unsigned color
 const matrix<4,4> getProjection(float focalLength);
 
 const matrix<4,4> viewport(const int x, const int y, const int w, const int h);
+
+matrix<4,4> GetInverse(const matrix<4,4>& inM);

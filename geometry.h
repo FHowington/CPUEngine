@@ -1,13 +1,11 @@
 //
 // Created by Forbes Howington on 4/12/20.
 //
-
 #pragma once
 
 #include <cmath>
 #include <iostream>
 #include <vector>
-
 
 // This defines a 4x4 matrix
 template <unsigned N, unsigned M>
@@ -22,6 +20,10 @@ struct matrix {
 
   float at(const unsigned i, const unsigned j) const { return _m[M * i + j]; }
   void set(const unsigned i, const unsigned j, const float val) { _m[M * i + j] = val; }
+
+  matrix() {
+    memset(_m, 0, N * M * 4);
+  }
 };
 
 
@@ -105,3 +107,14 @@ template<typename T>
 T dot(const vertex<T>& l, const vertex<T>& r) {
   return l._x * r._x + l._y * r._y + l._z * r._z;
 }
+
+void printMatrix(const matrix<4,4>& mat);
+
+matrix<4,4> inverseNoTranslate(const matrix<4,4>& in);
+matrix<4,4> invert(const matrix<4,4>& in);
+const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v);
+const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v);
+matrix<4,1> v2m(const vertex<float>& v);
+vertex<int> m2v(const matrix<4,1> m);
+vertex<float> m2vf(const matrix<4,1> m);
+const matrix<4,4> getProjection(float focalLength);
