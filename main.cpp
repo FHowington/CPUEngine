@@ -21,9 +21,9 @@ int main() {
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
   TGAImage headtext;
-  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/diablo3_pose_diffuse.tga");
+  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/african_head_diffuse.tga");
   headtext.flip_vertically();
-  Model head("/Users/forbes/CLionProjects/CPUEngine/diablo3_pose.obj", headtext.get_width(), headtext.get_height());
+  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
 
   bool wireframe = false;
   bool fps = false;
@@ -78,36 +78,61 @@ int main() {
 
 
     // TODO: Convert to more understandable numbers
-    static const matrix<4,4> viewMatrix = viewport((W/8) + (W*3/4) / 2.0, (H/8) + (H*3/4) / 2.0, W*3/4, H*3/4);
+    static const matrix<4,4> viewMatrix = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
+    static const vertex<float> view(0, 0, -1);
+
+    //matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 0.0);
+    //cameraPos.set(0, 3, 0);
+    //cameraPos.set(1, 3, 0);
+    //cameraPos.set(2, 3, 3);
+
+    //matrix<4,4> cameraTransform = invert(cameraPos);
+    matrix<4,4> viewClip = viewMatrix;// * cameraTransform;
+
+
+    // This is where the per model will be done..
+
+    matrix<4,4> model = matrix<4,4>::identity();
+    model.set(3, 2, -5);
+    model.set(3, 1, -.9);
+    model.set(3, 0, -.9);
+
+    vertex<float> light(x, y, -1);
+    matrix<4,4> project;
+      project._m[0] = 1;
+      project._m[5] = 1;
+      project._m[10] = 1;
+      project._m[11] = -2.0/3.0;
 
     for (auto t : head.getFaces()) {
-
-      // We get the normal vector for every triangle
-      vertex<float> v = cross(t._v0, t._v1, t._v2);
-
       // Angle of the light source
-      vertex<float> light(x, y, -1);
 
-      // Angle on the camera
-      vertex<float> view(0, 0, -1);
+      // TODO: This should be pipelined
+      const vertex<int> v0i(m2v(viewMatrix * multToProject(project, multToVector(model, t._v0))));
+      const vertex<int> v1i(m2v(viewMatrix * multToProject(project, multToVector(model, t._v1))));
+      const vertex<int> v2i(m2v(viewMatrix * multToProject(project, multToVector(model, t._v2))));
 
-      // Consider that positive z is "out" of the screen.
-      // I have no idea what the convention is on other engines
-      // Makes sense based on right hand rule
-
-      // Then take the dot between the normal and the light
-      // To determine the amount of lighting
+       // We get the normal vector for every triangle
+      vertex<float> v = cross(v0i, v1i, v2i);
       v.normalize();
 
+      // TODO: This could be optimized as view has only z components
       float seen = dot(v, view);
-      float aoi = dot(v, light);
-
-      if (aoi < 0.1) {
-        aoi = 0.1;
-      }
 
       if (seen > 0) {
-        drawTri(t, aoi, headtext, viewMatrix);
+        const vertex<float> v0iLight(multToVector(model, t._v0));
+        const vertex<float> v1iLight(multToVector(model, t._v1));
+        const vertex<float> v2iLight(multToVector(model, t._v2));
+        vertex<float> vLight = cross(v0iLight, v1iLight, v2iLight);
+        vLight.normalize();
+        float aoi = dot(vLight, light);
+
+        // Effectively, this is the global illumination
+        if (aoi < 0.1) {
+          aoi = 0.2;
+        }
+
+        drawTri(t, aoi, headtext, v0i, v1i, v2i);
 
         if (wireframe) {
           line(t._v0, t._v1,  0xFFFFFFF);

@@ -2,26 +2,23 @@
 #include "geometry.h"
 #include "rasterize.h"
 
-const unsigned depth = 0XFFFFF;
+const unsigned depth = 0XFFFF;
 
 const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   matrix m = matrix<4,4>::identity();
   float focalLength = -2.0/3.0;
-  m.set(0, 3, x);
-  m.set(1, 3, y);
-  m.set(2, 3, depth/2.f);
+  m.set(3, 0, x);
+  m.set(3, 1, y);
+  m.set(3, 2, depth/2.f);
   m.set(0, 0, w);
   m.set(1, 1, h);
-
-  m.set(0, 2, focalLength * x);
-  m.set(1, 2, focalLength * y);
-  m.set(2, 2, depth/1.5f + focalLength * depth/2.f);
-  m.set(3, 2, focalLength);
-
+  m.set(2,2, depth/1.5f);
   return m;
 }
 
-void drawTri(const face& f,  const float light, const TGAImage& img, const matrix<4,4>& viewMatrix) {
+
+// TODO: Add non-AVX2 version of this
+void drawTri(const face& f,  const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
 #ifdef DEBUG
   int direction = directionality(f._v0, f._v1, f._v2);
@@ -30,7 +27,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img, const matri
     return;
   }
 #endif
-  matrix<4,4> rot = matrix<4,4>::rotation(0, 0, 0.5);
 
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
@@ -38,23 +34,6 @@ void drawTri(const face& f,  const float light, const TGAImage& img, const matri
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
   static const __m256i ones = _mm256_set1_epi64x(-1);
-
-  rot.set(0, 3, .1);
-  rot.set(1, 3, -.2);
-  rot.set(2, 3, 0);
-
-
-  matrix<4,4> rot2 = matrix<4,4>::rotation(0, 0, .4);
-  rot2.set(1, 3, .6);
-  rot2.set(0, 3, .6);
-
-
-  //assert(gluInvertMatrix(rot2._m, rot4._m));
-  matrix<4,4> rot4 = invert(rot2);
-
-  const vertex<int> v0i(m2v(multToProject(viewMatrix, multToVector(rot4, f._v0))));
-  const vertex<int> v1i(m2v(multToProject(viewMatrix, multToVector(rot4, f._v1))));
-  const vertex<int> v2i(m2v(multToProject(viewMatrix, multToVector(rot4, f._v2))));
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;

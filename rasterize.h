@@ -62,14 +62,13 @@ inline int directionality(const T& p0, const T& p1, const T& p2)
   return p0._x*(p1._y - p2._y) - p0._y*(p1._x - p2._x) + p2._y*p1._x - p1._y*p2._x;
 }
 
-
 float zPos(const int cx, const int bx, const int ax, const int cy, const int by, const int ay, const int cz, const int bz, const int az, const int x, const int y);
 
 inline bool colinear(const int x0, const int x1, const int x2, const int y0, const int y1,const int y2) {
   return x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1) == 0;
 }
 
-void drawTri(const face& f,  const float light, const TGAImage& img, const matrix<4,4>& viewMatrix);
+void drawTri(const face& f,  const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
 
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible

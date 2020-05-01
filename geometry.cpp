@@ -57,9 +57,9 @@ template <>
 matrix<4,4> matrix<4,4>::rotation(double rotX, double rotY, double rotZ) {
   matrix<4,4> res = identity();
   res.set(0, 0, cos(rotZ));
-  res.set(0, 1, -sin(rotZ));
-  res.set(1, 0, sin(rotZ));
-  res.set(1, 1, cos(rotZ));
+  res.set(0, 2, -sin(rotZ));
+  res.set(2, 0, sin(rotZ));
+  res.set(2, 2, cos(rotZ));
   return res;
 }
 
@@ -96,16 +96,15 @@ matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& rhs) const {
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[12], _m[11], _m[6], _m[1]);
+  v2 = _mm_set_ps(_m[3], _m[14], _m[9], _m[4]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[13], _m[8], _m[7], _m[2]);
+  v2 = _mm_set_ps(_m[7], _m[2], _m[13], _m[8]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[14], _m[9], _m[4], _m[3]);
+  v2 = _mm_set_ps(_m[11], _m[6], _m[1], _m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   _mm_stream_ps(result._m, res);
@@ -363,27 +362,28 @@ const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v) {
   matrix<4,1> ret;
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z - 3, v._y, v._x);
+  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
   __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[12], m._m[11], m._m[6], m._m[1]);
+  v2 = _mm_set_ps(m._m[3], m._m[14], m._m[9], m._m[4]);
+
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[13], m._m[8], m._m[7], m._m[2]);
+  v2 = _mm_set_ps(m._m[7], m._m[2], m._m[13], m._m[8]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[14], m._m[9], m._m[4], m._m[3]);
+  v2 = _mm_set_ps(m._m[11], m._m[6], m._m[1], m._m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(res, 0b11111111);
   res = _mm_div_ps(res, v1);
 
-  _mm_stream_ps(ret._m, res);
+ _mm_stream_ps(ret._m, res);
 
   return ret;
 }
@@ -400,15 +400,16 @@ const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[12], m._m[11], m._m[6], m._m[1]);
+  v2 = _mm_set_ps(m._m[3], m._m[14], m._m[9], m._m[4]);
+
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[13], m._m[8], m._m[7], m._m[2]);
+  v2 = _mm_set_ps(m._m[7], m._m[2], m._m[13], m._m[8]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[14], m._m[9], m._m[4], m._m[3]);
+  v2 = _mm_set_ps(m._m[11], m._m[6], m._m[1], m._m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
   _mm_stream_ps(result, res);
@@ -429,7 +430,7 @@ vertex<int> m2v(const matrix<4,1> m) {
   return vertex<int>(m._m[0], m._m[1], m._m[2]);
 }
 
-vertex<float> m2vf(const matrix<4,1> m) {
+ vertex<float> m2vf(const matrix<4,1> m) {
   return vertex<float>(m._m[0], m._m[1], m._m[2]);
 }
 

@@ -52,7 +52,6 @@ struct vertex {
     T raw[4];
   };
 
-
   vertex (const T x, const T y, const T z) : _x(x), _y(y), _z(z) {}
   vertex () : _x(), _y(), _z() {};
 
@@ -93,10 +92,10 @@ struct face {
 
 
 template <typename T>
-vertex<T> cross(const vertex<T>& v0, const vertex<T>& v1, const vertex<T>& v2) {
-  vertex<T> l(v1._x - v0._x, v1._y - v0._y, v1._z - v0._z);
-  vertex<T> r(v1._x - v2._x, v1._y - v2._y, v1._z - v2._z);
-  vertex<T> v;
+vertex<float> cross(const vertex<T>& v0, const vertex<T>& v1, const vertex<T>& v2) {
+  vertex<float> l(v1._x - v0._x, v1._y - v0._y, v1._z - v0._z);
+  vertex<float> r(v1._x - v2._x, v1._y - v2._y, v1._z - v2._z);
+  vertex<float> v;
   v._x = (l._y * r._z) - (l._z * r._y);
   v._y = (l._z * r._x) - (l._x * r._z);
   v._z = (l._x * r._y) - (l._y * r._x);
@@ -109,7 +108,6 @@ T dot(const vertex<T>& l, const vertex<T>& r) {
 }
 
 void printMatrix(const matrix<4,4>& mat);
-
 matrix<4,4> inverseNoTranslate(const matrix<4,4>& in);
 matrix<4,4> invert(const matrix<4,4>& in);
 const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v);
