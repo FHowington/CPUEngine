@@ -81,10 +81,10 @@ int main() {
     static const matrix<4,4> viewMatrix = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
     static const vertex<float> view(0, 0, -1);
 
-    matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 0.4);
-    //cameraPos.set(0, 3, 0);
-    //cameraPos.set(1, 3, 0);
-    cameraPos.set(3, 2, 3);
+    matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
+    cameraPos.set(3, 0, 4);
+    cameraPos.set(3, 1, -0.5);
+    cameraPos.set(3, 2, -5);
 
     matrix<4,4> cameraTransform = invert(cameraPos);
     matrix<4,4> viewClip = viewMatrix;// * cameraTransform;
@@ -92,7 +92,7 @@ int main() {
 
     // This is where the per model will be done..
 
-    matrix<4,4> model = matrix<4,4>::rotation(0,0,-3);
+    matrix<4,4> model = matrix<4,4>::rotation(0,0,-3.14);
     model.set(3, 2, -5);
     model.set(3, 1, -.9);
     model.set(3, 0, -.9);

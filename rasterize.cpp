@@ -18,7 +18,7 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 
 
 // TODO: Add non-AVX2 version of this
-void drawTri(const face& f,  const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+void drawTri(const face& f, const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
 #ifdef DEBUG
   int direction = directionality(f._v0, f._v1, f._v2);
