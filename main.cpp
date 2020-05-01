@@ -14,6 +14,15 @@
 unsigned pixels[W * H];
 int zbuff[W * H];
 
+matrix<4,1> project(const vertex<float>& f) {
+  matrix<4,1> res;
+  res._m[0] = f._x / -(1.5 * f._z);
+  res._m[1] = f._y / -(1.5 * f._z);
+  res._m[2] = f._z;
+  res._m[3] = 1;
+  return res;
+}
+
 int main() {
   // Create a screen.
   SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
@@ -82,7 +91,8 @@ int main() {
     static const vertex<float> view(0, 0, -1);
 
     matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
-    cameraPos.set(3, 0, 4);
+
+    cameraPos.set(3, 0, 2);
     cameraPos.set(3, 1, -0.5);
     cameraPos.set(3, 2, -5);
 
@@ -98,17 +108,12 @@ int main() {
     model.set(3, 0, -.9);
 
     vertex<float> light(x, y, -1);
-    matrix<4,4> project;
-      project._m[0] = 1;
-      project._m[5] = 1;
-      project._m[10] = 1;
-      project._m[11] = -2.0/3.0;
 
     for (auto t : head.getFaces()) {
       // TODO: This should be pipelined
-      const vertex<int> v0i(m2v(viewMatrix * (multToProject(project, multToVector(cameraTransform, multToVector(model, t._v0))))));
-      const vertex<int> v1i(m2v(viewMatrix * (multToProject(project, multToVector(cameraTransform, multToVector(model, t._v1))))));
-      const vertex<int> v2i(m2v(viewMatrix * (multToProject(project, multToVector(cameraTransform, multToVector(model, t._v2))))));
+      const vertex<int> v0i(m2v(viewMatrix * (project(multToVector(cameraTransform, multToVector(model, t._v0))))));
+      const vertex<int> v1i(m2v(viewMatrix * (project(multToVector(cameraTransform, multToVector(model, t._v1))))));
+      const vertex<int> v2i(m2v(viewMatrix * (project(multToVector(cameraTransform, multToVector(model, t._v2))))));
 
        // We get the normal vector for every triangle
       vertex<float> v = cross(v0i, v1i, v2i);
