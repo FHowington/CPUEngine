@@ -81,18 +81,18 @@ int main() {
     static const matrix<4,4> viewMatrix = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
     static const vertex<float> view(0, 0, -1);
 
-    //matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 0.0);
+    matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 0.4);
     //cameraPos.set(0, 3, 0);
     //cameraPos.set(1, 3, 0);
-    //cameraPos.set(2, 3, 3);
+    cameraPos.set(3, 2, 3);
 
-    //matrix<4,4> cameraTransform = invert(cameraPos);
+    matrix<4,4> cameraTransform = invert(cameraPos);
     matrix<4,4> viewClip = viewMatrix;// * cameraTransform;
 
 
     // This is where the per model will be done..
 
-    matrix<4,4> model = matrix<4,4>::identity();
+    matrix<4,4> model = matrix<4,4>::rotation(0,0,-3);
     model.set(3, 2, -5);
     model.set(3, 1, -.9);
     model.set(3, 0, -.9);
@@ -105,12 +105,10 @@ int main() {
       project._m[11] = -2.0/3.0;
 
     for (auto t : head.getFaces()) {
-      // Angle of the light source
-
       // TODO: This should be pipelined
-      const vertex<int> v0i(m2v(viewMatrix * multToProject(project, multToVector(model, t._v0))));
-      const vertex<int> v1i(m2v(viewMatrix * multToProject(project, multToVector(model, t._v1))));
-      const vertex<int> v2i(m2v(viewMatrix * multToProject(project, multToVector(model, t._v2))));
+      const vertex<int> v0i(m2v(viewMatrix * (multToProject(project, multToVector(cameraTransform, multToVector(model, t._v0))))));
+      const vertex<int> v1i(m2v(viewMatrix * (multToProject(project, multToVector(cameraTransform, multToVector(model, t._v1))))));
+      const vertex<int> v2i(m2v(viewMatrix * (multToProject(project, multToVector(cameraTransform, multToVector(model, t._v2))))));
 
        // We get the normal vector for every triangle
       vertex<float> v = cross(v0i, v1i, v2i);
