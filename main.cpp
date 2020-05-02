@@ -14,6 +14,7 @@
 unsigned pixels[W * H];
 int zbuff[W * H];
 
+// TODO: Clip at far z to maximize z-buffer granularity
 matrix<4,1> project(const vertex<float>& f) {
   matrix<4,1> res;
   res._m[0] = f._x / -(1.5 * f._z);
@@ -110,12 +111,11 @@ int main() {
     vertex<float> light(x, y, -1);
 
     for (auto t : head.getFaces()) {
-      // TODO: This should be pipelined
-      const vertex<int> v0i(m2v(viewMatrix * (project(multToVector(cameraTransform, multToVector(model, t._v0))))));
-      const vertex<int> v1i(m2v(viewMatrix * (project(multToVector(cameraTransform, multToVector(model, t._v1))))));
-      const vertex<int> v2i(m2v(viewMatrix * (project(multToVector(cameraTransform, multToVector(model, t._v2))))));
+      const vertex<int> v0i(pipeline(cameraTransform, model, viewMatrix, t._v0, 1.5));
+      const vertex<int> v1i(pipeline(cameraTransform, model, viewMatrix, t._v1, 1.5));
+      const vertex<int> v2i(pipeline(cameraTransform, model, viewMatrix, t._v2, 1.5));
 
-       // We get the normal vector for every triangle
+      // We get the normal vector for every triangle
       vertex<float> v = cross(v0i, v1i, v2i);
       v.normalize();
 

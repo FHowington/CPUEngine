@@ -439,3 +439,78 @@ const matrix<4,4> getProjection(float focalLength) {
   m.set(3, 2, focalLength);
   return m;
 }
+
+const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
+  // Basically a streamlined approach to the vector multiplication
+  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
+  float __attribute__((aligned(16))) result[4];
+
+  __m128 res = _mm_set1_ps(0.0);
+  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
+  __m128 v2 = _mm_set_ps(model._m[15], model._m[10], model._m[5], model._m[0]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(model._m[3], model._m[14], model._m[9], model._m[4]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(model._m[7], model._m[2], model._m[13], model._m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(model._m[11], model._m[6], model._m[1], model._m[12]);
+
+  v1 = _mm_fmadd_ps(v1, v2, res);
+
+  // Camera transform
+  v2 = _mm_set_ps(cameraTransform._m[15], cameraTransform._m[10], cameraTransform._m[5], cameraTransform._m[0]);
+  res = _mm_set1_ps(0.0);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(cameraTransform._m[3], cameraTransform._m[14], cameraTransform._m[9], cameraTransform._m[4]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(cameraTransform._m[7], cameraTransform._m[2], cameraTransform._m[13], cameraTransform._m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(cameraTransform._m[11], cameraTransform._m[6], cameraTransform._m[1], cameraTransform._m[12]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  // Perspective projection
+  v1 = _mm_permute_ps(res, 0b11111010);
+
+  v2 = _mm_set_ps(1.0, 1.0, -focalLength, -focalLength);
+  __m128 v3 = _mm_mul_ps(v1, v2);
+
+  v1 = _mm_div_ps(res, v3);
+
+  // View clipping
+  res = _mm_set1_ps(0.0);
+  v2 = _mm_set_ps(viewClip._m[15], viewClip._m[10], viewClip._m[5], viewClip._m[0]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(viewClip._m[3], viewClip._m[14], viewClip._m[9], viewClip._m[4]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(viewClip._m[7], viewClip._m[2], viewClip._m[13], viewClip._m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(viewClip._m[11], viewClip._m[6], viewClip._m[1], viewClip._m[12]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  _mm_stream_ps(result, res);
+
+  return vertex<int>(result[0], result[1], result[2]);
+ }
