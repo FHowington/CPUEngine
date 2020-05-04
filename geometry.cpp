@@ -437,14 +437,14 @@ vertex<int> m2v(const matrix<4,1> m) {
 const matrix<4,4> getProjection(float focalLength) {
   matrix m = matrix<4,4>::identity();
   m.set(3, 2, focalLength);
+  m.set(3, 3, 0);
   return m;
 }
 
 const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
-  // Basically a streamlined approach to the vector multiplication
-  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
   float __attribute__((aligned(16))) result[4];
 
+  // Model transform
   __m128 res = _mm_set1_ps(0.0);
   __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
   __m128 v2 = _mm_set_ps(model._m[15], model._m[10], model._m[5], model._m[0]);
@@ -465,7 +465,7 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
 
   v1 = _mm_fmadd_ps(v1, v2, res);
 
-  // Camera transform
+  // Camera transform (model space to camera space)
   v2 = _mm_set_ps(cameraTransform._m[15], cameraTransform._m[10], cameraTransform._m[5], cameraTransform._m[0]);
   res = _mm_set1_ps(0.0);
 
@@ -513,4 +513,4 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   _mm_stream_ps(result, res);
 
   return vertex<int>(result[0], result[1], result[2]);
- }
+}

@@ -89,7 +89,6 @@ int main() {
 
     // TODO: Convert to more understandable numbers
     static const matrix<4,4> viewMatrix = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
-    static const vertex<float> view(0, 0, -1);
 
     matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
 
@@ -110,6 +109,7 @@ int main() {
 
     vertex<float> light(x, y, -1);
 
+    unsigned idx = 0;
     for (auto t : head.getFaces()) {
       const vertex<int> v0i(pipeline(cameraTransform, model, viewMatrix, t._v0, 1.5));
       const vertex<int> v1i(pipeline(cameraTransform, model, viewMatrix, t._v1, 1.5));
@@ -117,12 +117,9 @@ int main() {
 
       // We get the normal vector for every triangle
       vertex<float> v = cross(v0i, v1i, v2i);
-      v.normalize();
 
-      // TODO: This could be optimized as view has only z components
-      float seen = dot(v, view);
-
-      if (seen > 0) {
+      // If it is backfacing, vector will be pointing in +z, so cull it
+      if (v._z < 0) {
         const vertex<float> v0iLight(multToVector(model, t._v0));
         const vertex<float> v1iLight(multToVector(model, t._v1));
         const vertex<float> v2iLight(multToVector(model, t._v2));
