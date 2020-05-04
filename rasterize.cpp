@@ -72,6 +72,9 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
   // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
+  if (!wTotal) {
+    return;
+  }
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
