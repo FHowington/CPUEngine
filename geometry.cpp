@@ -85,34 +85,34 @@ matrix<4,4> matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const {
 }
 
 
-//// #ifdef __FMA__
-// template <>
-// template <>
-// matrix<4,1> matrix<4,4>::operator*<4>(const matrix<4,1>& lhs) const {
-//   matrix<4,1> result;
+#ifdef __FMA__
+template <>
+template <>
+matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const {
+  matrix<4,1> result;
 
-//   __m128 res = _mm_set1_ps(0.0);
-//   __m128 v1 = _mm_load_ps(lhs._m);
-//   __m128 v2 = _mm_set_ps(_m[15], _m[10], _m[5], _m[0]);
+  __m128 res = _mm_set1_ps(0.0);
+  __m128 v1 = _mm_load_ps(lhs._m);
+  __m128 v2 = _mm_set_ps(_m[15], _m[10], _m[5], _m[0]);
 
-//   res = _mm_fmadd_ps(v1, v2, res);
+  res = _mm_fmadd_ps(v1, v2, res);
 
-//   v1 = _mm_permute_ps(v1, 0b00111001);
-//   v2 = _mm_set_ps(_m[3], _m[14], _m[9], _m[4]);
-//   res = _mm_fmadd_ps(v1, v2, res);
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(_m[3], _m[14], _m[9], _m[4]);
+  res = _mm_fmadd_ps(v1, v2, res);
 
-//   v1 = _mm_permute_ps(v1, 0b00111001);
-//   v2 = _mm_set_ps(_m[7], _m[2], _m[13], _m[8]);
-//   res = _mm_fmadd_ps(v1, v2, res);
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(_m[7], _m[2], _m[13], _m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
 
-//   v1 = _mm_permute_ps(v1, 0b00111001);
-//   v2 = _mm_set_ps(_m[11], _m[6], _m[1], _m[12]);
-//   res = _mm_fmadd_ps(v1, v2, res);
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(_m[11], _m[6], _m[1], _m[12]);
+  res = _mm_fmadd_ps(v1, v2, res);
 
-//   _mm_stream_ps(result._m, res);
-//   return result;
-// }
-//#else
+  _mm_stream_ps(result._m, res);
+  return result;
+}
+#else
 template <>
 template <>
 matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const {
@@ -125,7 +125,7 @@ matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const {
 
   return result;
 }
-//#endif
+#endif
 
 #ifdef __AVX__
 // Fast matrix inverse using SIMD
