@@ -2,6 +2,7 @@
 #include "geometry.h"
 #include <immintrin.h>
 
+#ifdef __AVX__
 #define MakeShuffleMask(x,y,z,w)           (x | (y<<2) | (z<<4) | (w<<6))
 
 // vec(0, 1, 2, 3) -> (vec[x], vec[y], vec[z], vec[w])
@@ -43,6 +44,7 @@ __m128 Mat2MulAdj(__m128 vec1, __m128 vec2)
       _mm_sub_ps(_mm_mul_ps(                     vec1, VecSwizzle(vec2, 3,0,3,0)),
                  _mm_mul_ps(VecSwizzle(vec1, 1,0,3,2), VecSwizzle(vec2, 2,1,2,1)));
 }
+#endif
 
 template <>
 matrix<4,4> matrix<4,4>::identity() {
@@ -83,59 +85,47 @@ matrix<4,4> matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const {
 }
 
 
-// TODO: Non-AVX version of this
+//// #ifdef __FMA__
+// template <>
+// template <>
+// matrix<4,1> matrix<4,4>::operator*<4>(const matrix<4,1>& lhs) const {
+//   matrix<4,1> result;
+
+//   __m128 res = _mm_set1_ps(0.0);
+//   __m128 v1 = _mm_load_ps(lhs._m);
+//   __m128 v2 = _mm_set_ps(_m[15], _m[10], _m[5], _m[0]);
+
+//   res = _mm_fmadd_ps(v1, v2, res);
+
+//   v1 = _mm_permute_ps(v1, 0b00111001);
+//   v2 = _mm_set_ps(_m[3], _m[14], _m[9], _m[4]);
+//   res = _mm_fmadd_ps(v1, v2, res);
+
+//   v1 = _mm_permute_ps(v1, 0b00111001);
+//   v2 = _mm_set_ps(_m[7], _m[2], _m[13], _m[8]);
+//   res = _mm_fmadd_ps(v1, v2, res);
+
+//   v1 = _mm_permute_ps(v1, 0b00111001);
+//   v2 = _mm_set_ps(_m[11], _m[6], _m[1], _m[12]);
+//   res = _mm_fmadd_ps(v1, v2, res);
+
+//   _mm_stream_ps(result._m, res);
+//   return result;
+// }
+//#else
 template <>
 template <>
-matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& rhs) const {
+matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const {
   matrix<4,1> result;
 
-  __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_load_ps(rhs._m);
-  __m128 v2 = _mm_set_ps(_m[15], _m[10], _m[5], _m[0]);
+  result._m[0] = lhs._m[0] * _m[0] + lhs._m[1] * _m[4] + lhs._m[2] * _m[8] + lhs._m[3] * _m[12];
+  result._m[1] = lhs._m[0] * _m[1] + lhs._m[1] * _m[5] + lhs._m[2] * _m[9] + lhs._m[3] * _m[13];
+  result._m[2] = lhs._m[0] * _m[2] + lhs._m[1] * _m[6] + lhs._m[2] * _m[10] + lhs._m[3] * _m[14];
+  result._m[3] = lhs._m[0] * _m[3] + lhs._m[1] * _m[7] + lhs._m[2] * _m[11] + lhs._m[3] * _m[15];
 
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[3], _m[14], _m[9], _m[4]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[7], _m[2], _m[13], _m[8]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(_m[11], _m[6], _m[1], _m[12]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  _mm_stream_ps(result._m, res);
   return result;
 }
-
-// Fast matrix inverse using SIMD
-// I did NOT write this, only modified. Credit goes to Eric Zhang
-// Taken from: https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
-
-// TODO: Non-AVX version of this
-matrix<4,4> inverseNoTranslate(const matrix<4,4>& inM)
-{
-  matrix<4,4> r;
-
-  // transpose 3x3, we know m03 = m13 = m23 = 0
-  __m128 t0 = VecShuffle_0101(*((__m128*)&inM._m[0]), *((__m128*)&inM._m[4])); // 00, 01, 10, 11
-  __m128 t1 = VecShuffle_2323(*((__m128*)&inM._m[0]), *((__m128*)&inM._m[4])); // 02, 03, 12, 13
-  *((__m128*)&r._m[0]) = VecShuffle(t0, *((__m128*)&inM._m[8]), 0,2,0,3); // 00, 10, 20, 23(=0)
-  *((__m128*)&r._m[4]) = VecShuffle(t0, *((__m128*)&inM._m[8]), 1,3,1,3); // 01, 11, 21, 23(=0)
-  *((__m128*)&r._m[8]) = VecShuffle(t1, *((__m128*)&inM._m[8]), 0,2,2,3); // 02, 12, 22, 23(=0)
-
-  // last line
-  *((__m128*)&r._m[12]) = _mm_mul_ps(*((__m128*)&r._m[0]), VecSwizzle1(*((__m128*)&inM._m[12]), 0));
-  *((__m128*)&r._m[12]) = _mm_add_ps(*((__m128*)&r._m[12]), _mm_mul_ps(*((__m128*)&r._m[4]), VecSwizzle1(*((__m128*)&inM._m[12]), 1)));
-  *((__m128*)&r._m[12]) = _mm_add_ps(*((__m128*)&r._m[12]), _mm_mul_ps(*((__m128*)&r._m[8]), VecSwizzle1(*((__m128*)&inM._m[12]), 2)));
-  *((__m128*)&r._m[12]) = _mm_sub_ps(_mm_setr_ps(0.f, 0.f, 0.f, 1.f), *((__m128*)&r._m[12]));
-
-  return r;
-}
-
+//#endif
 
 #ifdef __AVX__
 // Fast matrix inverse using SIMD
@@ -355,68 +345,6 @@ void printMatrix(const matrix<4,4>& mat) {
   }
 }
 
-const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v) {
-  // Basically a streamlined approach to the vector multiplication
-  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
-  // This version includes scaling correction
-  matrix<4,1> ret;
-
-  __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
-  __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
-
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[3], m._m[14], m._m[9], m._m[4]);
-
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[7], m._m[2], m._m[13], m._m[8]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[11], m._m[6], m._m[1], m._m[12]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(res, 0b11111111);
-  res = _mm_div_ps(res, v1);
-
- _mm_stream_ps(ret._m, res);
-
-  return ret;
-}
-
-const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
-  // Basically a streamlined approach to the vector multiplication
-  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
-  float __attribute__((aligned(16))) result[4];
-
-  __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
-  __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
-
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[3], m._m[14], m._m[9], m._m[4]);
-
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[7], m._m[2], m._m[13], m._m[8]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(m._m[11], m._m[6], m._m[1], m._m[12]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  _mm_stream_ps(result, res);
-
-  return vertex<float>(result[0], result[1], result[2]);
-}
-
 matrix<4,1> v2m(const vertex<float>& v) {
   matrix<4,1> m;
   m.set(0, 0, v._x);
@@ -434,13 +362,7 @@ vertex<int> m2v(const matrix<4,1> m) {
   return vertex<float>(m._m[0], m._m[1], m._m[2]);
 }
 
-const matrix<4,4> getProjection(float focalLength) {
-  matrix m = matrix<4,4>::identity();
-  m.set(3, 2, focalLength);
-  m.set(3, 3, 0);
-  return m;
-}
-
+#ifdef __AVX__
 const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
   float __attribute__((aligned(16))) result[4];
 
@@ -514,3 +436,49 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
 
   return vertex<int>(result[0], result[1], result[2]);
 }
+#else
+const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
+  matrix<4,1> imres(model * v2m(v));
+  imres = (cameraTransform * imres);
+
+  imres._m[0] = imres._m[0] / (-focalLength * imres._m[2]);
+  imres._m[1] = imres._m[1] / (-focalLength * imres._m[2]);
+
+  imres =  viewClip * imres;
+
+  return vertex<int>(imres._m[0], imres._m[0], imres._m[0]);
+#endif
+
+
+#ifdef __FMA__
+const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
+  // Basically a streamlined approach to the vector multiplication
+  // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
+  float __attribute__((aligned(16))) result[4];
+
+  __m128 res = _mm_set1_ps(0.0);
+  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
+  __m128 v2 = _mm_set_ps(m._m[15], m._m[10], m._m[5], m._m[0]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(m._m[3], m._m[14], m._m[9], m._m[4]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(m._m[7], m._m[2], m._m[13], m._m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(m._m[11], m._m[6], m._m[1], m._m[12]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  _mm_stream_ps(result, res);
+
+  return vertex<float>(result[0], result[1], result[2]);
+}
+#else
+// TODO: Non-SIMD version of this
+#endif

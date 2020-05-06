@@ -110,10 +110,8 @@ T dot(const vertex<T>& l, const vertex<T>& r) {
 void printMatrix(const matrix<4,4>& mat);
 matrix<4,4> inverseNoTranslate(const matrix<4,4>& in);
 matrix<4,4> invert(const matrix<4,4>& in);
-const matrix<4,1> multToProject(const matrix<4,4> m, const vertex<float>& v);
 const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v);
 matrix<4,1> v2m(const vertex<float>& v);
 vertex<int> m2v(const matrix<4,1> m);
 vertex<float> m2vf(const matrix<4,1> m);
-const matrix<4,4> getProjection(float focalLength);
 const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength);

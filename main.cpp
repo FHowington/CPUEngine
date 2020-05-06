@@ -105,7 +105,7 @@ int main() {
     matrix<4,4> model = matrix<4,4>::rotation(0,0,-3.14);
     model.set(3, 2, -5);
     model.set(3, 1, -.9);
-    model.set(3, 0, -.9);
+    model.set(3, 0, -.8);
 
     vertex<float> light(x, y, -1);
 
