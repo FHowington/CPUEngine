@@ -1,7 +1,7 @@
 CXX = clang++
-CXXFLAGS = -lstdc++ -std=c++17 -lSDL2 -Rpass-analysis=loop-vectorize -Rpass=loop-vectorize
+CXXFLAGS = -lstdc++ -std=c++17 -lSDL2
 
-all: CXXFLAGS += -Ofast -mavx2 -mfma
+all: CXXFLAGS += -Ofast -mavx2 -mfma -Rpass-analysis=loop-vectorize -Rpass=loop-vectorize
 all: engine
 
 debug: CXXFLAGS += -O0 -g -mavx2 -mfma
@@ -9,6 +9,9 @@ debug: engine
 
 slow: CXXFLAGS += -Ofast
 slow: engine
+
+slowdebug: CXXFLAGS += -O0 -g
+slowdebug: engine
 
 engine: main.o tgaimage.o loader.o rasterize.o geometry.o
 	$(CXX) $(CXXFLAGS) -o engine main.o tgaimage.o loader.o rasterize.o geometry.o

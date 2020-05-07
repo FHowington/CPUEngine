@@ -445,8 +445,8 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   imres._m[1] = imres._m[1] / (-focalLength * imres._m[2]);
 
   imres =  viewClip * imres;
-
-  return vertex<int>(imres._m[0], imres._m[0], imres._m[0]);
+  return vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
+}
 #endif
 
 
@@ -480,5 +480,9 @@ const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   return vertex<float>(result[0], result[1], result[2]);
 }
 #else
-// TODO: Non-SIMD version of this
+const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
+  matrix<4,1> vec(v2m(v));
+  vec = m * vec;
+  return vertex<float>(vec._m[0], vec._m[1], vec._m[2]);
+}
 #endif
