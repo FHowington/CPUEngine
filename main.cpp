@@ -42,6 +42,7 @@ int main() {
   float x = 0;
   float y = 0;
   auto start = std::chrono::high_resolution_clock::now();
+  float rot = 0;
 
   for(bool interrupted=false; !interrupted;)
   {
@@ -83,26 +84,32 @@ int main() {
             case SDLK_f:
               fps = !fps;
               break;
+
+            case SDLK_e:
+              rot+= 0.05;
+              break;
+
+            case SDLK_q:
+              rot -= 0.05;
+              break;
           }
       }
 
-
     // TODO: Convert to more understandable numbers
-    static const matrix<4,4> viewMatrix = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
+    static const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
 
     matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
 
-    cameraPos.set(3, 0, .5);
+    cameraPos.set(3, 0, .9);
     cameraPos.set(3, 1, -0.9);
     cameraPos.set(3, 2, -5);
 
     matrix<4,4> cameraTransform = invert(cameraPos);
-    matrix<4,4> viewClip = viewMatrix;// * cameraTransform;
 
 
     // This is where the per model will be done..
 
-    matrix<4,4> model = matrix<4,4>::rotation(0,0,-3.14);
+    matrix<4,4> model = matrix<4,4>::rotation(0,0, rot);
     model.set(3, 2, -5);
     model.set(3, 1, -.9);
     model.set(3, 0, -.8);
@@ -111,9 +118,9 @@ int main() {
 
     unsigned idx = 0;
     for (auto t : head.getFaces()) {
-      const vertex<int> v0i(pipeline(cameraTransform, model, viewMatrix, t._v0, 1.5));
-      const vertex<int> v1i(pipeline(cameraTransform, model, viewMatrix, t._v1, 1.5));
-      const vertex<int> v2i(pipeline(cameraTransform, model, viewMatrix, t._v2, 1.5));
+      const vertex<int> v0i(pipeline(cameraTransform, model, viewClip, t._v0, 1.5));
+      const vertex<int> v1i(pipeline(cameraTransform, model, viewClip, t._v1, 1.5));
+      const vertex<int> v2i(pipeline(cameraTransform, model, viewClip, t._v2, 1.5));
 
       // We get the normal vector for every triangle
       vertex<float> v = cross(v0i, v1i, v2i);
@@ -128,7 +135,7 @@ int main() {
         float aoi = dot(vLight, light);
 
         // Effectively, this is the global illumination
-        if (aoi < 0.1) {
+        if (aoi < 0.2) {
           aoi = 0.2;
         }
 

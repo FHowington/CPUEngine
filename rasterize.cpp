@@ -306,8 +306,8 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
       xColRow = xCol;
       yColRow = yCol;
 
-      numInner = (maxY - minY) / 8;
-      numOuter = (maxY - minY) % 8;
+      numInner = (maxY - minY + 1) / 8;
+      numOuter = (maxY - minY + 1) % 8;
 
       w0RowInit = _mm256_set1_epi32(w0Row);
       w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
