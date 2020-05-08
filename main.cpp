@@ -92,8 +92,8 @@ int main() {
 
     matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
 
-    cameraPos.set(3, 0, 2);
-    cameraPos.set(3, 1, -0.5);
+    cameraPos.set(3, 0, .5);
+    cameraPos.set(3, 1, -0.9);
     cameraPos.set(3, 2, -5);
 
     matrix<4,4> cameraTransform = invert(cameraPos);

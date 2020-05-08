@@ -29,12 +29,7 @@ void plot(unsigned x, unsigned y, const unsigned color);
 // Or
 template <typename T>
 inline bool isTopLeft(T& p0, T& p1) {
-  if (p0._y == p1._y && p1._x < p0._x) {
-    return true;
-  } else if (p0._y < p1._y) {
-    return true;
-  }
-  return false;
+  return (p0._y == p1._y && p1._x < p0._x) || (p0._y < p1._y);
 }
 
 inline int orient2d(const int x0, const int x1, const int x2, const int y0, const int y1, const int y2)

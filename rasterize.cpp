@@ -29,11 +29,11 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 #endif
 
   // These are reused for every triangle in the model
-  static const __m128 min = _mm_set1_epi32(-1);
-  static const __m128 scale = _mm_set_epi32(3, 2, 1, 0);
-  static const __m128 scaleFloat = _mm_set_ps(3, 2, 1, 0);
-  static const __m128 loadOffset = _mm_set_epi32(3*W, 2*W, W, 0);
-  static const __m128 ones = _mm_set1_epi64x(-1);
+  static const __m256i min = _mm256_set1_epi32(-1);
+  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
+  static const __m256i ones = _mm256_set1_epi64x(-1);
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -61,9 +61,9 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
   // Bias to make sure only top or left edges fall on line
   // TODO: Vectorize to prevent data dependant branching
-  const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : -1;
-  const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
-  const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : -1;
+  const int bias0 = -isTopLeft(f._v1, f._v2);
+  const int bias1 = -isTopLeft(f._v2, f._v0);
+  const int bias2 = -isTopLeft(f._v0, f._v1);
 
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
@@ -130,9 +130,9 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
   float yCol;
 
   // We want to always have our accessed aligned on 32 byte boundaries
-  unsigned __attribute__((aligned(16))) zBuffTemp[4];
-  float __attribute__((aligned(16))) xColArr[4];
-  float __attribute__((aligned(16))) yColArr[4];
+  unsigned __attribute__((aligned(32))) zBuffTemp[8];
+  float __attribute__((aligned(32))) xColArr[8];
+  float __attribute__((aligned(32))) yColArr[8];
 
   const unsigned xDiff = maxX - minX;
   const unsigned yDiff = maxY - minY;
@@ -140,154 +140,279 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
-  const __m128 zdxAdd = _mm_set_epi32(3*zdx, 2*zdx, zdx, 0);
-  const __m128 xColAdd = _mm_mul_ps(scaleFloat,  _mm_set1_ps(xColDx));
-  const __m128 yColAdd = _mm_mul_ps(scaleFloat, _mm_set1_ps(yColDx));
+  if (xDiff > yDiff) {
+    const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+    const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
+    const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
 
-  __m128 w0Init;
-  __m128 w1Init;
-  __m128 w2Init;
+    __m256i w0Init;
+    __m256i w1Init;
+    __m256i w2Init;
 
-  const  int zdx4 = 4*zdx;
-  const float xColDx4 = 4*xColDx;
-  const float yColDx4 = 4*yColDx;
+    const  int zdx8 = 8*zdx;
+    const float xColDx8 = 8*xColDx;
+    const float yColDx8 = 8*yColDx;
 
-  const __m128 a12Add = _mm_mullo_epi32(_mm_set1_epi32(A12), scale);
-  const __m128 a12Add4 = _mm_set1_epi32(4*A12);
+    const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
+    const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
 
-  const __m128 a20Add = _mm_mullo_epi32(_mm_set1_epi32(A20), scale);
-  const __m128 a20Add4 = _mm_set1_epi32(4*A20);
+    const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
+    const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
 
-  const __m128 a01Add = _mm_mullo_epi32(_mm_set1_epi32(A01), scale);
-  const __m128 a01Add4 = _mm_set1_epi32(4*A01);
-
-
-  // We will enter inner loop at least once, otherwise numInner is always 0
-  unsigned offset = minY * W;
-  float textureOffset = yColRow;
-  const float yColDy4 = 4 * yColDy;
-
-  for (y = minY; y <= maxY; ++y) {
-
-    w0 = w0Row;
-    w1 = w1Row;
-    w2 = w2Row;
-    z = zOrig;
-    xCol = xColRow;
-    yCol = yColRow;
-
-    numInner = (maxX - minX) / 4;
-    numOuter = (maxX - minX) % 4 + 1;
+    const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
+    const __m256i a01Add8 =  _mm256_set1_epi32(8*A01);
 
 
-    w0Init = _mm_set1_epi32(w0);
-    w0Init = _mm_add_epi32(w0Init, a12Add);
+    // We will enter inner loop at least once, otherwise numInner is always 0
+    unsigned offset = minY * W;
+    float textureOffset = yColRow;
+    const float yColDy4 = 4 * yColDy;
 
-    w1Init = _mm_set1_epi32(w1);
-    w1Init = _mm_add_epi32(w1Init, a20Add);
+    for (y = minY; y <= maxY; ++y) {
 
-    w2Init = _mm_set1_epi32(w2);
-    w2Init = _mm_add_epi32(w2Init, a01Add);
+      w0 = w0Row;
+      w1 = w1Row;
+      w2 = w2Row;
+      z = zOrig;
+      xCol = xColRow;
+      yCol = yColRow;
 
-    xVal = minX;
-    for (inner = 0; inner < numInner; ++inner) {
-      // We have AVX2, lets take advantage of it!
-      // We break the loop out to enable the compiler to vectorize it!
-      //#pragma clang loop vectorize(enable) interleave(enable)
-
-      // Calculate w0, w1, w2, xCol, yCol
-      // For all 8 cases.
-      // Next, Create mask of w0 | w1 w2 && zbuf thing
-      // Then, calculate color for each of these
-      // Finally, apply to both zbuff and plot the results
-
-      const __m128 zbuffv = _mm_load_si128((__m128i*)(zbuff + xVal + offset));
-
-      const __m128 zInit = _mm_set1_epi32(z);
-      const __m128 zv = _mm_add_epi32(zInit, zdxAdd);
-      const __m128 zUpdate = _mm_and_si128(_mm_and_si128(_mm_cmpgt_epi32(zv, zbuffv), _mm_cmpgt_epi32(_mm_or_si128(w2Init, _mm_or_si128(w0Init, w1Init)), min)), zv);
-
-      const __m128 xColv = _mm_add_ps(_mm_set1_ps(xCol), xColAdd);
-      const __m128 yColv = _mm_add_ps(_mm_set1_ps(yCol), yColAdd);
-
-      _mm_stream_si128((__m128i *)(zBuffTemp), zUpdate);
-      _mm_stream_ps(yColArr, yColv);
-      _mm_stream_ps(xColArr, xColv);
+      numInner = (maxX - minX) / 8;
+      numOuter = (maxX - minX) % 8 + 1;
 
 
-      // Instead, we want to get the colors for all 8 at once
-      // Then, load current values of plot into a register, and iff zbufftemp > z,
-      // update using color
-      // so..zbufftemp is 0 if no update, and new z value otherwise
-      // first, lets load in the current colors..
+      w0Init = _mm256_set1_epi32(w0);
+      w0Init = _mm256_add_epi32(w0Init, a12Add);
 
-      //const __m256i plotv = _mm256_load_si256((__m256i*)(pixels + xVal + offset));
-      // Next, load the new colors..
-      //static short __attribute__((aligned(32))) color[8];
+      w1Init = _mm256_set1_epi32(w1);
+      w1Init = _mm256_add_epi32(w1Init, a20Add);
 
-      //const __m256i colors =
+      w2Init = _mm256_set1_epi32(w2);
+      w2Init = _mm256_add_epi32(w2Init, a01Add);
 
-      for (unsigned x = 0; x < 4; ++x) {
-        if (zBuffTemp[x]) {
-          const fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
-          //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
-          zbuff[xVal + offset] = zBuffTemp[x];
-          plot(xVal, y, c);
+      xVal = minX;
+      for (inner = 0; inner < numInner; ++inner) {
+        // We have AVX2, lets take advantage of it!
+        // We break the loop out to enable the compiler to vectorize it!
+        //#pragma clang loop vectorize(enable) interleave(enable)
+
+        // Calculate w0, w1, w2, xCol, yCol
+        // For all 8 cases.
+        // Next, Create mask of w0 | w1 w2 && zbuf thing
+        // Then, calculate color for each of these
+        // Finally, apply to both zbuff and plot the results
+
+        const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+
+        const __m256i zInit = _mm256_set1_epi32(z);
+        const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
+        const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
+
+        const __m256i xColInit = _mm256_set1_ps(xCol);
+        const __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
+
+        const __m256i yColInit = _mm256_set1_ps(yCol);
+        const __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
+
+        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        _mm256_stream_ps(yColArr, yColv);
+        _mm256_stream_ps(xColArr, xColv);
+
+        // Instead, we want to get the colors for all 8 at once
+        // Then, load current values of plot into a register, and iff zbufftemp > z,
+        // update using color
+        for (unsigned x = 0; x < 8; ++x) {
+          if (zBuffTemp[x]) {
+            const fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
+            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+            zbuff[xVal + offset] = zBuffTemp[x];
+            plot(xVal, y, c);
+          }
+          ++xVal;
         }
+
+        z += zdx8;
+        xCol += xColDx8;
+        yCol += yColDx8;
+
+        if (inner < numInner - 1) {
+          w0Init = _mm256_add_epi32(w0Init, a12Add8);
+          w1Init = _mm256_add_epi32(w1Init, a20Add8);
+          w2Init = _mm256_add_epi32(w2Init, a01Add8);
+        }
+      }
+
+      const unsigned inner8 = 8 * numInner;
+      w0 += A12 * inner8;
+      w1 += A20 * inner8;
+      w2 += A01 * inner8;
+
+      for (x = 0; x < numOuter; ++x) {
+
+        // If p is on or inside all edges, render pixel
+        if ((w0 | w1 | w2) >= 0) {
+          // Uncomment for exact z values
+          //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+          if (zbuff[xVal + offset] < z) {
+            const fcolor c = img.get_and_light(xCol, yCol, light);
+            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
+            // Can we do better than this niave approach?
+            // TODO: Vectorize all 8 simulatenously, perhaps.
+            // Although this would require we fetch all colors, which is extremely expensive
+            // Instead: Maybe keep track of all pixels updated, then vectorize that!
+            zbuff[xVal + offset] = z;
+            plot(xVal, y, c);
+          }
+        }
+        w0 += A12;
+        w1 += A20;
+        w2 += A01;
+        z += zdx;
+        xCol += xColDx;
+        yCol += yColDx;
         ++xVal;
       }
 
-      z += zdx4;
-      xCol += xColDx4;
-      yCol += yColDx4;
-
-      if (inner < numInner - 1) {
-        w0Init = _mm_add_epi32(w0Init, a12Add4);
-        w1Init = _mm_add_epi32(w1Init, a20Add4);
-        w2Init = _mm_add_epi32(w2Init, a01Add4);
-      }
+      w0Row += B12;
+      w1Row += B20;
+      w2Row += B01;
+      zOrig += zdy;
+      xColRow += xColDy;
+      yColRow += yColDy;
+      offset += W;
+      textureOffset += yColDy4;
     }
+  } else {
+    const int zdy8 = 8*zdy;
+    const float xColDy8 = 8*xColDy;
+    const float yColDy8 = 8*yColDy;
 
-    const unsigned inner4 = 4 * numInner;
-    w0 += A12 * inner4;
-    w1 += A20 * inner4;
-    w2 += A01 * inner4;
+    const __m256i zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
+    const __m256i xColRowAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(xColDy));
+    const  __m256i yColRowAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yColDy));
 
-    for (x = 0; x < numOuter; ++x) {
+    __m256i w0RowInit;
+    __m256i w1RowInit;
+    __m256i w2RowInit;
 
-      // If p is on or inside all edges, render pixel
-      if ((w0 | w1 | w2) >= 0) {
-        // Uncomment for exact z values
-        //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-        if (zbuff[xVal + offset] < z) {
-          const fcolor c = img.get_and_light(xCol, yCol, light);
-          //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
 
-          // Can we do better than this niave approach?
-          // TODO: Vectorize all 8 simulatenously, perhaps.
-          // Although this would require we fetch all colors, which is extremely expensive
-          // Instead: Maybe keep track of all pixels updated, then vectorize that!
-          zbuff[xVal + offset] = z;
-          plot(xVal, y, c);
+    const __m256i b12Add = _mm256_mullo_epi32(_mm256_set1_epi32(B12), scale);
+    const __m256i b12Add8 = _mm256_set1_epi32(8*B12);
+
+    const __m256i b20Add = _mm256_mullo_epi32(_mm256_set1_epi32(B20), scale);
+    const __m256i b20Add8 = _mm256_set1_epi32(8*B20);
+
+    const __m256i b01Add = _mm256_mullo_epi32(_mm256_set1_epi32(B01), scale);
+    const __m256i b01Add8 = _mm256_set1_epi32(8*B01);
+
+    // For row only
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+    xCol = xColRow;
+    yCol = yColRow;
+
+    for (x = minX; x <= maxX; ++x) {
+      w0Row = w0;
+      w1Row = w1;
+      w2Row = w2;
+      z = zOrig;
+      xColRow = xCol;
+      yColRow = yCol;
+
+      numInner = (maxY - minY) / 8;
+      numOuter = (maxY - minY) % 8 + 1;
+
+      w0RowInit = _mm256_set1_epi32(w0Row);
+      w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
+
+      w1RowInit = _mm256_set1_epi32(w1Row);
+      w1RowInit = _mm256_add_epi32(w1RowInit, b20Add);
+
+      w2RowInit = _mm256_set1_epi32(w2Row);
+      w2RowInit = _mm256_add_epi32(w2RowInit, b01Add);
+
+      yVal = minY;
+
+      unsigned offset = minY * W + x;
+
+      for (inner = 0; inner < numInner; ++inner) {
+
+        const __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
+        const __m256i zInit = _mm256_set1_epi32(z);
+        const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
+        const  __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
+
+
+        const __m256i xColRowInit = _mm256_set1_ps(xColRow);
+        const __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
+
+        const __m256i yColRowInit = _mm256_set1_ps(yColRow);
+        const __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
+
+        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        _mm256_stream_ps(yColArr, yColRowv);
+        _mm256_stream_ps(xColArr, xColRowv);
+
+        for (unsigned y = 0; y < 8; ++y) {
+          if (zBuffTemp[y]) {
+            const fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
+            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
+            zbuff[yVal * W + x] = zBuffTemp[y];
+            plot(x, yVal, c);
+          }
+          ++yVal;
         }
+
+        z += zdy8;
+        xColRow += xColDy8;
+        yColRow += yColDy8;
+
+        if (inner < numInner - 1) {
+          w0RowInit = _mm256_add_epi32(w0RowInit, b12Add8);
+          w1RowInit = _mm256_add_epi32(w1RowInit, b20Add8);
+          w2RowInit = _mm256_add_epi32(w2RowInit, b01Add8);
+        }
+        offset += 8*W;
       }
+
+      const unsigned inner8 = numInner * 8;
+
+      w0Row += B12 * inner8;
+      w1Row += B20 * inner8;
+      w2Row += B01 * inner8;
+
+      for (y = 0; y < numOuter; ++y) {
+        // If p is on or inside all edges, render pixel
+        if ((w0Row | w1Row | w2Row) >= 0) {
+          // Uncomment for exact z values
+          //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+          if (zbuff[yVal * W + x] < z) {
+            const fcolor c = img.get_and_light(xColRow, yColRow, light);
+            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
+            zbuff[yVal * W + x] = z;
+            plot(x, yVal, c);
+          }
+        }
+        w0Row += B12;
+        w1Row += B20;
+        w2Row += B01;
+        z += zdy;
+        xColRow += xColDy;
+        yColRow += yColDy;
+        ++yVal;
+      }
+
       w0 += A12;
       w1 += A20;
       w2 += A01;
-      z += zdx;
+      zOrig += zdx;
       xCol += xColDx;
       yCol += yColDx;
-      ++xVal;
     }
-
-    w0Row += B12;
-    w1Row += B20;
-    w2Row += B01;
-    zOrig += zdy;
-    xColRow += xColDy;
-    yColRow += yColDy;
-    offset += W;
-    textureOffset += yColDy4;
   }
 }
 #else
