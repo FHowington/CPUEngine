@@ -174,7 +174,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
       yCol = yColRow;
 
       numInner = (maxX - minX) / 8;
-      numOuter = (maxX - minX) % 8 + 1;
+      numOuter = (maxX - minX) % 8;
 
       w0Init = _mm256_set1_epi32(w0);
       w0Init = _mm256_add_epi32(w0Init, a12Add);
@@ -308,7 +308,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
       yColRow = yCol;
 
       numInner = (maxY - minY) / 8;
-      numOuter = (maxY - minY) % 8 + 1;
+      numOuter = (maxY - minY) % 8;
 
       w0RowInit = _mm256_set1_epi32(w0Row);
       w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
@@ -351,11 +351,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
           for (unsigned y = 0; y < 8; ++y) {
             if (zBuffTemp[y]) {
-              //const fcolor c = img.get_and_light(xColRow, yColRow, light);
               const fcolor c(colors[y], light);
-
-              //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
-
               zbuff[yVal * W + x] = zBuffTemp[y];
               plot(x, yVal, c);
             }
@@ -540,12 +536,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (zbuff[x + offset] < z) {
           const fcolor c = img.get_and_light(xCol, yCol, light);
-          //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
-
-          // Can we do better than this niave approach?
-          // TODO: Vectorize all 8 simulatenously, perhaps.
-          // Although this would require we fetch all colors, which is extremely expensive
-          // Instead: Maybe keep track of all pixels updated, then vectorize that!
           zbuff[x + offset] = z;
           plot(x, y, c);
         }
