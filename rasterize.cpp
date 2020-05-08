@@ -176,7 +176,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
       numInner = (maxX - minX) / 8;
       numOuter = (maxX - minX) % 8 + 1;
 
-
       w0Init = _mm256_set1_epi32(w0);
       w0Init = _mm256_add_epi32(w0Init, a12Add);
 
@@ -194,45 +193,39 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
         const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
         const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
-        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        if (!_mm256_testz_si256(zUpdate, zUpdate)) {
+          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
 
-        __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
-        __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
+          __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
+          __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
 
-        // Convert to ints
-        xColv = _mm256_cvtps_epi32(xColv);
-        yColv = _mm256_cvtps_epi32(yColv);
+          // Convert to ints
+          xColv = _mm256_cvtps_epi32(xColv);
+          yColv = _mm256_cvtps_epi32(yColv);
 
-        yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
-        xColv = _mm256_add_epi32(xColv, yColv);
+          yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
+          xColv = _mm256_add_epi32(xColv, yColv);
 
-        // _mm256_cmpgt_epi32(xColv,
+          xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
 
-        unsigned __attribute__((aligned(32))) textOffsets[8];
+          __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
+          _mm256_stream_si256((__m256i *)(colors), colorsData);
 
-        __m256i xColv2 = _mm256_mullo_epi32(xColv, _mm256_set1_epi32(4));
-        _mm256_stream_si256((__m256i *)(textOffsets), xColv);
-        for (unsigned idx = 0; idx < 8; ++idx) {
-          if (textOffsets[x] > img.width * img.height * 4 || textOffsets[x] < 0) {
-            printf("val %u vs. %d\n", textOffsets[x], img.width * img.height * 4);
+          for (unsigned x = 0; x < 8; ++x) {
+            if (zBuffTemp[x]) {
+              const fcolor c(colors[x], light);
+              zbuff[xVal + offset] = zBuffTemp[x];
+              plot(xVal, y, c);
+            }
+
+            ++xVal;
+            xCol += xColDx;
+            yCol += yColDx;
           }
-        }
-
-        __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
-        _mm256_stream_si256((__m256i *)(colors), colorsData);
-
-        for (unsigned x = 0; x < 8; ++x) {
-          if (zBuffTemp[x]) {
-            //const fcolor c = img.get_and_light2(textOffsets[x], light);
-            const fcolor c2(colors[x]);
-            //printf("Color: %u\n", colors[x]);
-            zbuff[xVal + offset] = zBuffTemp[x];
-            plot(xVal, y, c2);
-
-          }
-          ++xVal;
-          xCol += xColDx;
-          yCol += yColDx;
+        } else {
+          xVal += 8;
+          xCol += xColDx * 8;
+          yCol += yColDx * 8;
         }
 
         z += zdx8;
@@ -283,6 +276,8 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
     const int zdy8 = 8*zdy;
 
     const __m256i zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
+    const __m256i xColRowAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(xColDy));
+    const  __m256i yColRowAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yColDy));
 
     __m256i w0RowInit;
     __m256i w1RowInit;
@@ -335,19 +330,43 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
         const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
         const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
-        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
 
-        for (unsigned y = 0; y < 8; ++y) {
-          if (zBuffTemp[y]) {
-            const fcolor c = img.get_and_light(xColRow, yColRow, light);
-            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+        if (!_mm256_testz_si256(zUpdate, zUpdate)) {
+          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
 
-            zbuff[yVal * W + x] = zBuffTemp[y];
-            plot(x, yVal, c);
+          __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xColRow), xColRowAdd);
+          __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yColRow), yColRowAdd);
+
+          // Convert to ints
+          xColv = _mm256_cvtps_epi32(xColv);
+          yColv = _mm256_cvtps_epi32(yColv);
+
+          yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
+          xColv = _mm256_add_epi32(xColv, yColv);
+
+          xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
+
+          __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
+          _mm256_stream_si256((__m256i *)(colors), colorsData);
+
+          for (unsigned y = 0; y < 8; ++y) {
+            if (zBuffTemp[y]) {
+              //const fcolor c = img.get_and_light(xColRow, yColRow, light);
+              const fcolor c(colors[y], light);
+
+              //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+
+              zbuff[yVal * W + x] = zBuffTemp[y];
+              plot(x, yVal, c);
+            }
+            ++yVal;
+            xColRow += xColDy;
+            yColRow += yColDy;
           }
-          ++yVal;
-          xColRow += xColDy;
-          yColRow += yColDy;
+        } else {
+          yVal += 8;
+          xColRow += xColDy * 8;
+          yColRow += yColDy * 8;
         }
 
         z += zdy8;
