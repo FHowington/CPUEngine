@@ -219,14 +219,13 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
             }
 
             ++xVal;
-            xCol += xColDx;
-            yCol += yColDx;
           }
         } else {
           xVal += 8;
-          xCol += xColDx * 8;
-          yCol += yColDx * 8;
         }
+        xCol += xColDx * 8;
+        yCol += yColDx * 8;
+
 
         z += zdx8;
 
@@ -356,14 +355,13 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
               plot(x, yVal, c);
             }
             ++yVal;
-            xColRow += xColDy;
-            yColRow += yColDy;
           }
         } else {
           yVal += 8;
-          xColRow += xColDy * 8;
-          yColRow += yColDy * 8;
         }
+
+        xColRow += xColDy * 8;
+        yColRow += yColDy * 8;
 
         z += zdy8;
 
@@ -388,7 +386,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
           //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
           if (zbuff[yVal * W + x] < z) {
             const fcolor c = img.get_and_light(xColRow, yColRow, light);
-            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
 
             zbuff[yVal * W + x] = z;
             plot(x, yVal, c);
