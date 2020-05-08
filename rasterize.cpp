@@ -33,7 +33,8 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
-  static const __m256i ones = _mm256_set1_epi64x(-1);
+  static const __m256i ones = _mm256_set1_epi32(-1);
+  static const __m256i textureClip = _mm256_set1_epi32(img.width * img.height);
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -130,6 +131,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
+  unsigned __attribute__((aligned(32))) colors[8];
 
   const unsigned xDiff = maxX - minX;
   const unsigned yDiff = maxY - minY;
@@ -139,6 +141,8 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
   // Otherwise, we vectorize on y
   if (xDiff > yDiff) {
     const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+    const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
+    const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
 
     __m256i w0Init;
     __m256i w1Init;
@@ -192,21 +196,41 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
 
+        __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
+        __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
+
+        // Convert to ints
+        xColv = _mm256_cvtps_epi32(xColv);
+        yColv = _mm256_cvtps_epi32(yColv);
+
+        yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
+        xColv = _mm256_add_epi32(xColv, yColv);
+
+        // _mm256_cmpgt_epi32(xColv,
+
+        unsigned __attribute__((aligned(32))) textOffsets[8];
+
+        __m256i xColv2 = _mm256_mullo_epi32(xColv, _mm256_set1_epi32(4));
+        _mm256_stream_si256((__m256i *)(textOffsets), xColv);
+        for (unsigned idx = 0; idx < 8; ++idx) {
+          if (textOffsets[x] > img.width * img.height * 4 || textOffsets[x] < 0) {
+            printf("val %u vs. %d\n", textOffsets[x], img.width * img.height * 4);
+          }
+        }
+
+        __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
+        _mm256_stream_si256((__m256i *)(colors), colorsData);
+
         for (unsigned x = 0; x < 8; ++x) {
           if (zBuffTemp[x]) {
-            const fcolor c = img.get_and_light(xCol, yCol, light);
-            //const fcolor c = img.get_and_light2(((int)textureOffset) * 8, light);
-
-            //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
+            //const fcolor c = img.get_and_light2(textOffsets[x], light);
+            const fcolor c2(colors[x]);
+            //printf("Color: %u\n", colors[x]);
             zbuff[xVal + offset] = zBuffTemp[x];
-            // printf("xval %f yval %f res %f comp %d\n", xColArr[x], yColArr[x], (xColArr[x] + yColArr[x] * img.width) * 8, ((int)textureOffset) * 8);
-            plot(xVal, y, c);
+            plot(xVal, y, c2);
 
           }
           ++xVal;
-          //textureOffset += xColDx;
-          //textureOffset += yColDx * img.width;
-          //printf("OFFSET inline %f\n", textureOffset * 8);
           xCol += xColDx;
           yCol += yColDx;
         }
@@ -309,7 +333,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
         const __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
         const __m256i zInit = _mm256_set1_epi32(z);
         const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
-        const  __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
+        const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
 
@@ -600,9 +624,9 @@ void plot(unsigned x, unsigned y, const unsigned color)
 {
   // We want to flip pos y to mean "up"
 #ifdef DEBUG
-  if(pixels[(H-y)*W+x] != focolor::blank)
-    pixels[(H-y)*W+x] = fcolor::duplicate;
-  else
+  //  if(pixels[(H-y)*W+x] != focolor::blank)
+  //  pixels[(H-y)*W+x] = fcolor::duplicate;
+    //  else
 #endif
     pixels[(H-y)*W+x] = color;
 }

@@ -7,7 +7,7 @@ all: engine
 debug: CXXFLAGS += -O0 -g -mavx2 -mfma -DDEBUG
 debug: engine
 
-slow: CXXFLAGS += -Ofast
+slow: CXXFLAGS += -Ofast -mno-avx
 slow: engine
 
 slowdebug: CXXFLAGS += -O0 -g -DDEBUG

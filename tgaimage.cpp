@@ -10,8 +10,8 @@ TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {
 }
 
 TGAImage::TGAImage(int w, int h, int bpp) : data(NULL), width(w), height(h), bytespp(bpp) {
-  unsigned long nbytes = width*height*8;
-  data = new unsigned char[nbytes];
+  unsigned long nbytes = width*height*4;
+  data = new unsigned __attribute__((aligned(64))) char[nbytes];
   memset(data, 0, nbytes);
 }
 
@@ -19,7 +19,7 @@ TGAImage::TGAImage(const TGAImage &img) {
   width = img.width;
   height = img.height;
   bytespp = img.bytespp;
-  unsigned long nbytes = width*height*8;
+  unsigned long nbytes = width*height*4;
   data = new unsigned char[nbytes];
   memcpy(data, img.data, nbytes);
 }
@@ -107,12 +107,10 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
         }
         for (int t=0; t<bytespp; t++) {
           data[currentbyte++] = colorbuffer.raw[t];
-          data[currentbyte++] = 0;
         }
 
         if (bytespp < 4) {
           for (unsigned idx = bytespp; idx < 4; ++idx) {
-            data[currentbyte++] = 0;
             data[currentbyte++] = 0;
           }
         }
@@ -132,11 +130,9 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
       for (int i=0; i<chunkheader; i++) {
         for (int t=0; t<bytespp; t++) {
           data[currentbyte++] = colorbuffer.raw[t];
-          data[currentbyte++] = 0;
         }
         if (bytespp < 4) {
           for (unsigned idx = bytespp; idx < 4; ++idx) {
-            data[currentbyte++] = 0;
             data[currentbyte++] = 0;
           }
         }
@@ -159,17 +155,18 @@ const TGAColor TGAImage::get(int x, int y) const {
 }
 
 const fcolor TGAImage::get_and_light(const int x, const int y, const float light) const {
-  unsigned char* offset = data+(x+y*width)*8;
+  unsigned char* offset = data+(x+y*width)*4;
   //printf("OFFSET %d\n", (x+y*width)*8);
 
-  return fcolor(0, offset[4] * light, offset[2] * light, offset[0] * light);
+  return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
 const fcolor TGAImage::get_and_light2(int index, const float light) const {
   unsigned char* offset = data+index;
-  printf("COMP TO OFFSET %d\n", index);
+  //printf("COMP TO OFFSET %d\n", index);
+  //printf("%d %d %d %d\n", offset[0], offset
 
-  return fcolor(0, offset[4] * light, offset[2] * light, offset[0] * light);
+  return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
 const unsigned TGAImage::fast_get(const int x, const int y) const {

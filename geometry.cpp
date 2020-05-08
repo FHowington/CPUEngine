@@ -410,9 +410,9 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   v1 = _mm_permute_ps(res, 0b11111010);
 
   v2 = _mm_set_ps(1.0, 1.0, -focalLength, -focalLength);
-  __m128 v3 = _mm_mul_ps(v1, v2);
+  v1 = _mm_mul_ps(v1, v2);
 
-  v1 = _mm_div_ps(res, v3);
+  v1 = _mm_div_ps(res, v1);
 
   // View clipping
   res = _mm_set1_ps(0.0);
