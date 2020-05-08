@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include "tgaimage.h"
+#include <immintrin.h>
 
 TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {
 }
@@ -159,6 +160,15 @@ const TGAColor TGAImage::get(int x, int y) const {
 
 const fcolor TGAImage::get_and_light(const int x, const int y, const float light) const {
   unsigned char* offset = data+(x+y*width)*8;
+  //printf("OFFSET %d\n", (x+y*width)*8);
+
+  return fcolor(0, offset[4] * light, offset[2] * light, offset[0] * light);
+}
+
+const fcolor TGAImage::get_and_light2(int index, const float light) const {
+  unsigned char* offset = data+index;
+  printf("COMP TO OFFSET %d\n", index);
+
   return fcolor(0, offset[4] * light, offset[2] * light, offset[0] * light);
 }
 

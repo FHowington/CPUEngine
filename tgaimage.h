@@ -81,7 +81,7 @@ public:
   bool read_tga_file(const char *filename);
   const TGAColor get(int x, int y) const;
   const fcolor get_and_light(const int x, const int y, const float light) const;
-  const fcolor get_and_light(const int loc, const float light) const;
+  const fcolor get_and_light2(int offset, const float light) const;
   const unsigned fast_get(const int x, const int y) const;
   bool set(int x, int y, TGAColor c);
   const unsigned get_width() { return width; }

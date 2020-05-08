@@ -362,7 +362,7 @@ vertex<int> m2v(const matrix<4,1> m) {
   return vertex<float>(m._m[0], m._m[1], m._m[2]);
 }
 
-#ifdef __AVX__
+#if defined(__AVX__) && defined(__FMA__)
 const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
   float __attribute__((aligned(16))) result[4];
 

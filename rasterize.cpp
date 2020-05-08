@@ -17,7 +17,7 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 }
 
 
-#ifdef __AVX__
+#ifdef __AVX2__
 void drawTri(const face& f, const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
 #ifdef DEBUG
@@ -60,7 +60,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
   }
 
   // Bias to make sure only top or left edges fall on line
-  // TODO: Vectorize to prevent data dependant branching
   const int bias0 = -isTopLeft(f._v1, f._v2);
   const int bias1 = -isTopLeft(f._v2, f._v0);
   const int bias2 = -isTopLeft(f._v0, f._v1);
@@ -131,8 +130,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
-  float __attribute__((aligned(32))) xColArr[8];
-  float __attribute__((aligned(32))) yColArr[8];
 
   const unsigned xDiff = maxX - minX;
   const unsigned yDiff = maxY - minY;
@@ -142,16 +139,12 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
   // Otherwise, we vectorize on y
   if (xDiff > yDiff) {
     const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
-    const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
-    const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
 
     __m256i w0Init;
     __m256i w1Init;
     __m256i w2Init;
 
     const  int zdx8 = 8*zdx;
-    const float xColDx8 = 8*xColDx;
-    const float yColDx8 = 8*yColDx;
 
     const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
     const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
@@ -165,7 +158,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
     // We will enter inner loop at least once, otherwise numInner is always 0
     unsigned offset = minY * W;
-    float textureOffset = yColRow;
     const float yColDy4 = 4 * yColDy;
 
     for (y = minY; y <= maxY; ++y) {
@@ -192,48 +184,34 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
 
       xVal = minX;
       for (inner = 0; inner < numInner; ++inner) {
-        // We have AVX2, lets take advantage of it!
-        // We break the loop out to enable the compiler to vectorize it!
-        //#pragma clang loop vectorize(enable) interleave(enable)
-
-        // Calculate w0, w1, w2, xCol, yCol
-        // For all 8 cases.
-        // Next, Create mask of w0 | w1 w2 && zbuf thing
-        // Then, calculate color for each of these
-        // Finally, apply to both zbuff and plot the results
-
         const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
 
         const __m256i zInit = _mm256_set1_epi32(z);
         const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
         const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
-        const __m256i xColInit = _mm256_set1_ps(xCol);
-        const __m256i xColv = _mm256_add_ps(xColInit, xColAdd);
-
-        const __m256i yColInit = _mm256_set1_ps(yCol);
-        const __m256i yColv = _mm256_add_ps(yColInit, yColAdd);
-
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
-        _mm256_stream_ps(yColArr, yColv);
-        _mm256_stream_ps(xColArr, xColv);
 
-        // Instead, we want to get the colors for all 8 at once
-        // Then, load current values of plot into a register, and iff zbufftemp > z,
-        // update using color
         for (unsigned x = 0; x < 8; ++x) {
           if (zBuffTemp[x]) {
-            const fcolor c = img.get_and_light(xColArr[x], yColArr[x], light);
+            const fcolor c = img.get_and_light(xCol, yCol, light);
+            //const fcolor c = img.get_and_light2(((int)textureOffset) * 8, light);
+
             //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
             zbuff[xVal + offset] = zBuffTemp[x];
+            // printf("xval %f yval %f res %f comp %d\n", xColArr[x], yColArr[x], (xColArr[x] + yColArr[x] * img.width) * 8, ((int)textureOffset) * 8);
             plot(xVal, y, c);
+
           }
           ++xVal;
+          //textureOffset += xColDx;
+          //textureOffset += yColDx * img.width;
+          //printf("OFFSET inline %f\n", textureOffset * 8);
+          xCol += xColDx;
+          yCol += yColDx;
         }
 
         z += zdx8;
-        xCol += xColDx8;
-        yCol += yColDx8;
 
         if (inner < numInner - 1) {
           w0Init = _mm256_add_epi32(w0Init, a12Add8);
@@ -256,11 +234,6 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
           if (zbuff[xVal + offset] < z) {
             const fcolor c = img.get_and_light(xCol, yCol, light);
             //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
-
-            // Can we do better than this niave approach?
-            // TODO: Vectorize all 8 simulatenously, perhaps.
-            // Although this would require we fetch all colors, which is extremely expensive
-            // Instead: Maybe keep track of all pixels updated, then vectorize that!
             zbuff[xVal + offset] = z;
             plot(xVal, y, c);
           }
@@ -281,21 +254,15 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
       xColRow += xColDy;
       yColRow += yColDy;
       offset += W;
-      textureOffset += yColDy4;
     }
   } else {
     const int zdy8 = 8*zdy;
-    const float xColDy8 = 8*xColDy;
-    const float yColDy8 = 8*yColDy;
 
     const __m256i zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
-    const __m256i xColRowAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(xColDy));
-    const  __m256i yColRowAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yColDy));
 
     __m256i w0RowInit;
     __m256i w1RowInit;
     __m256i w2RowInit;
-
 
     const __m256i b12Add = _mm256_mullo_epi32(_mm256_set1_epi32(B12), scale);
     const __m256i b12Add8 = _mm256_set1_epi32(8*B12);
@@ -344,31 +311,22 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
         const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
         const  __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
 
-
-        const __m256i xColRowInit = _mm256_set1_ps(xColRow);
-        const __m256i xColRowv = _mm256_add_ps(xColRowInit, xColRowAdd);
-
-        const __m256i yColRowInit = _mm256_set1_ps(yColRow);
-        const __m256i yColRowv = _mm256_add_ps(yColRowInit, yColRowAdd);
-
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
-        _mm256_stream_ps(yColArr, yColRowv);
-        _mm256_stream_ps(xColArr, xColRowv);
 
         for (unsigned y = 0; y < 8; ++y) {
           if (zBuffTemp[y]) {
-            const fcolor c = img.get_and_light(xColArr[y], yColArr[y], light);
+            const fcolor c = img.get_and_light(xColRow, yColRow, light);
             //const fcolor c(255 * light, 255 * light, 255 * light, 255 * light);
 
             zbuff[yVal * W + x] = zBuffTemp[y];
             plot(x, yVal, c);
           }
           ++yVal;
+          xColRow += xColDy;
+          yColRow += yColDy;
         }
 
         z += zdy8;
-        xColRow += xColDy8;
-        yColRow += yColDy8;
 
         if (inner < numInner - 1) {
           w0RowInit = _mm256_add_epi32(w0RowInit, b12Add8);
