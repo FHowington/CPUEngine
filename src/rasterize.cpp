@@ -20,10 +20,9 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 
 
 #ifdef __AVX2__
-void drawTri(const Model& m, const face& f, const float light, const TGAImage& img,
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
   SHADER_TYPE shader;
-
   shader.vertexShader(m, f, light);
 
   // These are reused for every triangle in the model
@@ -216,7 +215,7 @@ void drawTri(const Model& m, const face& f, const float light, const TGAImage& i
             }
 
             ++xVal;
-            shader.stepX();
+            shader.stepXForX();
           }
         } else {
           xVal += 8;
@@ -256,7 +255,7 @@ void drawTri(const Model& m, const face& f, const float light, const TGAImage& i
         xCol += xColDx;
         yCol += yColDx;
         ++xVal;
-        shader.stepX();
+        shader.stepXForX();
       }
 
       w0Row += B12;
@@ -266,7 +265,7 @@ void drawTri(const Model& m, const face& f, const float light, const TGAImage& i
       xColRow += xColDy;
       yColRow += yColDy;
       offset += W;
-      shader.stepY();
+      shader.stepYForX();
     }
   } else {
     const int zdy8 = 8*zdy;
@@ -351,7 +350,7 @@ void drawTri(const Model& m, const face& f, const float light, const TGAImage& i
               plot(x, yVal, shader.fragmentShader(colors[y]));
             }
             ++yVal;
-            shader.stepY();
+            shader.stepYForY();
           }
         } else {
           yVal += 8;
@@ -393,7 +392,7 @@ void drawTri(const Model& m, const face& f, const float light, const TGAImage& i
         xColRow += xColDy;
         yColRow += yColDy;
         ++yVal;
-        shader.stepY();
+        shader.stepYForY();
       }
 
       w0 += A12;
@@ -402,7 +401,7 @@ void drawTri(const Model& m, const face& f, const float light, const TGAImage& i
       zOrig += zdx;
       xCol += xColDx;
       yCol += yColDx;
-      shader.stepX();
+      shader.stepXForY();
     }
   }
 }

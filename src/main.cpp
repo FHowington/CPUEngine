@@ -44,6 +44,7 @@ int main() {
   auto start = std::chrono::high_resolution_clock::now();
   float rot = 0;
 
+
   for(bool interrupted=false; !interrupted;)
   {
     for(auto& p: pixels) p = 0;
@@ -98,6 +99,7 @@ int main() {
     // TODO: Convert to more understandable numbers
     static const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
 
+
     matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
 
     cameraPos.set(3, 0, .9);
@@ -107,39 +109,28 @@ int main() {
     matrix<4,4> cameraTransform = invert(cameraPos);
 
 
-    // This is where the per model will be done..
-
-    matrix<4,4> model = matrix<4,4>::rotation(0,0, rot);
-    model.set(3, 2, -5);
-    model.set(3, 1, -.9);
-    model.set(3, 0, -.8);
+    // This is where the per model will be done.
+    ModelInstance modInstance(head);
+    modInstance.position = matrix<4,4>::rotation(0,0, rot);
+    modInstance.position.set(3, 2, -5);
+    modInstance.position.set(3, 1, -.9);
+    modInstance.position.set(3, 0, -.8);
 
     vertex<float> light(x, y, -1);
 
     unsigned idx = 0;
     for (auto t : head.getFaces()) {
-      const vertex<int> v0i(pipeline(cameraTransform, model, viewClip, head.getVertex(t._v0), 1.5));
-      const vertex<int> v1i(pipeline(cameraTransform, model, viewClip, head.getVertex(t._v1), 1.5));
-      const vertex<int> v2i(pipeline(cameraTransform, model, viewClip, head.getVertex(t._v2), 1.5));
+      const vertex<int> v0i(pipeline(cameraTransform, modInstance.position, viewClip, head.getVertex(t._v0), 1.5));
+      const vertex<int> v1i(pipeline(cameraTransform, modInstance.position, viewClip, head.getVertex(t._v1), 1.5));
+      const vertex<int> v2i(pipeline(cameraTransform, modInstance.position, viewClip, head.getVertex(t._v2), 1.5));
 
       // We get the normal vector for every triangle
       vertex<float> v = cross(v0i, v1i, v2i);
 
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0) {
-        const vertex<float> v0iLight(multToVector(model, head.getVertex(t._v0)));
-        const vertex<float> v1iLight(multToVector(model, head.getVertex(t._v1)));
-        const vertex<float> v2iLight(multToVector(model, head.getVertex(t._v2)));
-        vertex<float> vLight = cross(v0iLight, v1iLight, v2iLight);
-        vLight.normalize();
-        float aoi = dot(vLight, light);
 
-        // Effectively, this is the global illumination
-        if (aoi < 0.2) {
-          aoi = 0.2;
-        }
-
-        drawTri(head, t, aoi, headtext, v0i, v1i, v2i);
+        drawTri(modInstance, t, light, headtext, v0i, v1i, v2i);
       }
       if (wireframe) {
         line(v0i, v1i,  0xFFFFFFF);

@@ -27,3 +27,9 @@ class Model {
 
   void loadModel(const std::string& fileName, const unsigned width, const unsigned height);
 };
+
+struct ModelInstance {
+  ModelInstance (const Model& mod) : baseModel(mod) {}
+  const Model& baseModel;
+  matrix<4,4> position;
+};

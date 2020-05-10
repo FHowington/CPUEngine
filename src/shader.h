@@ -17,10 +17,12 @@
 class Shader {
  public:
   virtual ~Shader() {};
-  virtual void vertexShader(const Model& m, const face& f, float light) = 0;
+  virtual void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light) = 0;
   virtual const fcolor fragmentShader(const unsigned color) = 0;
-  virtual void stepX() = 0;
-  virtual void stepY() = 0;
+  virtual void stepXForX() = 0;
+  virtual void stepYForX() = 0;
+  virtual void stepXForY() = 0;
+  virtual void stepYForY() = 0;
 };
 
 
@@ -31,15 +33,86 @@ class Shader {
 // The type of shader will be a compile time CONSTANT!
 class DefaultShader : public Shader {
  public:
-  void vertexShader(const Model& m, const face& f, float light) override {
-    _light = light;
+  void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light) override {
+    const vertex<float> v0iLight(multToVector(m.position, m.baseModel.getVertex(f._v0)));
+    const vertex<float> v1iLight(multToVector(m.position, m.baseModel.getVertex(f._v1)));
+    const vertex<float> v2iLight(multToVector(m.position, m.baseModel.getVertex(f._v2)));
+    vertex<float> vLight = cross(v0iLight, v1iLight, v2iLight);
+    vLight.normalize();
+    _light = dot(vLight, light);
+
+    // Effectively, this is the global illumination
+    if (_light < 0.2) {
+      _light = 0.2;
+    };
+  }
+
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color) override {
+    return fcolor(color, _light);
+  }
+
+  DefaultShader() : _light(0) {}
+  inline __attribute__((always_inline)) void stepXForX() override { return; }
+  inline __attribute__((always_inline)) void stepYForX() override { return; }
+  inline __attribute__((always_inline)) void stepXForY() override { return; }
+  inline __attribute__((always_inline)) void stepYForY() override { return; }
+
+ private:
+  float _light;
+};
+
+
+class GourandShader : public Shader {
+ public:
+  GourandShader()  {}
+
+  void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light) override {
   }
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color) override {
     return fcolor(color, _light);
   }
-  DefaultShader() : _light(0) {}
-  inline __attribute__((always_inline)) void stepX() override { return; }
-  inline __attribute__((always_inline)) void stepY() override { return; }
+  inline __attribute__((always_inline)) void stepXForX() override { _normX += _xDx; _normY += _yDx; _normZ += _zDx; }
+
+  inline __attribute__((always_inline)) void stepYForX() override
+  {
+    _rowX += _xDy;
+    _rowY += _yDy;
+    _rowZ += _zDy;
+    _normX = _rowX;
+    _normY = _rowY;
+    _normZ = _rowZ;
+  }
+
+  inline __attribute__((always_inline)) void stepXForY() override {
+    _rowX += _xDx;
+    _rowY += _yDx;
+    _rowZ += _zDx;
+    _normX = _colX;
+    _normY = _colY;
+    _normZ = _colZ;
+  }
+
+  inline __attribute__((always_inline)) void stepYForY() override { _normX += _xDy; _normY += _yDy; _normZ += _zDy; }
+
  private:
   float _light;
+  float _normX;
+  float _normY;
+  float _normZ;
+
+  float _xDx;
+  float _yDx;
+  float _zDx;
+
+  float _xDy;
+  float _yDy;
+  float _zDy;
+
+  float _rowX;
+  float _rowY;
+  float _rowZ;
+
+  float _colX;
+  float _colY;
+  float _colZ;
 };
