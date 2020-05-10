@@ -19,6 +19,7 @@ class Model {
 
   const std::vector<face>& getFaces() const { return faces; }
   const vertex<float>& getVertex(const unsigned idx) const { return vertices[idx]; }
+  const vertex<float>& getVertexNormal(const unsigned idx) const { return vertexNormals[idx]; }
 
  private:
   std::vector<vertex<float>> vertices;
