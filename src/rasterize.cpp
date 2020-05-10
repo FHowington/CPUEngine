@@ -127,311 +127,148 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
   unsigned __attribute__((aligned(32))) colors[8];
 
-  const unsigned xDiff = maxX - minX;
-  const unsigned yDiff = maxY - minY;
+  //const unsigned xDiff = maxX - minX;
+  //const unsigned yDiff = maxY - minY;
 
   SHADER_TYPE shader;
-  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, minX, minY, w0Row, w1Row, w2Row);
+  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
-  //if (xDiff > yDiff) {
-    const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
-    const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
-    const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
+  const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+  const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
+  const __m256i yColAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(yColDx));
 
-    __m256i w0Init;
-    __m256i w1Init;
-    __m256i w2Init;
+  __m256i w0Init;
+  __m256i w1Init;
+  __m256i w2Init;
 
-    const  int zdx8 = 8*zdx;
+  const  int zdx8 = 8*zdx;
 
-    const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
-    const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
+  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
+  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
 
-    const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
-    const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
+  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
+  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
 
-    const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
-    const __m256i a01Add8 =  _mm256_set1_epi32(8*A01);
+  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
+  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
 
 
-    // We will enter inner loop at least once, otherwise numInner is always 0
-    unsigned offset = minY * W;
-    const float yColDy4 = 4 * yColDy;
+  // We will enter inner loop at least once, otherwise numInner is always 0
+  unsigned offset = minY * W;
+  const float yColDy4 = 4 * yColDy;
 
-    for (y = minY; y <= maxY; ++y) {
+  for (y = minY; y <= maxY; ++y) {
 
-      w0 = w0Row;
-      w1 = w1Row;
-      w2 = w2Row;
-      z = zOrig;
-      xCol = xColRow;
-      yCol = yColRow;
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+    z = zOrig;
+    xCol = xColRow;
+    yCol = yColRow;
 
-      float tempw0 = w0;
-      float tempw1 = w1;
-      float tempw2 = w2;
+    numInner = (maxX - minX) / 8;
+    numOuter = (maxX - minX) % 8;
 
-      numInner = (maxX - minX) / 8;
-      numOuter = (maxX - minX) % 8;
+    w0Init = _mm256_set1_epi32(w0);
+    w0Init = _mm256_add_epi32(w0Init, a12Add);
 
-      w0Init = _mm256_set1_epi32(w0);
-      w0Init = _mm256_add_epi32(w0Init, a12Add);
+    w1Init = _mm256_set1_epi32(w1);
+    w1Init = _mm256_add_epi32(w1Init, a20Add);
 
-      w1Init = _mm256_set1_epi32(w1);
-      w1Init = _mm256_add_epi32(w1Init, a20Add);
+    w2Init = _mm256_set1_epi32(w2);
+    w2Init = _mm256_add_epi32(w2Init, a01Add);
 
-      w2Init = _mm256_set1_epi32(w2);
-      w2Init = _mm256_add_epi32(w2Init, a01Add);
+    xVal = minX;
+    for (inner = 0; inner < numInner; ++inner) {
+      const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
 
-      xVal = minX;
-      for (inner = 0; inner < numInner; ++inner) {
-        const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+      const __m256i zInit = _mm256_set1_epi32(z);
+      const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
+      const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
 
-        const __m256i zInit = _mm256_set1_epi32(z);
-        const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
-        const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
+      if (!_mm256_testz_si256(zUpdate, zUpdate)) {
+        _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
 
-        if (!_mm256_testz_si256(zUpdate, zUpdate)) {
-          _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
+        __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
 
-          __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
-          __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
+        // Convert to ints
+        xColv = _mm256_cvtps_epi32(xColv);
+        yColv = _mm256_cvtps_epi32(yColv);
 
-          // Convert to ints
-          xColv = _mm256_cvtps_epi32(xColv);
-          yColv = _mm256_cvtps_epi32(yColv);
+        yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
+        xColv = _mm256_add_epi32(xColv, yColv);
 
-          yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
-          xColv = _mm256_add_epi32(xColv, yColv);
+        xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
 
-          xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
+        __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
+        _mm256_stream_si256((__m256i *)(colors), colorsData);
 
-          __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
-          _mm256_stream_si256((__m256i *)(colors), colorsData);
+        for (unsigned x = 0; x < 8; ++x) {
+          if (zBuffTemp[x]) {
+            zbuff[xVal + offset] = zBuffTemp[x];
+            plot(xVal, y, shader.fragmentShader(colors[x]));
+            //plot(xVal, y, colors[x]);
 
-          for (unsigned x = 0; x < 8; ++x) {
-            if (zBuffTemp[x]) {
-              zbuff[xVal + offset] = zBuffTemp[x];
-              plot(xVal, y, shader.fragmentShader(colors[x], wTotal, tempw0, tempw1, tempw2));
-              //plot(xVal, y, colors[x]);
-
-            }
-
-            ++xVal;
-            shader.stepXForX();
-            tempw0 += A12;
-            tempw1 += A20;
-            tempw2 += A01;
           }
-        } else {
-          xVal += 8;
-          shader.stepXForX();
-          shader.stepXForX();
-          shader.stepXForX();
-          shader.stepXForX();
-          shader.stepXForX();
-          shader.stepXForX();
-          shader.stepXForX();
-          shader.stepXForX();
 
-            tempw0 += A12 * 8;
-            tempw1 += A20 * 8;
-            tempw2 += A01 * 8;
+          ++xVal;
+          shader.stepXForX();
         }
-        xCol += xColDx * 8;
-        yCol += yColDx * 8;
-
-
-        z += zdx8;
-
-        if (inner < numInner - 1) {
-          w0Init = _mm256_add_epi32(w0Init, a12Add8);
-          w1Init = _mm256_add_epi32(w1Init, a20Add8);
-          w2Init = _mm256_add_epi32(w2Init, a01Add8);
-        }
+      } else {
+        xVal += 8;
+        // We must step 8 times.
+        shader.stepXForX(8);
       }
+      xCol += xColDx * 8;
+      yCol += yColDx * 8;
 
-      const unsigned inner8 = 8 * numInner;
-      w0 += A12 * inner8;
-      w1 += A20 * inner8;
-      w2 += A01 * inner8;
 
-      for (x = 0; x < numOuter; ++x) {
+      z += zdx8;
 
-        // If p is on or inside all edges, render pixel
-        if ((w0 | w1 | w2) >= 0) {
-          // Uncomment for exact z values
-          if (zbuff[xVal + offset] < z) {
-            zbuff[xVal + offset] = z;
-            plot(xVal, y, shader.fragmentShader(img.fast_get(xCol, yCol), wTotal, w0, w1, w2));
-          }
-        }
-        w0 += A12;
-        w1 += A20;
-        w2 += A01;
-        z += zdx;
-        xCol += xColDx;
-        yCol += yColDx;
-        ++xVal;
-        shader.stepXForX();
+      if (inner < numInner - 1) {
+        w0Init = _mm256_add_epi32(w0Init, a12Add8);
+        w1Init = _mm256_add_epi32(w1Init, a20Add8);
+        w2Init = _mm256_add_epi32(w2Init, a01Add8);
       }
-
-      w0Row += B12;
-      w1Row += B20;
-      w2Row += B01;
-      zOrig += zdy;
-      xColRow += xColDy;
-      yColRow += yColDy;
-      offset += W;
-      shader.stepYForX();
     }
-  // } else {
-  //   const int zdy8 = 8*zdy;
 
-  //   const __m256i zdyAdd = _mm256_set_epi32(7*zdy, 6*zdy, 5*zdy, 4*zdy, 3*zdy, 2*zdy, zdy, 0);
-  //   const __m256i xColRowAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(xColDy));
-  //   const  __m256i yColRowAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yColDy));
+    const unsigned inner8 = 8 * numInner;
+    w0 += A12 * inner8;
+    w1 += A20 * inner8;
+    w2 += A01 * inner8;
 
-  //   __m256i w0RowInit;
-  //   __m256i w1RowInit;
-  //   __m256i w2RowInit;
+    for (x = 0; x < numOuter; ++x) {
 
-  //   const __m256i b12Add = _mm256_mullo_epi32(_mm256_set1_epi32(B12), scale);
-  //   const __m256i b12Add8 = _mm256_set1_epi32(8*B12);
+      // If p is on or inside all edges, render pixel
+      if ((w0 | w1 | w2) >= 0) {
+        // Uncomment for exact z values
+        if (zbuff[xVal + offset] < z) {
+          zbuff[xVal + offset] = z;
+          plot(xVal, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
+        }
+      }
+      w0 += A12;
+      w1 += A20;
+      w2 += A01;
+      z += zdx;
+      xCol += xColDx;
+      yCol += yColDx;
+      ++xVal;
+      shader.stepXForX();
+    }
 
-  //   const __m256i b20Add = _mm256_mullo_epi32(_mm256_set1_epi32(B20), scale);
-  //   const __m256i b20Add8 = _mm256_set1_epi32(8*B20);
-
-  //   const __m256i b01Add = _mm256_mullo_epi32(_mm256_set1_epi32(B01), scale);
-  //   const __m256i b01Add8 = _mm256_set1_epi32(8*B01);
-
-  //   // For row only
-  //   w0 = w0Row;
-  //   w1 = w1Row;
-  //   w2 = w2Row;
-  //   xCol = xColRow;
-  //   yCol = yColRow;
-
-  //   for (x = minX; x <= maxX; ++x) {
-  //     w0Row = w0;
-  //     w1Row = w1;
-  //     w2Row = w2;
-  //     z = zOrig;
-  //     xColRow = xCol;
-  //     yColRow = yCol;
-
-  //     numInner = (maxY - minY + 1) / 8;
-  //     numOuter = (maxY - minY + 1) % 8;
-
-  //     w0RowInit = _mm256_set1_epi32(w0Row);
-  //     w0RowInit = _mm256_add_epi32(w0RowInit, b12Add);
-
-  //     w1RowInit = _mm256_set1_epi32(w1Row);
-  //     w1RowInit = _mm256_add_epi32(w1RowInit, b20Add);
-
-  //     w2RowInit = _mm256_set1_epi32(w2Row);
-  //     w2RowInit = _mm256_add_epi32(w2RowInit, b01Add);
-
-  //     yVal = minY;
-
-  //     unsigned offset = minY * W + x;
-
-  //     for (inner = 0; inner < numInner; ++inner) {
-
-  //       const __m256i zbuffv = _mm256_i32gather_epi32(zbuff + offset, loadOffset, 4);
-  //       const __m256i zInit = _mm256_set1_epi32(z);
-  //       const __m256i zv = _mm256_add_epi32(zInit, zdyAdd);
-  //       const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv),  _mm256_cmpgt_epi32(_mm256_or_si256(w2RowInit, _mm256_or_si256(w0RowInit, w1RowInit)), min)), zv);
-
-
-  //       if (!_mm256_testz_si256(zUpdate, zUpdate)) {
-  //         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
-
-  //         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xColRow), xColRowAdd);
-  //         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yColRow), yColRowAdd);
-
-  //         // Convert to ints
-  //         xColv = _mm256_cvtps_epi32(xColv);
-  //         yColv = _mm256_cvtps_epi32(yColv);
-
-  //         yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
-  //         xColv = _mm256_add_epi32(xColv, yColv);
-
-  //         xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
-
-  //         __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
-  //         _mm256_stream_si256((__m256i *)(colors), colorsData);
-
-  //         for (unsigned y = 0; y < 8; ++y) {
-  //           if (zBuffTemp[y]) {
-  //             zbuff[yVal * W + x] = zBuffTemp[y];
-  //             plot(x, yVal, shader.fragmentShader(colors[y]));
-  //           }
-  //           ++yVal;
-  //           shader.stepYForY();
-  //         }
-  //       } else {
-  //         yVal += 8;
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //         shader.stepYForY();
-  //       }
-
-  //       xColRow += xColDy * 8;
-  //       yColRow += yColDy * 8;
-
-  //       z += zdy8;
-
-  //       if (inner < numInner - 1) {
-  //         w0RowInit = _mm256_add_epi32(w0RowInit, b12Add8);
-  //         w1RowInit = _mm256_add_epi32(w1RowInit, b20Add8);
-  //         w2RowInit = _mm256_add_epi32(w2RowInit, b01Add8);
-  //       }
-  //       offset += 8*W;
-  //     }
-
-  //     const unsigned inner8 = numInner * 8;
-
-  //     w0Row += B12 * inner8;
-  //     w1Row += B20 * inner8;
-  //     w2Row += B01 * inner8;
-
-  //     for (y = 0; y < numOuter; ++y) {
-  //       // If p is on or inside all edges, render pixel
-  //       if ((w0Row | w1Row | w2Row) >= 0) {
-  //         // Uncomment for exact z values
-  //         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-  //         if (zbuff[yVal * W + x] < z) {
-  //           zbuff[yVal * W + x] = z;
-  //           plot(x, yVal, shader.fragmentShader(img.fast_get(xColRow, yColRow)));
-  //         }
-  //       }
-  //       w0Row += B12;
-  //       w1Row += B20;
-  //       w2Row += B01;
-  //       z += zdy;
-  //       xColRow += xColDy;
-  //       yColRow += yColDy;
-  //       ++yVal;
-  //       shader.stepYForY();
-  //     }
-
-  //     w0 += A12;
-  //     w1 += A20;
-  //     w2 += A01;
-  //     zOrig += zdx;
-  //     xCol += xColDx;
-  //     yCol += yColDx;
-  //     shader.stepXForY();
-  //   }
-  // }
+    w0Row += B12;
+    w1Row += B20;
+    w2Row += B01;
+    zOrig += zdy;
+    xColRow += xColDy;
+    yColRow += yColDy;
+    offset += W;
+    shader.stepYForX();
+  }
 }
 #else
 void drawTri(const face& f, const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
