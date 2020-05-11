@@ -2,7 +2,7 @@
 #include "geometry.h"
 #include "rasterize.h"
 
-#define SHADER_TYPE GourandShader
+#define SHADER_TYPE GouraudShader
 
 const unsigned depth = 0XFFFF;
 

@@ -25,12 +25,12 @@ class Shader {
 };
 
 
-// NOTE: Using this default shader causes a serious perf. impact versus the naive
+// NOTE: Using this flat shader causes a serious perf. impact versus the naive
 // approach of just doing these calculations inline
 // The difference is due to the cost of calling a virtual function MANY times
 // So instead, we will NOT call the functions via a Shader ref or pointer
 // The type of shader will be a compile time CONSTANT!
-class DefaultShader : public Shader {
+class FlatShader : public Shader {
  public:
   void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
                     const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) override {
@@ -51,7 +51,7 @@ class DefaultShader : public Shader {
     return fcolor(color, _light);
   }
 
-  DefaultShader() : _light(0) {}
+  FlatShader() : _light(0) {}
   inline __attribute__((always_inline)) void stepXForX(const unsigned step) override { return; }
   inline __attribute__((always_inline)) void stepYForX(const unsigned step) override { return; }
 
@@ -60,9 +60,9 @@ class DefaultShader : public Shader {
 };
 
 
-class GourandShader : public Shader {
+class GouraudShader : public Shader {
  public:
-  GourandShader()  {}
+  GouraudShader()  {}
 
   void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
                     const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) override {

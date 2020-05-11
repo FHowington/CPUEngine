@@ -31,9 +31,9 @@ int main() {
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
   TGAImage headtext;
-  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/african_head_diffuse.tga");
+  headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/diablo3_pose_diffuse.tga");
   headtext.flip_vertically();
-  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
+  Model head("/Users/forbes/CLionProjects/CPUEngine/diablo3_pose.obj", headtext.get_width(), headtext.get_height());
 
   bool wireframe = false;
   bool fps = false;
