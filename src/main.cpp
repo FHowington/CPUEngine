@@ -6,10 +6,13 @@
 #include <iostream>
 #include "rasterize.h"
 #include <SDL2/SDL.h>
+#include <thread>
 #include "tgaimage.h"
 #include <vector>
 #include "Window.h"
 #include "geometry.h"
+
+#define SPEED 80000000
 
 unsigned pixels[W * H];
 int zbuff[W * H];
@@ -42,8 +45,25 @@ int main() {
   float x = 0;
   float y = 0;
   auto start = std::chrono::high_resolution_clock::now();
+  auto lastFrame = start;
   float rot = 0;
 
+  float cameraRotX = 0;
+  float cameraRotY = 0;
+
+  bool lLeft = false;
+  bool lRight = false;
+  bool lUp = false;
+  bool lDown = false;
+
+  bool mForward = false;
+  bool mBackward = false;
+  bool mLeft = false;
+  bool mRight = false;
+
+  float cameraX = 0;
+  float cameraY = 0;
+  float cameraZ = 0;
 
   for(bool interrupted=false; !interrupted;)
   {
@@ -59,26 +79,22 @@ int main() {
           switch (ev.key.keysym.sym)
           {
             case SDLK_DOWN:
-              if (y <= .95)
-              y += 0.05;
+              lDown = true;
               break;
 
             case SDLK_UP:
-              if (y >= -0.95 )
-              y -= 0.05;
+              lUp = true;
               break;
 
             case SDLK_LEFT:
-              if (x <= .95)
-              x += 0.05;
+              lLeft = true;
               break;
 
             case SDLK_RIGHT:
-              if (x >= -0.95 )
-              x -= 0.05;
+              lRight = true;
               break;
 
-            case SDLK_w:
+            case SDLK_p:
               wireframe = !wireframe;
               break;
 
@@ -93,28 +109,118 @@ int main() {
             case SDLK_q:
               rot -= 0.05;
               break;
+
+            case SDLK_w:
+              mForward = true;
+              break;
+
+            case SDLK_s:
+              mBackward = true;
+              break;
+
+            case SDLK_a:
+              mLeft = true;
+              break;
+
+            case SDLK_d:
+              mRight = true;
+              break;
+          }
+          break;
+
+        case SDL_KEYUP:
+          switch (ev.key.keysym.sym)
+          {
+            case SDLK_DOWN:
+              lDown = false;
+              break;
+
+            case SDLK_UP:
+              lUp = false;
+              break;
+
+            case SDLK_LEFT:
+              lLeft = false;
+              break;
+
+            case SDLK_RIGHT:
+              lRight = false;
+              break;
+
+            case SDLK_w:
+              mForward = false;
+              break;
+
+            case SDLK_s:
+              mBackward = false;
+              break;
+
+            case SDLK_a:
+              mLeft = false;
+              break;
+
+            case SDLK_d:
+              mRight = false;
+              break;
           }
       }
 
+    if (lUp) {
+      cameraRotX -= 0.03;
+    }
+    if (lDown) {
+      cameraRotX += 0.03;
+    }
+    if (lRight) {
+      cameraRotY -= 0.03;
+    }
+    if (lLeft) {
+      cameraRotY += 0.03;
+    }
+
+
     // TODO: Convert to more understandable numbers
-    static const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, W*3/4, H*3/4);
+    static const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, 2*W, 2*H);
 
+    matrix<4,4> cameraRotXM = matrix<4,4>::rotationX(cameraRotX);
+    matrix<4,4> cameraRotYM = matrix<4,4>::rotationY(cameraRotY);
+    matrix<4,4> cameraRot(cameraRotXM * cameraRotYM);
 
-    matrix<4,4> cameraPos = matrix<4,4>::rotation(0, 0, 1.6);
+    auto frameTime = std::chrono::high_resolution_clock::now();
+    auto d = frameTime - lastFrame;
+    lastFrame = frameTime;
 
-    cameraPos.set(3, 0, .9);
-    cameraPos.set(3, 1, -0.9);
-    cameraPos.set(3, 2, -5);
+    if (mForward) {
+      cameraX -= d.count() * cameraRot._m[8]/SPEED;
+      cameraY -= d.count() * cameraRot._m[9]/SPEED;
+      cameraZ -= d.count() * cameraRot._m[10]/SPEED;
+    } else if (mBackward) {
+      cameraX += d.count() * cameraRot._m[8]/SPEED;
+      cameraY += d.count() * cameraRot._m[9]/SPEED;
+      cameraZ += d.count() * cameraRot._m[10]/SPEED;
+    }
 
-    matrix<4,4> cameraTransform = invert(cameraPos);
+    if (mLeft) {
+      cameraX -= d.count() * cameraRot._m[0]/SPEED;
+      cameraY -= d.count() * cameraRot._m[1]/SPEED;
+      cameraZ -= d.count() * cameraRot._m[2]/SPEED;
+    } else if (mRight) {
+      cameraX += d.count() * cameraRot._m[0]/SPEED;
+      cameraY += d.count() * cameraRot._m[1]/SPEED;
+      cameraZ += d.count() * cameraRot._m[2]/SPEED;
+    }
+
+    cameraRot.set(3, 0, cameraX);
+    cameraRot.set(3, 1, cameraY);
+    cameraRot.set(3, 2, cameraZ);
+
+    matrix<4,4> cameraTransform = invert(cameraRot);
 
 
     // This is where the per model will be done.
     ModelInstance modInstance(head);
-    modInstance.position = matrix<4,4>::rotation(0,0, rot);
+    modInstance.position = matrix<4,4>::rotationY(rot);
     modInstance.position.set(3, 2, -5);
-    modInstance.position.set(3, 1, -.9);
-    modInstance.position.set(3, 0, -.8);
 
     vertex<float> light(x, y, -1);
 

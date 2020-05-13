@@ -13,7 +13,8 @@ struct matrix {
   float __attribute__((aligned(16))) _m[N * M];
 
   static matrix identity();
-  static matrix rotation(double rotX, double rotY, double rotZ);
+  static matrix rotationX(float rotX);
+  static matrix rotationY(float rotY);
 
   template <unsigned O>
   matrix<N,O> operator*(const matrix<M,O>& rhs) const;
