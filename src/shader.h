@@ -52,8 +52,8 @@ class FlatShader : public Shader {
   }
 
   FlatShader() : _light(0) {}
-  inline __attribute__((always_inline)) void stepXForX(const unsigned step) override { return; }
-  inline __attribute__((always_inline)) void stepYForX(const unsigned step) override { return; }
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { return; }
+  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { return; }
 
  private:
   float _light;

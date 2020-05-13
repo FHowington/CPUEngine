@@ -527,5 +527,9 @@ const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
   return vertex<float>(result[0], result[1], result[2]);
 }
 #else
-
+const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
+  matrix<4,4> temp = m;
+  temp._m[12] = temp._m[13] = temp._m[14] = temp._m[15] = 0;
+  return m2vf(temp * v2m(v));
+}
 #endif

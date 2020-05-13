@@ -2,7 +2,7 @@
 #include "geometry.h"
 #include "rasterize.h"
 
-#define SHADER_TYPE GouraudShader
+#define SHADER_TYPE FlatShader
 
 const unsigned depth = 0XFFFF;
 
@@ -210,8 +210,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
           if (zBuffTemp[x]) {
             zbuff[xVal + offset] = zBuffTemp[x];
             plot(xVal, y, shader.fragmentShader(colors[x]));
-            //plot(xVal, y, colors[x]);
-
           }
 
           ++xVal;
@@ -271,7 +269,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   }
 }
 #else
-void drawTri(const face& f, const float light, const TGAImage& img, const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -297,12 +296,11 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
     return;
   }
 
-  // Bias to make sure only top or left edges fall on line
-  // TODO: Vectorize to prevent data dependant branching
-  const int bias0 = isTopLeft(f._v1, f._v2) ? 0 : -1;
-  const int bias1 = isTopLeft(f._v2, f._v0) ? 0 : -1;
-  const int bias2 = isTopLeft(f._v0, f._v1) ? 0 : -1;
 
+  // Bias to make sure only top or left edges fall on line
+  const int bias0 = -isTopLeft(v1i, v2i);
+  const int bias1 = -isTopLeft(v2i, v0i);
+  const int bias2 = -isTopLeft(v0i, v1i);
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
@@ -371,6 +369,9 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
   float textureOffset = yColRow;
   const float yColDy4 = 4 * yColDy;
 
+  SHADER_TYPE shader;
+  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
     w1 = w1Row;
@@ -385,9 +386,8 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (zbuff[x + offset] < z) {
-          const fcolor c = img.get_and_light(xCol, yCol, light);
+          plot(x, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
           zbuff[x + offset] = z;
-          plot(x, y, c);
         }
       }
       w0 += A12;
@@ -396,6 +396,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
       z += zdx;
       xCol += xColDx;
       yCol += yColDx;
+      shader.stepXForX();
     }
 
     w0Row += B12;
@@ -406,6 +407,7 @@ void drawTri(const face& f, const float light, const TGAImage& img, const vertex
     yColRow += yColDy;
     offset += W;
     textureOffset += yColDy4;
+    shader.stepYForX();
   }
 }
 #endif
