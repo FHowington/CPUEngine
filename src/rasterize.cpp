@@ -2,8 +2,6 @@
 #include "geometry.h"
 #include "rasterize.h"
 
-#define SHADER_TYPE FlatShader
-
 const unsigned depth = 0XFFFF;
 
 const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
@@ -20,6 +18,7 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 
 
 #ifdef __AVX2__
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, void>::type>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
@@ -130,7 +129,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   //const unsigned xDiff = maxX - minX;
   //const unsigned yDiff = maxY - minY;
 
-  SHADER_TYPE shader;
+  T shader;
   shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
 
   // If the traingle is wider than tall, we want to vectorize on x

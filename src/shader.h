@@ -7,6 +7,12 @@
 #include "geometry.h"
 #include "loader.h"
 
+// We do this instead of the typical inheritance route because dynamic binding of function calls
+// incurs a perf. hit for shaders. They are simply called too many time.
+
+// Textured shaders take advantage of looking up textures before they are needed using vectorization
+enum class ShaderCategory { Textured, Untextured };
+
 // This is a class defining a shader.
 // vertexShader called on all vertices per triangle
 // Traditional implementation would pass in barycentric coordinates to
@@ -24,13 +30,17 @@ class Shader {
   virtual void stepYForX(const unsigned step) = 0;
 };
 
+class TexturedShader : public Shader {
+};
 
+class UntexturedShader : public Shader {
+};
 // NOTE: Using this flat shader causes a serious perf. impact versus the naive
 // approach of just doing these calculations inline
 // The difference is due to the cost of calling a virtual function MANY times
 // So instead, we will NOT call the functions via a Shader ref or pointer
 // The type of shader will be a compile time CONSTANT!
-class FlatShader : public Shader {
+class FlatShader : public UntexturedShader {
  public:
   void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
                     const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) override {
@@ -60,7 +70,7 @@ class FlatShader : public Shader {
 };
 
 
-class GouraudShader : public Shader {
+class GouraudShader : public TexturedShader {
  public:
   GouraudShader()  {}
 

@@ -504,27 +504,24 @@ const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
   float __attribute__((aligned(16))) result[4];
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
+  __m128 v1 = _mm_set_ps(v._x, v._z, v._y, v._x);
   __m128 v2 = _mm_set_ps(0, m._m[10], m._m[5], m._m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
 
   v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(0, 0, m._m[9], m._m[4]);
+  v2 = _mm_set_ps(0, m._m[2], m._m[9], m._m[4]);
 
   res = _mm_fmadd_ps(v1, v2, res);
 
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(0, m._m[2], 0, m._m[8]);
+  v1 = _mm_permute_ps(v1, 0b11111001);
+  v2 = _mm_set_ps(0, m._m[6], m._m[1], m._m[8]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(0, m._m[6], m._m[1], 0);
-  res = _mm_fmadd_ps(v1, v2, res);
+  vertex<float> resultV;
+  _mm_stream_ps(resultV.raw, res);
 
-  _mm_stream_ps(result, res);
-
-  return vertex<float>(result[0], result[1], result[2]);
+  return resultV;
 }
 #else
 const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {

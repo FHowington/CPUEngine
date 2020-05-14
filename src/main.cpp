@@ -236,7 +236,7 @@ int main() {
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0) {
 
-        drawTri(modInstance, t, light, headtext, v0i, v1i, v2i);
+        drawTri<GouraudShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
       }
       if (wireframe) {
         line(v0i, v1i,  0xFFFFFFF);
