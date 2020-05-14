@@ -10,6 +10,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include "tgaimage.h"
 #include <vector>
 #include "Window.h"
 
@@ -30,7 +31,8 @@ class Model {
 };
 
 struct ModelInstance {
-  ModelInstance (const Model& mod) : baseModel(mod) {}
+  ModelInstance (const Model& mod, const TGAImage& text) : baseModel(mod), texture(text) {}
   const Model& baseModel;
+  const TGAImage& texture;
   matrix<4,4> position;
 };

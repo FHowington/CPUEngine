@@ -65,6 +65,9 @@ int main() {
   float cameraY = 0;
   float cameraZ = 0;
 
+  // This is where the per model will be done.
+  ModelInstance modInstance(head, headtext);
+
   for(bool interrupted=false; !interrupted;)
   {
     for(auto& p: pixels) p = 0;
@@ -217,8 +220,7 @@ int main() {
     matrix<4,4> cameraTransform = invert(cameraRot);
 
 
-    // This is where the per model will be done.
-    ModelInstance modInstance(head);
+
     modInstance.position = matrix<4,4>::rotationY(rot);
     modInstance.position.set(3, 2, -5);
 
@@ -260,8 +262,6 @@ int main() {
         start = std::chrono::high_resolution_clock::now();
       }
 
-    } else {
-      //SDL_Delay(1000/60);
     }
   }
 

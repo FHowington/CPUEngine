@@ -18,7 +18,7 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 
 
 #ifdef __AVX2__
-template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, void>::type>
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
@@ -129,8 +129,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   //const unsigned xDiff = maxX - minX;
   //const unsigned yDiff = maxY - minY;
 
-  T shader;
-  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
@@ -268,6 +267,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   }
 }
 #else
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
@@ -368,8 +368,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   float textureOffset = yColRow;
   const float yColDy4 = 4 * yColDy;
 
-  SHADER_TYPE shader;
-  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
@@ -502,6 +501,132 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
   }
 }
 
+
+
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+
+  const int x0 = v0i._x;
+  const int x1 = v1i._x;
+  const int x2 = v2i._x;
+
+  const int y0 = v0i._y;
+  const int y1 = v1i._y;
+  const int y2 = v2i._y;
+
+  // Prevent from wasting time on polygons that have no area
+  if (colinear(x0, x1, x2, y0, y1, y2)) {
+    return;
+  }
+
+  const int minX = min3(x0, x1, x2);
+  const int minY = min3(y0, y1, y2);
+
+  const int maxX = max3(x0, x1, x2, (int)W);
+  const int maxY = max3(y0, y1, y2, (int)H - 1);
+
+  // Same idea. These have no area (happens when triangle is outside of viewing area)
+  if (maxX < minX || maxY < minY) {
+    return;
+  }
+
+  // Bias to make sure only top or left edges fall on line
+  const int bias0 = -isTopLeft(v1i, v2i);
+  const int bias1 = -isTopLeft(v2i, v0i);
+  const int bias2 = -isTopLeft(v0i, v1i);
+  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
+  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
+  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
+
+
+  // If this number is 0, triangle has no area!
+  float wTotal = w0Row + w1Row + w2Row;
+  if (!wTotal) {
+    return;
+  }
+
+  // Deltas for change in x or y for the 3 sides of a triangle
+  const short A01 = y0 - y1;
+  const short A12 = y1 - y2;
+  const short A20 = y2 - y0;
+
+  const short B01 = x1 - x0;
+  const short B12 = x2 - x1;
+  const short B20 = x0 - x2;
+
+  const int z0 = v0i._z;
+  const int z1 = v1i._z;
+  const int z2 = v2i._z;
+
+  // If all three are positive, the object is behind the camera
+  if ((v0i._z | v1i._z | v2i._z) > 0) {
+    return;
+  }
+
+  unsigned x, y, xVal, yVal, numInner, inner, numOuter;
+
+  int w0, w1, w2, z;
+
+  const int div = (((B20) * (-A01)) + (B01) * (A20));
+  const int z10 = z1 - z0;
+  const int z20 = z2 - z0;
+
+  // Change in z for change in row/column
+  // Obtained by taking partial derivative with respect to x or y from equation of a plane
+  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
+  // Using these deltas, we interpolate over face of the whole triangle
+  const int zdx = (A20 * z10 + A01 * z20) / div;
+  const int zdy = (B20 * z10 + B01 * z20) / div;
+
+  // Likewise from solving for z with equation of a plane
+  int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
+
+  unsigned offset = minY * W;
+
+  T shader;
+  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+
+  for (y = minY; y <= maxY; ++y) {
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+    z = zOrig;
+
+    for (x = minX; x <= maxX; ++x) {
+      // If p is on or inside all edges, render pixel
+      if ((w0 | w1 | w2) >= 0) {
+        // Uncomment for exact z values
+        //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+        if (zbuff[x + offset] < z) {
+          plot(x, y, shader.fragmentShader());
+          zbuff[x + offset] = z;
+        }
+      }
+      w0 += A12;
+      w1 += A20;
+      w2 += A01;
+      z += zdx;
+      shader.stepXForX();
+    }
+
+    w0Row += B12;
+    w1Row += B20;
+    w2Row += B01;
+    zOrig += zdy;
+    offset += W;
+    shader.stepYForX();
+  }
+}
+
 float zPos(const int cx, const int bx, const int ax, const int cy, const int by, const int ay, const int cz, const int bz, const int az, const int x, const int y) {
   return  az + ((bx - ax) * (cz - az) - (cx - ax) * (bz - az))*(y - ay)/ ((bx-ax) * (cy-ay) - (cx-ax) * (by-ay)) - ((by-ay) * (cz-az) - (cy-ay)*(bz-az))*(x-ax)/((bx-ax)*(cy-ay) - (cx-ax) * (by-ay));
 }
+
+template
+void drawTri<FlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+
+template
+void drawTri<GouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);

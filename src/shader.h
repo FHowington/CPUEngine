@@ -23,9 +23,8 @@ enum class ShaderCategory { Textured, Untextured };
 class Shader {
  public:
   virtual ~Shader() {};
-  virtual void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                            const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) = 0;
-  virtual const fcolor fragmentShader(const unsigned color) = 0;
+
+  virtual const fcolor fragmentShader(const unsigned color = 0) = 0;
   virtual void stepXForX(const unsigned step) = 0;
   virtual void stepYForX(const unsigned step) = 0;
 };
@@ -40,10 +39,10 @@ class UntexturedShader : public Shader {
 // The difference is due to the cost of calling a virtual function MANY times
 // So instead, we will NOT call the functions via a Shader ref or pointer
 // The type of shader will be a compile time CONSTANT!
-class FlatShader : public UntexturedShader {
+class FlatShader : public TexturedShader {
  public:
-  void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                    const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) override {
+  FlatShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
+                    const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
     const vertex<float> v0iLight(multToVector(m.position, m.baseModel.getVertex(f._v0)));
     const vertex<float> v1iLight(multToVector(m.position, m.baseModel.getVertex(f._v1)));
     const vertex<float> v2iLight(multToVector(m.position, m.baseModel.getVertex(f._v2)));
@@ -57,11 +56,10 @@ class FlatShader : public UntexturedShader {
     };
   }
 
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color) override {
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
     return fcolor(color, _light);
   }
 
-  FlatShader() : _light(0) {}
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { return; }
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { return; }
 
@@ -72,10 +70,8 @@ class FlatShader : public UntexturedShader {
 
 class GouraudShader : public TexturedShader {
  public:
-  GouraudShader()  {}
-
-  void vertexShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                    const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) override {
+  GouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
+                    const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
     // Change in the texture coordinated for x/y, used for interpolation
     // OMG I'm a fool, instead just interpolate the intensity
     vertex<float> v0iNorm = (rotateVector(m.position, m.baseModel.getVertexNormal(f._v0)));
@@ -102,7 +98,8 @@ class GouraudShader : public TexturedShader {
     _light = (light0 * w0 + light1 * w1 + light2 * w2) / wTotal;
     _lightRow = _light;
   }
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color) override {
+
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
     return fcolor(color, _light);
   }
 
@@ -121,4 +118,41 @@ class GouraudShader : public TexturedShader {
   float _lDy;
   float _light;
   float _lightRow;
+};
+
+class InterpFlatShader : public TexturedShader {
+ public:
+  InterpFlatShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
+                        const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+    const vertex<float> v0iLight(multToVector(m.position, m.baseModel.getVertex(f._v0)));
+    const vertex<float> v1iLight(multToVector(m.position, m.baseModel.getVertex(f._v1)));
+    const vertex<float> v2iLight(multToVector(m.position, m.baseModel.getVertex(f._v2)));
+    vertex<float> vLight = cross(v0iLight, v1iLight, v2iLight);
+    vLight.normalize();
+    _light = dot(vLight, light);
+
+    // Effectively, this is the global illumination
+    if (_light < 0.2) {
+      _light = 0.2;
+    };
+  }
+
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
+    return fcolor(color, _light);
+  }
+
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { return; }
+  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { return; }
+
+ private:
+  float _light;
+  float R;
+  float G;
+  float B;
+  float Rdx;
+  float Rdy;
+  float Gdx;
+  float Gxy;
+  float Bdx;
+  float Bdy;
 };
