@@ -66,7 +66,7 @@ int main() {
   float cameraZ = 0;
 
   // This is where the per model will be done.
-  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
+  ModelInstance modInstance(head, &headtext, shaderType::InterpFlatShader);
 
   for(bool interrupted=false; !interrupted;)
   {
@@ -194,23 +194,27 @@ int main() {
     lastFrame = frameTime;
 
     if (mForward) {
-      cameraX -= d.count() * cameraRot._m[8]/SPEED;
-      cameraY -= d.count() * cameraRot._m[9]/SPEED;
-      cameraZ -= d.count() * cameraRot._m[10]/SPEED;
+      float movemt = (float)d.count() / SPEED;
+      cameraX -= movemt * cameraRot._m[8];
+      cameraY -= movemt * cameraRot._m[9];
+      cameraZ -= movemt * cameraRot._m[10];
     } else if (mBackward) {
-      cameraX += d.count() * cameraRot._m[8]/SPEED;
-      cameraY += d.count() * cameraRot._m[9]/SPEED;
-      cameraZ += d.count() * cameraRot._m[10]/SPEED;
+      float movemt = (float)d.count() / SPEED;
+      cameraX += movemt * cameraRot._m[8];
+      cameraY += movemt * cameraRot._m[9];
+      cameraZ += movemt * cameraRot._m[10];
     }
 
     if (mLeft) {
-      cameraX -= d.count() * cameraRot._m[0]/SPEED;
-      cameraY -= d.count() * cameraRot._m[1]/SPEED;
-      cameraZ -= d.count() * cameraRot._m[2]/SPEED;
+      float movemt = (float)d.count() / SPEED;
+      cameraX -= movemt * cameraRot._m[0];
+      cameraY -= movemt * cameraRot._m[1];
+      cameraZ -= movemt * cameraRot._m[2];
     } else if (mRight) {
-      cameraX += d.count() * cameraRot._m[0]/SPEED;
-      cameraY += d.count() * cameraRot._m[1]/SPEED;
-      cameraZ += d.count() * cameraRot._m[2]/SPEED;
+      float movemt = (float)d.count() / SPEED;
+      cameraX += movemt * cameraRot._m[0];
+      cameraY += movemt * cameraRot._m[1];
+      cameraZ += movemt * cameraRot._m[2];
     }
 
     cameraRot.set(3, 0, cameraX);
