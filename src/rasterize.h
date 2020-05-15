@@ -85,9 +85,9 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h);
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
 
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);

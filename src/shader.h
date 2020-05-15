@@ -18,7 +18,7 @@
 // so instead, we will guarantee that stepX and stepY are called for respective
 // steps, and depend on implementation to update their values appropriately
 
-enum class shaderType { FlatShader, GouraudShader, InterpFlatShader };
+enum class shaderType { FlatShader, GouraudShader, InterpFlatShader, InterpGouraudShader };
 
 class Shader {
  public:
@@ -73,9 +73,9 @@ class GouraudShader : public TexturedShader {
   GouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
                     const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
     // Change in the texture coordinated for x/y, used for interpolation
-    vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
-    vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
-    vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
+    const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
+    const vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
+    const vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
 
     float light0 = -dot(light, v0iNorm);
     if (light0 < 0.2) {
@@ -134,22 +134,112 @@ class InterpFlatShader : public UntexturedShader {
       _light = 0.2;
     };
 
+    const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
+    const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
+    const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
 
-    TGAColor col0 = TGAColor(m._texture->fast_get(f._t0x, f._t0y), 4);
-    TGAColor col1 = TGAColor(m._texture->fast_get(f._t1x, f._t1y), 4);
-    TGAColor col2 = TGAColor(m._texture->fast_get(f._t2x, f._t2y), 4);
+    const float R0 = ((col0 >> 16) & 0xff) * _light;
+    const float G0 = ((col0 >> 8) & 0xff) * _light;
+    const float B0 = (col0 & 0xff) * _light;
 
-    float R0 = col0.r * _light;
-    float G0 = col0.g * _light;
-    float B0 = col0.b * _light;
+    const float R1 = ((col1 >> 16) & 0xff) * _light;
+    const float G1 = ((col1 >> 8) & 0xff) * _light;
+    const float B1 = (col1 & 0xff) * _light;
 
-    float R1 = col1.r * _light;
-    float G1 = col1.g * _light;
-    float B1 = col1.b * _light;
+    const float R2 = ((col2 >> 16) & 0xff) * _light;
+    const float G2 = ((col2 >> 8) & 0xff) * _light;
+    const float B2 = (col2 & 0xff) * _light;
 
-    float R2 = col2.r * _light;
-    float G2 = col2.g * _light;
-    float B2 = col2.b * _light;
+    _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
+    _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;
+
+    _Gdx = (G0 * A12 + G1 * A20 + G2 * A01) / wTotal;
+    _Gdy = (G0 * B12 + G1 * B20 + G2 * B01) / wTotal;
+
+    _Bdx = (B0 * A12 + B1 * A20 + B2 * A01) / wTotal;
+    _Bdy = (B0 * B12 + B1 * B20 + B2 * B01) / wTotal;
+
+    _R = (R0 * w0 + R1 * w1 + R2 * w2) / wTotal;
+    _G = (G0 * w0 + G1 * w1 + G2 * w2) / wTotal;
+    _B = (B0 * w0 + B1 * w1 + B2 * w2) / wTotal;
+    _rowR = _R;
+    _rowG = _G;
+    _rowB = _B;
+  }
+
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
+    return fcolor(0, _R, _G, _B);
+  }
+
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override {
+    _R += _Rdx;
+    _G += _Gdx;
+    _B += _Bdx;
+  }
+  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
+    _rowR += _Rdy;
+    _rowG += _Gdy;
+    _rowB += _Bdy;
+
+    _R = _rowR;
+    _G = _rowG;
+    _B = _rowB;
+  }
+
+ private:
+  float _R;
+  float _G;
+  float _B;
+  float _Rdx;
+  float _Rdy;
+  float _Gdx;
+  float _Gdy;
+  float _Bdx;
+  float _Bdy;
+
+  float _rowR;
+  float _rowG;
+  float _rowB;
+};
+
+
+class InterpGouraudShader : public UntexturedShader {
+ public:
+  InterpGouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
+                        const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+
+    const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
+    const vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
+    const vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
+
+    float light0 = -dot(light, v0iNorm);
+    if (light0 < 0.2) {
+      light0 = 0.2;
+    }
+    float light1 = -dot(light, v1iNorm);
+    if (light1 < 0.2) {
+      light1 = 0.2;
+    }
+    float light2 = -dot(light, v2iNorm);
+    if (light2 < 0.2) {
+      light2 = 0.2;
+    }
+
+    const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
+    const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
+    const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
+
+    const float R0 = ((col0 >> 16) & 0xff) * light0;
+    const float G0 = ((col0 >> 8) & 0xff) * light0;
+    const float B0 = (col0 & 0xff) * light0;
+
+    const float R1 = ((col1 >> 16) & 0xff) * light1;
+    const float G1 = ((col1 >> 8) & 0xff) * light1;
+    const float B1 = (col1 & 0xff) * light1;
+
+    const float R2 = ((col2 >> 16) & 0xff) * light2;
+    const float G2 = ((col2 >> 8) & 0xff) * light2;
+    const float B2 = (col2 & 0xff) * light2;
 
     _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
     _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;

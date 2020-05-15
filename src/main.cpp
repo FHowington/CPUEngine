@@ -17,14 +17,22 @@
 unsigned pixels[W * H];
 int zbuff[W * H];
 
-// TODO: Clip at far z to maximize z-buffer granularity
-matrix<4,1> project(const vertex<float>& f) {
-  matrix<4,1> res;
-  res._m[0] = f._x / -(1.5 * f._z);
-  res._m[1] = f._y / -(1.5 * f._z);
-  res._m[2] = f._z;
-  res._m[3] = 1;
-  return res;
+template <typename T>
+inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const matrix<4,4>& viewClip, const vertex<float>& light) {
+  for (auto t : model->_baseModel.getFaces()) {
+    const vertex<int> v0i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v0), 1.5));
+    const vertex<int> v1i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v1), 1.5));
+    const vertex<int> v2i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v2), 1.5));
+
+    // We get the normal vector for every triangle
+    const vertex<float> v = cross(v0i, v1i, v2i);
+
+    // If it is backfacing, vector will be pointing in +z, so cull it
+    if (v._z < 0) {
+
+      drawTri<T>(*model, t, light, v0i, v1i, v2i);
+    }
+  }
 }
 
 int main() {
@@ -66,7 +74,10 @@ int main() {
   float cameraZ = 0;
 
   // This is where the per model will be done.
-  ModelInstance modInstance(head, &headtext, shaderType::InterpFlatShader);
+  std::vector<ModelInstance*> modelsInScene;
+
+  ModelInstance modInstance(head, &headtext, shaderType::InterpGouraudShader);
+  modelsInScene.push_back(&modInstance);
 
   for(bool interrupted=false; !interrupted;)
   {
@@ -229,73 +240,38 @@ int main() {
     vertex<float> light(x, y, -1);
 
     unsigned idx = 0;
-
-    if (!wireframe) {
-
-      switch (modInstance._shader) {
-        case shaderType::FlatShader: {
-          for (auto t : head.getFaces()) {
-            const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
-            const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
-            const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
-
-            // We get the normal vector for every triangle
-            vertex<float> v = cross(v0i, v1i, v2i);
-
-            // If it is backfacing, vector will be pointing in +z, so cull it
-            if (v._z < 0) {
-
-              drawTri<FlatShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
-            }
+    for (ModelInstance* model : modelsInScene) {
+      if (!wireframe) {
+        switch (modInstance._shader) {
+          case shaderType::FlatShader: {
+            renderModel<FlatShader>(model, cameraTransform, viewClip, light);
+            break;
           }
-          break;
-        }
 
-        case shaderType::GouraudShader: {
-          for (auto t : head.getFaces()) {
-            const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
-            const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
-            const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
-
-            // We get the normal vector for every triangle
-            vertex<float> v = cross(v0i, v1i, v2i);
-
-            // If it is backfacing, vector will be pointing in +z, so cull it
-            if (v._z < 0) {
-
-              drawTri<GouraudShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
-            }
+          case shaderType::GouraudShader: {
+            renderModel<GouraudShader>(model, cameraTransform, viewClip, light);
+            break;
           }
-          break;
-        }
 
-        case shaderType::InterpFlatShader: {
-          for (auto t : head.getFaces()) {
-            const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
-            const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
-            const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
-
-            // We get the normal vector for every triangle
-            vertex<float> v = cross(v0i, v1i, v2i);
-
-            // If it is backfacing, vector will be pointing in +z, so cull it
-            if (v._z < 0) {
-
-              drawTri<InterpFlatShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
-            }
+          case shaderType::InterpFlatShader: {
+            renderModel<InterpFlatShader>(model, cameraTransform, viewClip, light);
+            break;
           }
-          break;
+          case shaderType::InterpGouraudShader: {
+            renderModel<InterpGouraudShader>(model, cameraTransform, viewClip, light);
+            break;
+          }
         }
-      }
-    } else {
-      for (auto t : head.getFaces()) {
-        const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
-        const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
-        const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
+      } else {
+        for (auto t : head.getFaces()) {
+          const vertex<int> v0i(pipeline(cameraTransform, model->_position, viewClip, head.getVertex(t._v0), 1.5));
+          const vertex<int> v1i(pipeline(cameraTransform, model->_position, viewClip, head.getVertex(t._v1), 1.5));
+          const vertex<int> v2i(pipeline(cameraTransform, model->_position, viewClip, head.getVertex(t._v2), 1.5));
 
-        line(v0i, v1i,  0xFFFFFFF);
-        line(v1i, v2i,  0xFFFFFFF);
-        line(v2i, v0i,  0xFFFFFFF);
+          line(v0i, v1i,  0xFFFFFFF);
+          line(v1i, v2i,  0xFFFFFFF);
+          line(v2i, v0i,  0xFFFFFFF);
+        }
       }
     }
 

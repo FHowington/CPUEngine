@@ -19,7 +19,7 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
   // These are reused for every triangle in the model
@@ -28,7 +28,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
   static const __m256i ones = _mm256_set1_epi32(-1);
-  static const __m256i textureClip = _mm256_set1_epi32(img.width * img.height);
+  static const __m256i textureClip = _mm256_set1_epi32(m._texture->width * m._texture->height);
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -196,12 +196,12 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
         xColv = _mm256_cvtps_epi32(xColv);
         yColv = _mm256_cvtps_epi32(yColv);
 
-        yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(img.width));
+        yColv = _mm256_mullo_epi32(yColv, _mm256_set1_epi32(m._texture->width));
         xColv = _mm256_add_epi32(xColv, yColv);
 
         xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
 
-        __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
+        __m256i colorsData = _mm256_i32gather_epi32(m._texture->data, xColv, 4);
         _mm256_stream_si256((__m256i *)(colors), colorsData);
 
         for (unsigned x = 0; x < 8; ++x) {
@@ -243,7 +243,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
         // Uncomment for exact z values
         if (zbuff[xVal + offset] < z) {
           zbuff[xVal + offset] = z;
-          plot(xVal, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
+          plot(xVal, y, shader.fragmentShader(m._texture->fast_get(xCol, yCol)));
         }
       }
       w0 += A12;
@@ -268,7 +268,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
 }
 #else
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
   const int x0 = v0i._x;
@@ -384,7 +384,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (zbuff[x + offset] < z) {
-          plot(x, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
+          plot(x, y, shader.fragmentShader(m._texture->fast_get(xCol, yCol)));
           zbuff[x + offset] = z;
         }
       }
@@ -504,7 +504,7 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
 
 
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
   const int x0 = v0i._x;
@@ -623,13 +623,17 @@ float zPos(const int cx, const int bx, const int ax, const int cy, const int by,
 }
 
 template
-void drawTri<FlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri<FlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
 
 template
-void drawTri<GouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri<GouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
 
 template
-void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+
+template
+void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
