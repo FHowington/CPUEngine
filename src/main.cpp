@@ -66,7 +66,7 @@ int main() {
   float cameraZ = 0;
 
   // This is where the per model will be done.
-  ModelInstance modInstance(head, headtext);
+  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
 
   for(bool interrupted=false; !interrupted;)
   {
@@ -219,28 +219,76 @@ int main() {
 
     matrix<4,4> cameraTransform = invert(cameraRot);
 
-
-
-    modInstance.position = matrix<4,4>::rotationY(rot);
-    modInstance.position.set(3, 2, -5);
+    modInstance._position = matrix<4,4>::rotationY(rot);
+    modInstance._position.set(3, 2, -5);
 
     vertex<float> light(x, y, -1);
 
     unsigned idx = 0;
-    for (auto t : head.getFaces()) {
-      const vertex<int> v0i(pipeline(cameraTransform, modInstance.position, viewClip, head.getVertex(t._v0), 1.5));
-      const vertex<int> v1i(pipeline(cameraTransform, modInstance.position, viewClip, head.getVertex(t._v1), 1.5));
-      const vertex<int> v2i(pipeline(cameraTransform, modInstance.position, viewClip, head.getVertex(t._v2), 1.5));
 
-      // We get the normal vector for every triangle
-      vertex<float> v = cross(v0i, v1i, v2i);
+    if (!wireframe) {
 
-      // If it is backfacing, vector will be pointing in +z, so cull it
-      if (v._z < 0) {
+      switch (modInstance._shader) {
+        case shaderType::FlatShader: {
+          for (auto t : head.getFaces()) {
+            const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
+            const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
+            const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
 
-        drawTri<GouraudShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
+            // We get the normal vector for every triangle
+            vertex<float> v = cross(v0i, v1i, v2i);
+
+            // If it is backfacing, vector will be pointing in +z, so cull it
+            if (v._z < 0) {
+
+              drawTri<FlatShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
+            }
+          }
+          break;
+        }
+
+        case shaderType::GouraudShader: {
+          for (auto t : head.getFaces()) {
+            const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
+            const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
+            const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
+
+            // We get the normal vector for every triangle
+            vertex<float> v = cross(v0i, v1i, v2i);
+
+            // If it is backfacing, vector will be pointing in +z, so cull it
+            if (v._z < 0) {
+
+              drawTri<GouraudShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
+            }
+          }
+          break;
+        }
+
+        case shaderType::InterpFlatShader: {
+          for (auto t : head.getFaces()) {
+            const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
+            const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
+            const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
+
+            // We get the normal vector for every triangle
+            vertex<float> v = cross(v0i, v1i, v2i);
+
+            // If it is backfacing, vector will be pointing in +z, so cull it
+            if (v._z < 0) {
+
+              drawTri<InterpFlatShader>(modInstance, t, light, headtext, v0i, v1i, v2i);
+            }
+          }
+          break;
+        }
       }
-      if (wireframe) {
+    } else {
+      for (auto t : head.getFaces()) {
+        const vertex<int> v0i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v0), 1.5));
+        const vertex<int> v1i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v1), 1.5));
+        const vertex<int> v2i(pipeline(cameraTransform, modInstance._position, viewClip, head.getVertex(t._v2), 1.5));
+
         line(v0i, v1i,  0xFFFFFFF);
         line(v1i, v2i,  0xFFFFFFF);
         line(v2i, v0i,  0xFFFFFFF);
@@ -264,6 +312,5 @@ int main() {
 
     }
   }
-
   return 0;
 }

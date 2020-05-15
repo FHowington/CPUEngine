@@ -14,6 +14,9 @@
 #include <vector>
 #include "Window.h"
 
+class TGAImage;
+enum class shaderType;
+
 class Model {
  public:
   Model(const std::string& fileName, const unsigned width, const unsigned height) { loadModel(fileName, width, height); }
@@ -30,9 +33,11 @@ class Model {
   void loadModel(const std::string& fileName, const unsigned width, const unsigned height);
 };
 
+
 struct ModelInstance {
-  ModelInstance (const Model& mod, const TGAImage& text) : baseModel(mod), texture(text) {}
-  const Model& baseModel;
-  const TGAImage& texture;
-  matrix<4,4> position;
+  ModelInstance (const Model& mod, const TGAImage* text, const shaderType shader) : _baseModel(mod), _texture(text), _shader(shader) {}
+  const Model& _baseModel;
+  const TGAImage* _texture;
+  matrix<4,4> _position;
+  const shaderType _shader;
 };

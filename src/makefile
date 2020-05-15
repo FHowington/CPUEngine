@@ -17,11 +17,11 @@ engine: main.o tgaimage.o loader.o rasterize.o geometry.o shader.o
 	$(CXX) $(CXXFLAGS) -o engine main.o tgaimage.o loader.o rasterize.o geometry.o
 
 main.o: main.cpp rasterize.o loader.o Window.h shader.o
-tgaimage.o: tgaimage.cpp tgaimage.h
 rasterize.o: rasterize.cpp rasterize.h loader.o Window.h geometry.o shader.o
-loader.o: loader.cpp loader.h Window.h geometry.o
+loader.o: loader.cpp loader.h Window.h geometry.o tgaimage.h
 geometry.o: geometry.cpp geometry.h Window.h
 shader.o: shader.cpp shader.h
+tgaimage.o: tgaimage.cpp tgaimage.h
 
 clean:
 	rm main.o tgaimage.o loader.o rasterize.o geometry.o engine

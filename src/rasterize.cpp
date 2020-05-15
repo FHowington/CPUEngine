@@ -420,16 +420,16 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
   int y1 = v1._y;
 
   if (x0 > W) {
-    x0 = W;
-  }
-  if (x0 < 0) {
     x0 = 0;
   }
+  if (x0 < 0) {
+    x0 = W;
+  }
   if (x1 > W) {
-    x1 = W;
+    x1 = 0;
   }
   if (x1 < 0) {
-    x1 = 0;
+    x1 = W;
   }
 
   if (y0 > H) {
@@ -584,8 +584,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light, 
 
   unsigned offset = minY * W;
 
-  T shader;
-  shader.vertexShader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
@@ -629,4 +628,8 @@ void drawTri<FlatShader>(const ModelInstance& m, const face& f, const vertex<flo
 
 template
 void drawTri<GouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+
+template
+void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light, const TGAImage& img,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
