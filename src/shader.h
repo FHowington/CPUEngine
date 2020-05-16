@@ -5,6 +5,7 @@
 #pragma once
 
 #include "geometry.h"
+#include <immintrin.h>
 #include "loader.h"
 
 // We do this instead of the typical inheritance route because dynamic binding of function calls
@@ -25,6 +26,11 @@ class Shader {
   virtual ~Shader() {};
 
   virtual const fcolor fragmentShader(const unsigned color = 0) = 0;
+
+#ifdef __AVX2__
+  virtual const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) { return; }
+#endif
+
   virtual void stepXForX(const unsigned step) = 0;
   virtual void stepYForX(const unsigned step) = 0;
 };
@@ -59,6 +65,10 @@ class FlatShader : public TexturedShader {
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
     return fcolor(color, _light);
   }
+
+#ifdef __AVX2__
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override { return; }
+#endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { return; }
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { return; }
@@ -100,6 +110,30 @@ class GouraudShader : public TexturedShader {
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
     return fcolor(color, _light);
   }
+
+#ifdef __AVX2__
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    float __attribute__((aligned(32))) lightTemp[8];
+    const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+    const __m256i lightAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_lDx));
+    const __m256i lightRow = _mm256_add_ps(_mm256_set1_ps(_light), lightAdd);
+
+    _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
+    _mm256_stream_si256((__m256i *)(lightTemp), lightRow);
+
+    // TODO: Figure out to do this all  registers
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = ((int)(((colorTemp[idx] >> 16) & 0xff) * lightTemp[idx])) << 16 |
+                       ((int)(((colorTemp[idx] >> 8) & 0xff) * lightTemp[idx])) << 8 |
+                       (int)(((colorTemp[idx]) & 0xff) * lightTemp[idx]);
+
+    }
+
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+
+  }
+#endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
     _light += _lDx * step;
@@ -267,6 +301,7 @@ class InterpGouraudShader : public UntexturedShader {
     _G += _Gdx;
     _B += _Bdx;
   }
+
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
     _rowR += _Rdy;
     _rowG += _Gdy;
