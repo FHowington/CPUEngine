@@ -217,23 +217,14 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
         _mm256_stream_si256((__m256i *)(colors), colorsData);
-        //mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate2);
-        //_mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
 
+        _mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate2);
+        _mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
 
-        for (unsigned x = 0; x < 8; ++x) {
-          if (zBuffTemp[x]) {
-            zbuff[xVal + offset] = zBuffTemp2[x];
-            plot(xVal, y, shader.fragmentShader(colors[x]));
-          }
-          ++xVal;
-          shader.stepXForX();
-        }
-      } else {
-        xVal += 8;
-        // We must step 8 times.
-        shader.stepXForX(8);
       }
+      xVal += 8;
+      // We must step 8 times.
+      shader.stepXForX(8);
 
       xCol += xColDx * 8;
       yCol += yColDx * 8;
