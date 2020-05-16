@@ -234,10 +234,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         w0Init = _mm256_add_epi32(w0Init, a12Add8);
         w1Init = _mm256_add_epi32(w1Init, a20Add8);
         w2Init = _mm256_add_epi32(w2Init, a01Add8);
-      } else {
-        w0 = _mm256_extract_epi32(w0Init, 7) + A12;
-        w1 = _mm256_extract_epi32(w1Init, 7) + A20;
-        w2 = _mm256_extract_epi32(w2Init, 7) + A01;
       }
     }
 
