@@ -85,7 +85,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int z1 = v1i._z;
   const int z2 = v2i._z;
 
-  unsigned x, y, xVal, yVal, numInner, inner, numOuter;
+  unsigned x, y, xVal, yVal, numInner, inner;
 
   int w0, w1, w2, z;
 
@@ -122,7 +122,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
-  //unsigned __attribute__((aligned(32))) zBuffTemp2[8];
+  unsigned __attribute__((aligned(32))) zBuffTemp2[8];
   unsigned __attribute__((aligned(32))) colors[8];
   unsigned __attribute__((aligned(32))) bufferTemp[8];
 
@@ -167,8 +167,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     yCol = yColRow;
 
     numInner = (maxX - minX) / 8;
-    numOuter = (maxX - minX) % 8;
-    if (numOuter) {
+
+    if ((maxX - minX) % 8) {
       ++numInner;
     }
 
@@ -193,13 +193,13 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       // USE BLEND!!
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
-        //const __m256i zUpdate2 = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
+        const __m256i zUpdate2 = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
         const __m256i zUpdate = _mm256_and_si256(needsUpdate, zv);
 
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
-        //_mm256_stream_si256((__m256i *)(zBuffTemp2), zUpdate2);
+        _mm256_stream_si256((__m256i *)(zBuffTemp2), zUpdate2);
 
-        //const __m256i colorV = _mm256_load_si256((__m256i*)(pixels + xVal + offset));
+        const __m256i colorV = _mm256_load_si256((__m256i*)(pixels + ((H-y) * W) + xVal));
 
         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
@@ -214,20 +214,18 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
 
         __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
-        //colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
+        colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
         _mm256_stream_si256((__m256i *)(colors), colorsData);
-
-        //_mm256_stream_si256((__m256i*)(zbuff + xVal + offset), zUpdate2);
+        //mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate2);
+        //_mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
 
 
         for (unsigned x = 0; x < 8; ++x) {
-
           if (zBuffTemp[x]) {
-            zbuff[xVal + offset] = zBuffTemp[x];
+            zbuff[xVal + offset] = zBuffTemp2[x];
             plot(xVal, y, shader.fragmentShader(colors[x]));
           }
-
           ++xVal;
           shader.stepXForX();
         }
