@@ -26,7 +26,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   static const __m256i min = _mm256_set1_epi32(-1);
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-  static const __m256i loadOffset = _mm256_set_epi32(7*W, 6*W, 5*W, 4*W, 3*W, 2*W, W, 0);
   static const __m256i ones = _mm256_set1_epi32(-1);
 
   const int x0 = v0i._x;
@@ -68,6 +67,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     return;
   }
 
+  // If all three are positive, the object is behind the camera
+  if ((v0i._z | v1i._z | v2i._z) > 0) {
+    return;
+  }
+
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
   const short A12 = y1 - y2;
@@ -80,11 +84,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int z0 = v0i._z;
   const int z1 = v1i._z;
   const int z2 = v2i._z;
-
-  // If all three are positive, the object is behind the camera
-  if ((v0i._z | v1i._z | v2i._z) > 0) {
-    return;
-  }
 
   unsigned x, y, xVal, yVal, numInner, inner, numOuter;
 
@@ -123,10 +122,10 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   // We want to always have our accessed aligned on 32 byte boundaries
   unsigned __attribute__((aligned(32))) zBuffTemp[8];
+  //unsigned __attribute__((aligned(32))) zBuffTemp2[8];
   unsigned __attribute__((aligned(32))) colors[8];
+  unsigned __attribute__((aligned(32))) bufferTemp[8];
 
-  //const unsigned xDiff = maxX - minX;
-  //const unsigned yDiff = maxY - minY;
 
   T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
   const TGAImage& img = *m._texture;
@@ -169,6 +168,9 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
     numInner = (maxX - minX) / 8;
     numOuter = (maxX - minX) % 8;
+    if (numOuter) {
+      ++numInner;
+    }
 
     w0Init = _mm256_set1_epi32(w0);
     w0Init = _mm256_add_epi32(w0Init, a12Add);
@@ -185,10 +187,19 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       const __m256i zInit = _mm256_set1_epi32(z);
       const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
-      const __m256i zUpdate = _mm256_and_si256(_mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min)), zv);
+      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min));
 
-      if (!_mm256_testz_si256(zUpdate, zUpdate)) {
+
+      // USE BLEND!!
+
+      if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
+        //const __m256i zUpdate2 = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
+        const __m256i zUpdate = _mm256_and_si256(needsUpdate, zv);
+
         _mm256_stream_si256((__m256i *)(zBuffTemp), zUpdate);
+        //_mm256_stream_si256((__m256i *)(zBuffTemp2), zUpdate2);
+
+        //const __m256i colorV = _mm256_load_si256((__m256i*)(pixels + xVal + offset));
 
         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
@@ -203,9 +214,15 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
 
         __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
+        //colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
+
         _mm256_stream_si256((__m256i *)(colors), colorsData);
 
+        //_mm256_stream_si256((__m256i*)(zbuff + xVal + offset), zUpdate2);
+
+
         for (unsigned x = 0; x < 8; ++x) {
+
           if (zBuffTemp[x]) {
             zbuff[xVal + offset] = zBuffTemp[x];
             plot(xVal, y, shader.fragmentShader(colors[x]));
@@ -233,25 +250,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         w1 = _mm256_extract_epi32(w1Init, 7) + A20;
         w2 = _mm256_extract_epi32(w2Init, 7) + A01;
       }
-    }
-
-    for (x = 0; x < numOuter; ++x) {
-      // If p is on or inside all edges, render pixel
-      if ((w0 | w1 | w2) >= 0) {
-        // Uncomment for exact z values
-        if (zbuff[xVal + offset] < z) {
-          zbuff[xVal + offset] = z;
-          plot(xVal, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
-        }
-      }
-      w0 += A12;
-      w1 += A20;
-      w2 += A01;
-      z += zdx;
-      xCol += xColDx;
-      yCol += yColDx;
-      ++xVal;
-      shader.stepXForX();
     }
 
     w0Row += B12;
