@@ -205,11 +205,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
         _mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate);
         _mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
+      } else {
+        shader.stepXForX(8);
       }
-
       xVal += 8;
       // We must step 8 times.
-      shader.stepXForX(8);
 
       xCol += xColDx * 8;
       yCol += yColDx * 8;
@@ -469,7 +469,184 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
 }
 
 
+#ifdef __AVX2__
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
+void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
+  // These are reused for every triangle in the model
+  static const __m256i min = _mm256_set1_epi32(-1);
+  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i ones = _mm256_set1_epi32(-1);
+
+  const int x0 = v0i._x;
+  const int x1 = v1i._x;
+  const int x2 = v2i._x;
+
+  const int y0 = v0i._y;
+  const int y1 = v1i._y;
+  const int y2 = v2i._y;
+
+  // Prevent from wasting time on polygons that have no area
+  if (colinear(x0, x1, x2, y0, y1, y2)) {
+    return;
+  }
+
+  const int minX = min3(x0, x1, x2);
+  const int minY = min3(y0, y1, y2);
+
+  const int maxX = max3(x0, x1, x2, (int)W);
+  const int maxY = max3(y0, y1, y2, (int)H - 1);
+
+  // Same idea. These have no area (happens when triangle is outside of viewing area)
+  if (maxX < minX || maxY < minY) {
+    return;
+  }
+
+  // Bias to make sure only top or left edges fall on line
+  const int bias0 = -isTopLeft(v1i, v2i);
+  const int bias1 = -isTopLeft(v2i, v0i);
+  const int bias2 = -isTopLeft(v0i, v1i);
+
+  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
+  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
+  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
+
+  // If this number is 0, triangle has no area!
+  float wTotal = w0Row + w1Row + w2Row;
+  if (!wTotal) {
+    return;
+  }
+
+  // If all three are positive, the object is behind the camera
+  if ((v0i._z | v1i._z | v2i._z) > 0) {
+    return;
+  }
+
+  // Deltas for change in x or y for the 3 sides of a triangle
+  const short A01 = y0 - y1;
+  const short A12 = y1 - y2;
+  const short A20 = y2 - y0;
+
+  const short B01 = x1 - x0;
+  const short B12 = x2 - x1;
+  const short B20 = x0 - x2;
+
+  const int z0 = v0i._z;
+  const int z1 = v1i._z;
+  const int z2 = v2i._z;
+
+  unsigned x, y, xVal, yVal, numInner, inner;
+
+  int w0, w1, w2, z;
+
+  const int div = (((B20) * (-A01)) + (B01) * (A20));
+  const int z10 = z1 - z0;
+  const int z20 = z2 - z0;
+
+  // Change in z for change in row/column
+  // Obtained by taking partial derivative with respect to x or y from equation of a plane
+  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
+  // Using these deltas, we interpolate over face of the whole triangle
+  const int zdx = (A20 * z10 + A01 * z20) / div;
+  const int zdy = (B20 * z10 + B01 * z20) / div;
+
+  // Likewise from solving for z with equation of a plane
+  int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
+
+
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  const TGAImage& img = *m._texture;
+  const __m256i textureClip = _mm256_set1_epi32(img.width *img.height);
+
+  // If the traingle is wider than tall, we want to vectorize on x
+  // Otherwise, we vectorize on y
+  const __m256i zdxAdd = _mm256_set_epi32(7*zdx, 6*zdx, 5*zdx, 4*zdx, 3*zdx, 2*zdx, zdx, 0);
+
+  __m256i w0Init;
+  __m256i w1Init;
+  __m256i w2Init;
+
+  const  int zdx8 = 8*zdx;
+
+  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
+  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
+
+  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
+  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
+
+  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
+  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
+
+
+  // We will enter inner loop at least once, otherwise numInner is always 0
+  unsigned offset = minY * W;
+  for (y = minY; y <= maxY; ++y) {
+
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+    z = zOrig;
+
+    numInner = (maxX - minX) / 8;
+
+    if ((maxX - minX) % 8) {
+      ++numInner;
+    }
+
+    w0Init = _mm256_set1_epi32(w0);
+    w0Init = _mm256_add_epi32(w0Init, a12Add);
+
+    w1Init = _mm256_set1_epi32(w1);
+    w1Init = _mm256_add_epi32(w1Init, a20Add);
+
+    w2Init = _mm256_set1_epi32(w2);
+    w2Init = _mm256_add_epi32(w2Init, a01Add);
+
+    xVal = minX;
+
+    for (inner = 0; inner < numInner; ++inner) {
+      const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+
+      const __m256i zInit = _mm256_set1_epi32(z);
+      const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
+      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min));
+
+      if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
+        const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
+        const __m256i colorV = _mm256_load_si256((__m256i*)(pixels + ((H-y) * W) + xVal));
+
+        __m256i colorsData;
+        shader.fragmentShader(colorsData);
+        colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
+
+        _mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate);
+        _mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
+      } else {
+        shader.stepXForX(8);
+      }
+
+      xVal += 8;
+      // We must step 8 times.
+      z += zdx8;
+
+      if (inner < numInner - 1) {
+        w0Init = _mm256_add_epi32(w0Init, a12Add8);
+        w1Init = _mm256_add_epi32(w1Init, a20Add8);
+        w2Init = _mm256_add_epi32(w2Init, a01Add8);
+      }
+    }
+
+    w0Row += B12;
+    w1Row += B20;
+    w2Row += B01;
+    zOrig += zdy;
+    offset += W;
+    shader.stepYForX();
+  }
+}
+#else
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
@@ -584,6 +761,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     shader.stepYForX();
   }
 }
+#endif
 
 float zPos(const int cx, const int bx, const int ax, const int cy, const int by, const int ay, const int cz, const int bz, const int az, const int x, const int y) {
   return  az + ((bx - ax) * (cz - az) - (cx - ax) * (bz - az))*(y - ay)/ ((bx-ax) * (cy-ay) - (cx-ax) * (by-ay)) - ((by-ay) * (cz-az) - (cy-ay)*(bz-az))*(x-ax)/((bx-ax)*(cy-ay) - (cx-ax) * (by-ay));

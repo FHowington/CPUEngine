@@ -76,7 +76,7 @@ int main() {
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
-  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
+  ModelInstance modInstance(head, &headtext, shaderType::InterpGouraudShader);
   modelsInScene.push_back(&modInstance);
 
   for(bool interrupted=false; !interrupted;)

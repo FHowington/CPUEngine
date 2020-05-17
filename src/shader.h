@@ -67,7 +67,22 @@ class FlatShader : public TexturedShader {
   }
 
 #ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override { return; }
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+
+    _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
+
+    // TODO: Figure out to do this all in registers
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = ((int)(((colorTemp[idx] >> 16) & 0xff) * _light)) << 16 |
+                       ((int)(((colorTemp[idx] >> 8) & 0xff) * _light)) << 8 |
+                       (int)(((colorTemp[idx]) & 0xff) * _light);
+    }
+
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+
+  }
 #endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { return; }
@@ -113,6 +128,7 @@ class GouraudShader : public TexturedShader {
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+
     unsigned __attribute__((aligned(32))) colorTemp[8];
     float __attribute__((aligned(32))) lightTemp[8];
     const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
@@ -122,7 +138,7 @@ class GouraudShader : public TexturedShader {
     _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
     _mm256_stream_si256((__m256i *)(lightTemp), lightRow);
 
-    // TODO: Figure out to do this all  registers
+    // TODO: Figure out to do this all in registers
     for (unsigned idx = 0; idx < 8; ++idx) {
       colorTemp[idx] = ((int)(((colorTemp[idx] >> 16) & 0xff) * lightTemp[idx])) << 16 |
                        ((int)(((colorTemp[idx] >> 8) & 0xff) * lightTemp[idx])) << 8 |
@@ -130,8 +146,8 @@ class GouraudShader : public TexturedShader {
 
     }
 
+    _light += _lDx * 8;
     colorsData = _mm256_load_si256((__m256i*)(colorTemp));
-
   }
 #endif
 
@@ -205,10 +221,26 @@ class InterpFlatShader : public UntexturedShader {
     return fcolor(0, _R, _G, _B);
   }
 
-  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override {
-    _R += _Rdx;
-    _G += _Gdx;
-    _B += _Bdx;
+
+#ifdef __AVX2__
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = (int)_R << 16 |
+                       (int)_G << 8 |
+                       (int)_B;
+          _R += _Rdx;
+          _G += _Gdx;
+          _B += _Bdx;
+    }
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+  }
+#endif
+
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
+    _R += _Rdx * step;
+    _G += _Gdx * step;
+    _B += _Bdx * step;
   }
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
     _rowR += _Rdy;
@@ -296,10 +328,25 @@ class InterpGouraudShader : public UntexturedShader {
     return fcolor(0, _R, _G, _B);
   }
 
-  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override {
-    _R += _Rdx;
-    _G += _Gdx;
-    _B += _Bdx;
+#ifdef __AVX2__
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = (int)_R << 16 |
+                       (int)_G << 8 |
+                       (int)_B;
+          _R += _Rdx;
+          _G += _Gdx;
+          _B += _Bdx;
+    }
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+  }
+#endif
+
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
+    _R += _Rdx * step;
+    _G += _Gdx * step;
+    _B += _Bdx * step;
   }
 
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
