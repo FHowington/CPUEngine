@@ -210,7 +210,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       }
       xVal += 8;
       // We must step 8 times.
-
       xCol += xColDx * 8;
       yCol += yColDx * 8;
       z += zdx8;
@@ -477,8 +476,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-  static const __m256i ones = _mm256_set1_epi32(-1);
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
