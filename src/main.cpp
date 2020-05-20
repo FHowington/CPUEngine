@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <iostream>
+#include "pool.h"
 #include "rasterize.h"
 #include <SDL2/SDL.h>
 #include <thread>
@@ -17,25 +18,13 @@
 unsigned pixels[W * H];
 int zbuff[W * H];
 
-template <typename T>
-inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const matrix<4,4>& viewClip, const vertex<float>& light) {
-  for (auto t : model->_baseModel.getFaces()) {
-    const vertex<int> v0i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v0), 1.5));
-    const vertex<int> v1i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v1), 1.5));
-    const vertex<int> v2i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v2), 1.5));
+matrix<4,4> cameraTransform;
+vertex<float> light;
+std::atomic<unsigned> remaining_models;
 
-    // We get the normal vector for every triangle
-    const vertex<float> v = cross(v0i, v1i, v2i);
-
-    // If it is backfacing, vector will be pointing in +z, so cull it
-    if (v._z < 0) {
-
-      drawTri<T>(*model, t, light, v0i, v1i, v2i);
-    }
-  }
-}
 
 int main() {
+  remaining_models = 0;
   // Create a screen.
   SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
@@ -76,13 +65,19 @@ int main() {
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
-  ModelInstance modInstance(head, &headtext, shaderType::InterpGouraudShader);
+  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
   modelsInScene.push_back(&modInstance);
+
+
+  Pool pool(std::thread::hardware_concurrency());
 
   for(bool interrupted=false; !interrupted;)
   {
     for(auto& p: pixels) p = 0;
     for(auto& p: zbuff) p = std::numeric_limits<int>::min();
+
+    ++remaining_models;
+    pool.enqueue_model(&modInstance);
 
     SDL_Event ev;
     while(SDL_PollEvent(&ev))
@@ -194,7 +189,6 @@ int main() {
 
 
     // TODO: Convert to more understandable numbers
-    static const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, 2*W, 2*H);
 
     matrix<4,4> cameraRotXM = matrix<4,4>::rotationX(cameraRotX);
     matrix<4,4> cameraRotYM = matrix<4,4>::rotationY(cameraRotY);
@@ -232,52 +226,22 @@ int main() {
     cameraRot.set(3, 1, cameraY);
     cameraRot.set(3, 2, cameraZ);
 
-    matrix<4,4> cameraTransform = invert(cameraRot);
+    matrix<4,4> newCameraTransform = invert(cameraRot);
+    matrix<4,4> newPostion = matrix<4,4>::rotationY(rot);
+    newPostion.set(3, 2, -5);
 
-    modInstance._position = matrix<4,4>::rotationY(rot);
-    modInstance._position.set(3, 2, -5);
+    vertex<float> newLight = vertex<float>(x, y, -1);
 
-    vertex<float> light(x, y, -1);
-
-    unsigned idx = 0;
-    for (ModelInstance* model : modelsInScene) {
-      if (!wireframe) {
-        switch (modInstance._shader) {
-          case shaderType::FlatShader: {
-            renderModel<FlatShader>(model, cameraTransform, viewClip, light);
-            break;
-          }
-
-          case shaderType::GouraudShader: {
-            renderModel<GouraudShader>(model, cameraTransform, viewClip, light);
-            break;
-          }
-
-          case shaderType::InterpFlatShader: {
-            renderModel<InterpFlatShader>(model, cameraTransform, viewClip, light);
-            break;
-          }
-          case shaderType::InterpGouraudShader: {
-            renderModel<InterpGouraudShader>(model, cameraTransform, viewClip, light);
-            break;
-          }
-        }
-      } else {
-        for (auto t : head.getFaces()) {
-          const vertex<int> v0i(pipeline(cameraTransform, model->_position, viewClip, head.getVertex(t._v0), 1.5));
-          const vertex<int> v1i(pipeline(cameraTransform, model->_position, viewClip, head.getVertex(t._v1), 1.5));
-          const vertex<int> v2i(pipeline(cameraTransform, model->_position, viewClip, head.getVertex(t._v2), 1.5));
-
-          line(v0i, v1i,  0xFFFFFFF);
-          line(v1i, v2i,  0xFFFFFFF);
-          line(v2i, v0i,  0xFFFFFFF);
-        }
-      }
-    }
+    // TODO: Change this to something..better. A conditional perhaps.
+    while(remaining_models);
 
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
+
+    modInstance._position = newPostion;
+    cameraTransform = newCameraTransform;
+    light = newLight;
 
     if (fps) {
       ++frame;
