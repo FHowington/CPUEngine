@@ -37,4 +37,5 @@ class Pool {
   static std::condition_variable job_condition;
   static std::list<const ModelInstance*> model_queue;
   std::vector<std::thread> thread_pool;
+  static bool terminate;
 };

@@ -10,6 +10,7 @@ const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, 2*W, 2*H);
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
 std::list<const ModelInstance*> Pool::model_queue;
+bool Pool::terminate = false;
 
 Pool::Pool(const unsigned numThreads) {
   for(int i = 0; i < numThreads; ++i) {
@@ -18,22 +19,23 @@ Pool::Pool(const unsigned numThreads) {
 }
 
 Pool::~Pool() {
-    job_condition.notify_all();
+  terminate = true;
+  job_condition.notify_all();
 
-    for (std::thread &t : thread_pool)
-    {
-      t.join();
-    }
-
-    thread_pool.clear();
+  for (std::thread &t : thread_pool) {
+    t.join();
+  }
+  thread_pool.clear();
 }
 
 void Pool::job_wait() {
-  while(true)
-  {
+  while(true) {
     std::unique_lock<std::mutex> lock(job_queue_mutex_);
 
-    job_condition.wait(lock, []{return !Pool::model_queue.empty();});
+    job_condition.wait(lock, []{ return !Pool::model_queue.empty() || Pool::terminate; });
+    if (terminate) {
+      break;
+    }
     const ModelInstance* job = model_queue.front();
     model_queue.pop_front();
 
