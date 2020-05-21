@@ -22,7 +22,6 @@ matrix<4,4> cameraTransform;
 vertex<float> light;
 std::atomic<unsigned> remaining_models;
 
-
 int main() {
   remaining_models = 0;
   // Create a screen.
@@ -253,7 +252,6 @@ int main() {
         printf("%f FPS\n", fps);
         start = std::chrono::high_resolution_clock::now();
       }
-
     }
   }
   return 0;

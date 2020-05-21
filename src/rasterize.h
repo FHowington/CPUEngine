@@ -13,27 +13,19 @@
 #include "tgaimage.h"
 #include <utility>
 #include <vector>
+#include "pool.h"
 #include "Window.h"
 
 const unsigned halfW = W/2;
 const unsigned halfH = H/2;
 
-extern unsigned pixels[W*H];
-extern int zbuff[W*H];
+
+extern unsigned pixels[W * H];
+extern int zbuff[W * H];
 
 
 typedef std::pair<double, double> SlopePair;
-inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, const unsigned color)
-{
-  // We want to flip pos y to mean "up"
-#ifdef DEBUG
-  //  if(pixels[(H-y)*W+x] != focolor::blank)
-  //  pixels[(H-y)*W+x] = fcolor::duplicate;
-    //  else
-#endif
-    pixels[(H-y)*W+x] = color;
-}
-
+inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, const unsigned color);
 
 // We deal only with counter-clockwise triangles
 // Therefore, see if it is horizontal & higher than the other points (p1 is left of p0)
@@ -91,3 +83,21 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+
+template <typename T>
+inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const matrix<4,4>& viewClip, const vertex<float>& light) {
+  for (auto t : model->_baseModel.getFaces()) {
+    const vertex<int> v0i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v0), 1.5));
+    const vertex<int> v1i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v1), 1.5));
+    const vertex<int> v2i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v2), 1.5));
+
+    // We get the normal vector for every triangle
+    const vertex<float> v = cross(v0i, v1i, v2i);
+
+    // If it is backfacing, vector will be pointing in +z, so cull it
+    if (v._z < 0) {
+
+      drawTri<T>(*model, t, light, v0i, v1i, v2i);
+    }
+  }
+}

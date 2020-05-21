@@ -177,7 +177,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
     xVal = minX;
     for (inner = 0; inner < numInner; ++inner) {
-      const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+      const __m256i zbuffv = _mm256_load_si256((__m256i*)(t_zbuff + xVal + offset));
 
       const __m256i zInit = _mm256_set1_epi32(z);
       const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
@@ -185,7 +185,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_load_si256((__m256i*)(pixels + ((H-y) * W) + xVal));
+        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal));
 
         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
@@ -203,8 +203,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         shader.fragmentShader(colorsData);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
-        _mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate);
-        _mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
+        _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
+        _mm256_storeu_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal), colorsData);
       } else {
         shader.stepXForX(8);
       }
@@ -349,9 +349,9 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       if ((w0 | w1 | w2) >= 0) {
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-        if (zbuff[x + offset] < z) {
+        if (t_zbuff[x + offset] < z) {
           plot(x, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
-          zbuff[x + offset] = z;
+          t_zbuff[x + offset] = z;
         }
       }
       w0 += A12;
@@ -604,7 +604,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     xVal = minX;
 
     for (inner = 0; inner < numInner; ++inner) {
-      const __m256i zbuffv = _mm256_load_si256((__m256i*)(zbuff + xVal + offset));
+      const __m256i zbuffv = _mm256_load_si256((__m256i*)(t_zbuff + xVal + offset));
 
       const __m256i zInit = _mm256_set1_epi32(z);
       const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
@@ -612,14 +612,14 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_load_si256((__m256i*)(pixels + ((H-y) * W) + xVal));
+        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal));
 
         __m256i colorsData;
         shader.fragmentShader(colorsData);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
-        _mm256_storeu_si256((__m256i*)(zbuff + xVal + offset), zUpdate);
-        _mm256_storeu_si256((__m256i*)(pixels + ((H-y) * W) + xVal), colorsData);
+        _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
+        _mm256_storeu_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal), colorsData);
       } else {
         shader.stepXForX(8);
       }
@@ -738,9 +738,9 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       if ((w0 | w1 | w2) >= 0) {
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
-        if (zbuff[x + offset] < z) {
+        if (t_zbuff[x + offset] < z) {
           plot(x, y, shader.fragmentShader());
-          zbuff[x + offset] = z;
+          t_zbuff[x + offset] = z;
         }
       }
       w0 += A12;
@@ -779,3 +779,8 @@ void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f, const vert
 template
 void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+
+void plot(unsigned x, unsigned y, const unsigned color)
+{
+    t_pixels[(H-y)*W+x] = color;
+}

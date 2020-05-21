@@ -17,7 +17,7 @@ engine: main.o tgaimage.o loader.o rasterize.o geometry.o shader.o pool.o
 	$(CXX) $(CXXFLAGS) -o engine main.o tgaimage.o loader.o rasterize.o geometry.o pool.o
 
 main.o: main.cpp rasterize.o loader.o Window.h shader.o pool.o
-rasterize.o: rasterize.cpp rasterize.h loader.o Window.h geometry.o shader.o
+rasterize.o: rasterize.cpp rasterize.h loader.o Window.h geometry.o shader.o pool.o
 loader.o: loader.cpp loader.h Window.h geometry.o tgaimage.h
 geometry.o: geometry.cpp geometry.h Window.h
 shader.o: shader.cpp shader.h
