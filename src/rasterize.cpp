@@ -16,18 +16,6 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   return m;
 }
 
-int fast_max(int a, int b) {
-  int diff = a - b;
-  int dsgn = diff >> 31;
-  return a - (diff & dsgn);
-}
-
-int fast_min(int a, int b) {
-  int diff = a - b;
-  int dsgn = diff >> 31;
-  return b + (diff & dsgn);
-}
-
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,

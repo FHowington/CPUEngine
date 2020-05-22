@@ -9,7 +9,6 @@ extern std::atomic<unsigned> remaining_models;
 extern unsigned pixels[W*H];
 extern int zbuff[W*H];
 
-
 const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, 2*W, 2*H);
 
 std::mutex Pool::job_queue_mutex_;
@@ -100,7 +99,7 @@ void Pool::copy_to_main_buffer() {
   for (unsigned y = pMinY; y < pMaxY; ++y) {
     for (unsigned x = pMinX; x < pMaxX; ++x) {
       if (t_zbuff[y * W + x] > zbuff[y * W + x]) {
-        pixels[y * W + x] = t_pixels[y * W + x];
+        pixels[(H -y) * W + x] = t_pixels[y * W + x];
         zbuff[y * W + x] = t_zbuff[y * W + x];
       }
     }
