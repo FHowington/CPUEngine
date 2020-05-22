@@ -79,6 +79,7 @@ void Pool::job_wait() {
         renderModel<InterpFlatShader>(job, cameraTransform, viewClip, light);
         break;
       }
+
       case shaderType::InterpGouraudShader: {
         renderModel<InterpGouraudShader>(job, cameraTransform, viewClip, light);
         break;
@@ -96,26 +97,14 @@ void Pool::job_wait() {
 void Pool::copy_to_main_buffer() {
   std::unique_lock<std::mutex> lock(pixel_buffer_lock);
   // TODO: Vectorize this
-  // unsigned idx = 0;
-  // for (unsigned y = 0; y < H; ++y) {
-  //   for (unsigned x = 0; x < W; ++x) {
-  //     if (t_zbuff[idx] > zbuff[idx]) {
-  //       pixels[(H-y)*W + x] = t_pixels[(H-y)*W + x];
-  //       zbuff[idx] = t_zbuff[idx];
-  //     }
-  //     ++idx;
-  //   }
-  // }
-
-
-  //for (unsigned y = 0; y < H; ++y) {
-    for (unsigned idx = 0; idx < W * H; ++idx) {
-         if (t_zbuff[idx] > zbuff[idx]) {
-           pixels[idx] = t_pixels[idx];
-           zbuff[idx] = t_zbuff[idx];
+  for (unsigned y = pMinY; y < pMaxY; ++y) {
+    for (unsigned x = pMinX; x < pMaxX; ++x) {
+      if (t_zbuff[y * W + x] > zbuff[y * W + x]) {
+        pixels[y * W + x] = t_pixels[y * W + x];
+        zbuff[y * W + x] = t_zbuff[y * W + x];
       }
     }
-    //  }
+  }
 }
 
 void Pool::enqueue_model(const ModelInstance* model) {
