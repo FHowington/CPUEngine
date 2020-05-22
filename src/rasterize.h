@@ -23,6 +23,10 @@ const unsigned halfH = H/2;
 extern unsigned pixels[W * H];
 extern int zbuff[W * H];
 
+// Fast bitwise algorithms for finding max/min3
+// Requires that highest bit not be used
+inline __attribute__((always_inline)) int fast_max(int a, int b);
+inline __attribute__((always_inline)) int fast_min(int a, int b);
 
 typedef std::pair<double, double> SlopePair;
 inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, const unsigned color);
@@ -40,18 +44,14 @@ inline int orient2d(const int x0, const int x1, const int x2, const int y0, cons
   return (x1 - x0)*(y2 - y0) - (y1 - y0)*(x2 - x0);
 }
 
-template <typename T>
-inline const T min3(const T& v0, const T& v1, const T& v2)
+inline const int min3(const int v0, const int v1, const int v2)
 {
-  T result = v0 <= v1 ? (v0 <= v2 ? v0 : v2) : (v1 <= v2 ? v1 : v2);
-  return (result > 0) ? result : 0;
+  return fast_max(0, fast_min(fast_min(v0, v1), v2));
 }
 
-template <typename T>
-inline const T max3(const T& v0, const T& v1, const T& v2, const T& border)
+inline const int max3(const int v0, const int v1, const int v2, const int border)
 {
-  const T& max = v0 >= v1 ? (v0 >= v2 ? v0 : v2) : (v1 >= v2 ? v1 : v2);
-  return max > border ? border : max;
+  return fast_min(border, fast_max(fast_max(v0, v1), v2));
 }
 
 template <typename T>

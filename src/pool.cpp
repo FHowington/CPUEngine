@@ -16,18 +16,20 @@ std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
 std::list<const ModelInstance*> Pool::model_queue;
 bool Pool::terminate = false;
-//sd::vector<char> Pool::thread_clear_pixel_array;
 std::mutex Pool::pixel_buffer_lock;
 
-thread_local unsigned t_pixels[W * H];
-thread_local int t_zbuff[W * H];
+thread_local unsigned pMinX;
+thread_local unsigned pMaxX;
+thread_local unsigned pMinY;
+thread_local unsigned pMaxY;
+
+thread_local __attribute__((aligned(32))) unsigned t_pixels[W * H + H];
+thread_local __attribute__((aligned(32))) int t_zbuff[W * H + H];
 
 Pool::Pool(const unsigned numThreads) {
-  //thread_clear_pixel_array = std::vector<char>(numThreads, true);
   for(int i = 0; i < numThreads; ++i) {
     thread_pool.push_back(std::thread(job_wait));
   }
-  //for (auto& b : thread_clear_pixel_array) { b = true; }
 }
 
 Pool::~Pool() {
@@ -56,6 +58,11 @@ void Pool::job_wait() {
     model_queue.pop_front();
 
     lock.unlock();
+
+    pMinX = W;
+    pMaxX = 0;
+    pMinY = H;
+    pMaxY = 0;
 
     switch (job->_shader) {
       case shaderType::FlatShader: {
@@ -89,16 +96,26 @@ void Pool::job_wait() {
 void Pool::copy_to_main_buffer() {
   std::unique_lock<std::mutex> lock(pixel_buffer_lock);
   // TODO: Vectorize this
-  unsigned idx = 0;
-  for (unsigned y = 0; y < H; ++y) {
-    for (unsigned x = 0; x < W; ++x) {
-      if (t_zbuff[idx] > zbuff[idx]) {
-        pixels[(H-y)*W + x] = t_pixels[(H-y)*W + x];
-        zbuff[idx] = t_zbuff[idx];
+  // unsigned idx = 0;
+  // for (unsigned y = 0; y < H; ++y) {
+  //   for (unsigned x = 0; x < W; ++x) {
+  //     if (t_zbuff[idx] > zbuff[idx]) {
+  //       pixels[(H-y)*W + x] = t_pixels[(H-y)*W + x];
+  //       zbuff[idx] = t_zbuff[idx];
+  //     }
+  //     ++idx;
+  //   }
+  // }
+
+
+  //for (unsigned y = 0; y < H; ++y) {
+    for (unsigned idx = 0; idx < W * H; ++idx) {
+         if (t_zbuff[idx] > zbuff[idx]) {
+           pixels[idx] = t_pixels[idx];
+           zbuff[idx] = t_zbuff[idx];
       }
-      ++idx;
     }
-  }
+    //  }
 }
 
 void Pool::enqueue_model(const ModelInstance* model) {

@@ -8,8 +8,12 @@
 #include "Window.h"
 
 
-extern thread_local unsigned t_pixels[W * H];
-extern thread_local int t_zbuff[W * H];
+extern thread_local unsigned t_pixels[W * H + H];
+extern thread_local int t_zbuff[W * H + H];
+extern thread_local unsigned pMinX;
+extern thread_local unsigned pMaxX;
+extern thread_local unsigned pMinY;
+extern thread_local unsigned pMaxY;
 
 class Pool {
  public:

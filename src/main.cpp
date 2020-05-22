@@ -21,6 +21,8 @@ int zbuff[W * H];
 matrix<4,4> cameraTransform;
 vertex<float> light;
 std::atomic<unsigned> remaining_models;
+unsigned pixels_flipped[W * H];
+
 
 int main() {
   remaining_models = 0;
@@ -61,6 +63,7 @@ int main() {
   float cameraY = 0;
   float cameraZ = 0;
 
+
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
@@ -77,6 +80,10 @@ int main() {
 
     ++remaining_models;
     pool.enqueue_model(&modInstance);
+
+
+    // TODO: Change this to something..better. A conditional perhaps.
+    while(remaining_models);
 
     SDL_Event ev;
     while(SDL_PollEvent(&ev))
@@ -230,9 +237,6 @@ int main() {
     newPostion.set(3, 2, -5);
 
     vertex<float> newLight = vertex<float>(x, y, -1);
-
-    // TODO: Change this to something..better. A conditional perhaps.
-    while(remaining_models);
 
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);

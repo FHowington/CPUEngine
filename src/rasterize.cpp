@@ -16,6 +16,17 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   return m;
 }
 
+int fast_max(int a, int b) {
+  int diff = a - b;
+  int dsgn = diff >> 31;
+  return a - (diff & dsgn);
+}
+
+int fast_min(int a, int b) {
+  int diff = a - b;
+  int dsgn = diff >> 31;
+  return b + (diff & dsgn);
+}
 
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
@@ -71,6 +82,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   if ((v0i._z | v1i._z | v2i._z) > 0) {
     return;
   }
+
+  pMaxX = fast_max(pMaxX, maxX);
+  pMinX = fast_min(pMinX, minX);
+  pMaxY = fast_max(pMaxY, maxY);
+  pMinY = fast_min(pMinY, minY);
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
@@ -185,7 +201,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal));
+        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + xVal + offset));
 
         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
@@ -204,7 +220,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
         _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
-        _mm256_storeu_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal), colorsData);
+        _mm256_storeu_si256((__m256i*)(t_pixels + xVal + offset), colorsData);
       } else {
         shader.stepXForX(8);
       }
