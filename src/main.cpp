@@ -68,8 +68,25 @@ int main() {
   std::vector<ModelInstance*> modelsInScene;
 
   ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
+  ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);
+  modInstance2._position =  matrix<4,4>::identity();
+  modInstance2._position.set(3,0,1);
+  modInstance2._position.set(3,2,-5);
   modelsInScene.push_back(&modInstance);
+  modelsInScene.push_back(&modInstance2);
 
+
+  ModelInstance modInstance3(head, &headtext, shaderType::GouraudShader);
+  modInstance3._position =  matrix<4,4>::identity();
+  modInstance3._position.set(3,0,0.5);
+  modInstance3._position.set(3,2,-5);
+  modelsInScene.push_back(&modInstance3);
+
+  ModelInstance modInstance4(head, &headtext, shaderType::GouraudShader);
+  modInstance4._position =  matrix<4,4>::identity();
+  modInstance4._position.set(3,0,-1);
+  modInstance4._position.set(3,2,-5);
+  modelsInScene.push_back(&modInstance4);
 
   Pool pool(std::thread::hardware_concurrency());
 
@@ -79,7 +96,13 @@ int main() {
     for(auto& p: zbuff) p = std::numeric_limits<int>::min();
 
     ++remaining_models;
+    ++remaining_models;
+    ++remaining_models;
+    ++remaining_models;
     pool.enqueue_model(&modInstance);
+    pool.enqueue_model(&modInstance2);
+    pool.enqueue_model(&modInstance3);
+    pool.enqueue_model(&modInstance4);
 
 
     // TODO: Change this to something..better. A conditional perhaps.

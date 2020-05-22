@@ -166,9 +166,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
     numInner = (maxX - minX) / 8;
 
-    if ((maxX - minX) % 8) {
-      ++numInner;
-    }
+    numInner += ((maxX - minX) % 8 != 0);
 
     w0Init = _mm256_set1_epi32(w0);
     w0Init = _mm256_add_epi32(w0Init, a12Add);

@@ -96,11 +96,21 @@ void Pool::job_wait() {
 void Pool::copy_to_main_buffer() {
   std::unique_lock<std::mutex> lock(pixel_buffer_lock);
   // TODO: Vectorize this
+  unsigned loops = (pMaxX - pMinX) / 8;
+  loops += ((pMaxX - pMinX) % 8 != 0);
+
   for (unsigned y = pMinY; y < pMaxY; ++y) {
-    for (unsigned x = pMinX; x < pMaxX; ++x) {
-      if (t_zbuff[y * W + x] > zbuff[y * W + x]) {
-        pixels[(H -y) * W + x] = t_pixels[y * W + x];
-        zbuff[y * W + x] = t_zbuff[y * W + x];
+    for (unsigned loop = 0; loop < loops; ++loop) {
+      const __m256i zbuffV = _mm256_load_si256((__m256i*)(zbuff + y * W + pMinX + 8 * loop));
+      const __m256i t_zbuffV = _mm256_load_si256((__m256i*)(t_zbuff + y * W + pMinX + 8 * loop));
+      const __m256i needsUpdate = _mm256_cmpgt_epi32(t_zbuffV, zbuffV);
+      if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
+        const __m256i colV = _mm256_load_si256((__m256i*)(pixels + (H - y) * W + pMinX + 8 * loop));
+        const __m256i t_colV = _mm256_load_si256((__m256i*)(t_pixels + y * W + pMinX + 8 * loop));
+        const __m256i colUpdate = _mm256_blendv_epi8(colV, t_colV, needsUpdate);
+        const __m256i zUpdate = _mm256_blendv_epi8(zbuffV, t_zbuffV, needsUpdate);
+        _mm256_storeu_si256((__m256i*)(zbuff + y * W + pMinX + 8 * loop), zUpdate);
+        _mm256_storeu_si256((__m256i*)(pixels + (H - y) * W + pMinX + 8 * loop), colUpdate);
       }
     }
   }
