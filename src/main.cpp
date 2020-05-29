@@ -67,7 +67,7 @@ int main() {
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
-  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
+  ModelInstance modInstance(head, &headtext, shaderType::InterpFlatShader);
   ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);
   modInstance2._position =  matrix<4,4>::identity();
   modInstance2._position.set(3,0,1);

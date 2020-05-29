@@ -152,7 +152,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
 
   // We will enter inner loop at least once, otherwise numInner is always 0
-  unsigned offset = minY * W;
+  unsigned offset = minY * Wt;
   const float yColDy4 = 4 * yColDy;
 
   for (y = minY; y <= maxY; ++y) {
@@ -229,7 +229,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     zOrig += zdy;
     xColRow += xColDy;
     yColRow += yColDy;
-    offset += W;
+    offset += Wt;
     shader.stepYForX();
   }
 }
@@ -296,6 +296,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     return;
   }
 
+  pMaxX = fast_max(pMaxX, maxX);
+  pMinX = fast_min(pMinX, minX);
+  pMaxY = fast_max(pMaxY, maxY);
+  pMinY = fast_min(pMinY, minY);
+
   unsigned x, y, xVal, yVal, numInner, inner, numOuter;
 
   int w0, w1, w2, z;
@@ -352,7 +357,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          plot(x, y, shader.fragmentShader(img.fast_get(xCol, yCol)));
+          t_pixels[x + offset] = shader.fragmentShader(img.fast_get(xCol, yCol));
           t_zbuff[x + offset] = z;
         }
       }
@@ -578,9 +583,13 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
   const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
 
+  pMaxX = fast_max(pMaxX, maxX);
+  pMinX = fast_min(pMinX, minX);
+  pMaxY = fast_max(pMaxY, maxY);
+  pMinY = fast_min(pMinY, minY);
 
   // We will enter inner loop at least once, otherwise numInner is always 0
-  unsigned offset = minY * W;
+  unsigned offset = minY * Wt;
   for (y = minY; y <= maxY; ++y) {
 
     w0 = w0Row;
@@ -614,14 +623,14 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal));
+        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + offset + xVal));
 
         __m256i colorsData;
         shader.fragmentShader(colorsData);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
         _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
-        _mm256_storeu_si256((__m256i*)(t_pixels + ((H-y) * W) + xVal), colorsData);
+        _mm256_storeu_si256((__m256i*)(t_pixels + offset + xVal), colorsData);
       } else {
         shader.stepXForX(8);
       }
@@ -641,7 +650,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     w1Row += B20;
     w2Row += B01;
     zOrig += zdy;
-    offset += W;
+    offset += Wt;
     shader.stepYForX();
   }
 }
@@ -707,6 +716,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     return;
   }
 
+  pMaxX = fast_max(pMaxX, maxX);
+  pMinX = fast_min(pMinX, minX);
+  pMaxY = fast_max(pMaxY, maxY);
+  pMinY = fast_min(pMinY, minY);
+
   unsigned x, y, xVal, yVal, numInner, inner, numOuter;
 
   int w0, w1, w2, z;
@@ -741,7 +755,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          plot(x, y, shader.fragmentShader());
+          t_pixels[x + offset] = shader.fragmentShader();
           t_zbuff[x + offset] = z;
         }
       }
@@ -784,5 +798,5 @@ void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f, const v
 
 void plot(unsigned x, unsigned y, const unsigned color)
 {
-    t_pixels[(H-y)*W+x] = color;
+    t_pixels[y*W+x] = color;
 }
