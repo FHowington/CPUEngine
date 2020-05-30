@@ -21,8 +21,6 @@ class Pool {
   Pool(const unsigned numThreads);
   ~Pool();
   void enqueue_model(const ModelInstance* model);
-  //void clear_thread_arrays() { for (auto& b : thread_clear_pixel_array) { b = true; } }
-  static std::mutex pixel_buffer_lock;
 
  private:
   static void copy_to_main_buffer();
@@ -30,8 +28,8 @@ class Pool {
   static std::mutex main_buffer_mutex_;
   static std::condition_variable job_condition;
   static std::condition_variable render_condition;
-  static std::list<const ModelInstance*> model_queue;
   static std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> buffer_zones;
   static bool terminate;
   std::vector<std::thread> thread_pool;
+  static std::list<const ModelInstance*> model_queue;
 };

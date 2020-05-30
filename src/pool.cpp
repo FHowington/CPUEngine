@@ -16,7 +16,6 @@ std::condition_variable Pool::job_condition;
 std::condition_variable Pool::render_condition;
 std::list<const ModelInstance*> Pool::model_queue;
 bool Pool::terminate = false;
-std::mutex Pool::pixel_buffer_lock;
 std::mutex Pool::main_buffer_mutex_;
 std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> Pool::buffer_zones;
 
@@ -98,8 +97,9 @@ void Pool::job_wait() {
 
 void Pool::copy_to_main_buffer() {
   std::unique_lock<std::mutex> zone_lock(main_buffer_mutex_);
+  static thread_local const std::thread::id thisTID = std::this_thread::get_id();
 
-  render_condition.wait(zone_lock, []{
+  render_condition.wait(zone_lock, [&]{
                                      for (const std::pair<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>>& zone : buffer_zones) {
                                        // minX, minY
                                        const unsigned minX = zone.second.first.first;
@@ -107,14 +107,14 @@ void Pool::copy_to_main_buffer() {
                                        const unsigned maxX = zone.second.second.first;
                                        const unsigned maxY = zone.second.second.second;
 
-                                       //printf("%d %d, %d %d\n", minX, minY, maxX, maxY);
+                                       if (pMinX <= maxX && pMaxX >= minX && pMinY <= maxY && pMaxY >= minY) {
+                                         return false;
+                                       }
                                      }
-                                     buffer_zones.insert({std::this_thread::get_id(), std::make_pair(std::make_pair(pMinX, pMinY), std::make_pair(pMaxX, pMaxY))});
+                                     buffer_zones.insert({thisTID, std::make_pair(std::make_pair(pMinX, pMinY), std::make_pair(pMaxX, pMaxY))});
                                      return true;
                                    });
   zone_lock.unlock();
-
-  std::unique_lock<std::mutex> lock(pixel_buffer_lock);
 
   unsigned offset = pMinY * W;
   unsigned offsetH = (H - pMinY) * W;
@@ -165,8 +165,11 @@ void Pool::copy_to_main_buffer() {
     offsetH -= W;
   }
 #endif
+
   zone_lock.lock();
-  buffer_zones.erase(buffer_zones.find(std::this_thread::get_id()));
+  buffer_zones.erase(buffer_zones.find(thisTID));
+  zone_lock.unlock();
+  render_condition.notify_all();
 }
 
 void Pool::enqueue_model(const ModelInstance* model) {
