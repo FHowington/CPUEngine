@@ -13,9 +13,12 @@ const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, 2*W, 2*H);
 
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
+std::condition_variable Pool::render_condition;
 std::list<const ModelInstance*> Pool::model_queue;
 bool Pool::terminate = false;
 std::mutex Pool::pixel_buffer_lock;
+std::mutex Pool::main_buffer_mutex_;
+std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> Pool::buffer_zones;
 
 thread_local unsigned pMinX;
 thread_local unsigned pMaxX;
@@ -94,6 +97,23 @@ void Pool::job_wait() {
 }
 
 void Pool::copy_to_main_buffer() {
+  std::unique_lock<std::mutex> zone_lock(main_buffer_mutex_);
+
+  render_condition.wait(zone_lock, []{
+                                     for (const std::pair<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>>& zone : buffer_zones) {
+                                       // minX, minY
+                                       const unsigned minX = zone.second.first.first;
+                                       const unsigned minY = zone.second.first.second;
+                                       const unsigned maxX = zone.second.second.first;
+                                       const unsigned maxY = zone.second.second.second;
+
+                                       //printf("%d %d, %d %d\n", minX, minY, maxX, maxY);
+                                     }
+                                     buffer_zones.insert({std::this_thread::get_id(), std::make_pair(std::make_pair(pMinX, pMinY), std::make_pair(pMaxX, pMaxY))});
+                                     return true;
+                                   });
+  zone_lock.unlock();
+
   std::unique_lock<std::mutex> lock(pixel_buffer_lock);
 
   unsigned offset = pMinY * W;
@@ -102,7 +122,6 @@ void Pool::copy_to_main_buffer() {
 #ifdef __AVX2__
   unsigned offset_t = pMinY * Wt;
   const unsigned loops = (pMaxX - pMinX) / 8;
-  unsigned startX = pMaxX - (pMaxX - pMinX) % 8;
 
   for (unsigned y = pMinY; y < pMaxY; ++y) {
     unsigned xVal = pMinX;
@@ -123,7 +142,7 @@ void Pool::copy_to_main_buffer() {
       xVal += 8;
     }
 
-    for (unsigned x = startX; x < pMaxX; ++x) {
+    for (unsigned x = xVal; x < pMaxX; ++x) {
       if (t_zbuff[offset_t + x] > zbuff[offset + x]) {
         pixels[offsetH + x] = t_pixels[offset_t + x];
         zbuff[offset + x] = t_zbuff[offset_t + x];
@@ -146,6 +165,8 @@ void Pool::copy_to_main_buffer() {
     offsetH -= W;
   }
 #endif
+  zone_lock.lock();
+  buffer_zones.erase(buffer_zones.find(std::this_thread::get_id()));
 }
 
 void Pool::enqueue_model(const ModelInstance* model) {

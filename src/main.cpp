@@ -67,7 +67,7 @@ int main() {
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
-  ModelInstance modInstance(head, &headtext, shaderType::InterpFlatShader);
+  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
   ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);
   modInstance2._position =  matrix<4,4>::identity();
   modInstance2._position.set(3,0,1);
@@ -96,13 +96,13 @@ int main() {
     for(auto& p: zbuff) p = std::numeric_limits<int>::min();
 
     ++remaining_models;
-    //++remaining_models;
-    //++remaining_models;
-    //++remaining_models;
+    ++remaining_models;
+    ++remaining_models;
+    ++remaining_models;
     pool.enqueue_model(&modInstance);
-    //pool.enqueue_model(&modInstance2);
-    //pool.enqueue_model(&modInstance3);
-    //pool.enqueue_model(&modInstance4);
+    pool.enqueue_model(&modInstance2);
+    pool.enqueue_model(&modInstance3);
+    pool.enqueue_model(&modInstance4);
 
 
     // TODO: Change this to something..better. A conditional perhaps.
