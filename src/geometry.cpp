@@ -416,12 +416,16 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   v2 = _mm_set_ps(cameraTransform._m[11], cameraTransform._m[6], cameraTransform._m[1], cameraTransform._m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
+  if (_mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2))) >= 0) {
+    // Set the result to some large pos value, exit early.
+    return vertex<int>(0, 0, 1);
+  }
+
   // Perspective projection
   v1 = _mm_permute_ps(res, 0b11111010);
 
   v2 = _mm_set_ps(1.0, 1.0, -focalLength, -focalLength);
   v1 = _mm_mul_ps(v1, v2);
-
   v1 = _mm_div_ps(res, v1);
 
   // View clipping
@@ -443,7 +447,6 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   res = _mm_fmadd_ps(v1, v2, res);
 
   _mm_stream_ps(result, res);
-
   return vertex<int>(result[0], result[1], result[2]);
 }
 #else

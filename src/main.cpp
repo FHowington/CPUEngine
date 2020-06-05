@@ -36,6 +36,26 @@ int main() {
   headtext.flip_vertically();
   Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
 
+  Model plane;
+  std::vector<vertex<float>> planeVertices;
+
+  planeVertices.emplace_back(10, -2, 5);
+  planeVertices.emplace_back(0, -2, 1);
+  planeVertices.emplace_back(10,-2, -5);
+
+  std::vector<vertex<float>> planeNorms;
+
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+
+  std::vector<face> planeFaces;
+  planeFaces.emplace_back(2, 1, 0, 10, 0, 0, 0, 10, 0);
+
+  plane.setVertices(std::move(planeVertices));
+  plane.setNormals(std::move(planeNorms));
+  plane.setFaces(std::move(planeFaces));
+
   bool wireframe = false;
   bool fps = false;
 
@@ -63,30 +83,63 @@ int main() {
   float cameraY = 0;
   float cameraZ = 0;
 
-
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
   ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
+  modelsInScene.push_back(&modInstance);
+
   ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);
-  modInstance2._position =  matrix<4,4>::identity();
+  modInstance2._position = matrix<4,4>::identity();
   modInstance2._position.set(3,0,1);
   modInstance2._position.set(3,2,-5);
-  modelsInScene.push_back(&modInstance);
-  modelsInScene.push_back(&modInstance2);
+  //modelsInScene.push_back(&modInstance2);
 
 
   ModelInstance modInstance3(head, &headtext, shaderType::GouraudShader);
-  modInstance3._position =  matrix<4,4>::identity();
+  modInstance3._position = matrix<4,4>::identity();
   modInstance3._position.set(3,0,0.5);
   modInstance3._position.set(3,2,-5);
-  modelsInScene.push_back(&modInstance3);
+  //modelsInScene.push_back(&modInstance3);
 
   ModelInstance modInstance4(head, &headtext, shaderType::GouraudShader);
-  modInstance4._position =  matrix<4,4>::identity();
+  modInstance4._position = matrix<4,4>::identity();
   modInstance4._position.set(3,0,-1);
   modInstance4._position.set(3,2,-5);
-  modelsInScene.push_back(&modInstance4);
+  //modelsInScene.push_back(&modInstance4);
+
+  ModelInstance modInstance5(head, &headtext, shaderType::GouraudShader);
+  modInstance5._position = matrix<4,4>::identity();
+  modInstance5._position.set(3,0,1);
+  modInstance5._position.set(3,2,-10);
+  modInstance5._position.set(3,1,3.5);
+  //modelsInScene.push_back(&modInstance5);
+
+
+  ModelInstance modInstance6(head, &headtext, shaderType::GouraudShader);
+  modInstance6._position =  matrix<4,4>::identity();
+  modInstance6._position.set(3,0,0.5);
+  modInstance6._position.set(3,2,-10);
+  modInstance6._position.set(3,1,3.5);
+
+  //modelsInScene.push_back(&modInstance6);
+
+  ModelInstance modInstance7(head, &headtext, shaderType::GouraudShader);
+  modInstance7._position = matrix<4,4>::identity();
+  modInstance7._position.set(3,0,-1);
+  modInstance7._position.set(3,2,-10);
+  modInstance7._position.set(3,1,3.5);
+  //modelsInScene.push_back(&modInstance7);
+
+  ModelInstance modInstance8(head, &headtext, shaderType::GouraudShader);
+  modInstance8._position = matrix<4,4>::identity();
+  modInstance8._position.set(3,2,-10);
+  modInstance8._position.set(3,1,3.5);
+  //modelsInScene.push_back(&modInstance8);
+
+  ModelInstance planeInstance(plane, nullptr, shaderType::PlaneShader);
+  planeInstance._position = matrix<4,4>::identity();
+  //modelsInScene.push_back(&planeInstance);
 
   Pool pool(std::thread::hardware_concurrency());
 
@@ -95,15 +148,10 @@ int main() {
     for(auto& p: pixels) p = 0;
     for(auto& p: zbuff) p = std::numeric_limits<int>::min();
 
-    ++remaining_models;
-    ++remaining_models;
-    ++remaining_models;
-    ++remaining_models;
-    pool.enqueue_model(&modInstance);
-    pool.enqueue_model(&modInstance2);
-    pool.enqueue_model(&modInstance3);
-    pool.enqueue_model(&modInstance4);
-
+    for (const auto m : modelsInScene) {
+      ++remaining_models;
+      pool.enqueue_model(m);
+    }
 
     // TODO: Change this to something..better. A conditional perhaps.
     while(remaining_models);

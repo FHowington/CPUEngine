@@ -19,7 +19,7 @@
 // so instead, we will guarantee that stepX and stepY are called for respective
 // steps, and depend on implementation to update their values appropriately
 
-enum class shaderType { FlatShader, GouraudShader, InterpFlatShader, InterpGouraudShader };
+enum class shaderType { FlatShader, GouraudShader, InterpFlatShader, InterpGouraudShader, PlaneShader };
 
 class Shader {
  public:
@@ -357,6 +357,50 @@ class InterpGouraudShader : public UntexturedShader {
     _R = _rowR;
     _G = _rowG;
     _B = _rowB;
+  }
+
+ private:
+  float _R;
+  float _G;
+  float _B;
+  float _Rdx;
+  float _Rdy;
+  float _Gdx;
+  float _Gdy;
+  float _Bdx;
+  float _Bdy;
+
+  float _rowR;
+  float _rowG;
+  float _rowB;
+};
+
+class PlaneShader : public UntexturedShader {
+ public:
+  PlaneShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
+                        const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+
+  }
+
+
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
+    return 1000;
+  }
+
+#ifdef __AVX2__
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = 1000;
+    }
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+  }
+#endif
+
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
+  }
+
+  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
   }
 
  private:

@@ -21,6 +21,11 @@ template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>:
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
 
+  // If any of the three are positive, the object is behind the camera
+  if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
+    return;
+  }
+
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
@@ -63,11 +68,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
   if (!wTotal) {
-    return;
-  }
-
-  // If all three are positive, the object is behind the camera
-  if ((v0i._z | v1i._z | v2i._z) > 0) {
     return;
   }
 
@@ -127,7 +127,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
   const TGAImage& img = *m._texture;
-  const __m256i textureClip = _mm256_set1_epi32(img.width *img.height);
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
@@ -237,6 +236,10 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+  // If any of the three are positive, the object is behind the camera
+  if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
+    return;
+  }
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -261,7 +264,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   if (maxX < minX || maxY < minY) {
     return;
   }
-
 
   // Bias to make sure only top or left edges fall on line
   const int bias0 = -isTopLeft(v1i, v2i);
@@ -290,11 +292,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int z0 = v0i._z;
   const int z1 = v1i._z;
   const int z2 = v2i._z;
-
-  // If all three are positive, the object is behind the camera
-  if ((v0i._z | v1i._z | v2i._z) > 0) {
-    return;
-  }
 
   pMaxX = fast_max(pMaxX, maxX);
   pMinX = fast_min(pMinX, minX);
@@ -479,6 +476,10 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+  // If any of the three are positive, the object is behind the camera
+   if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
+      return;
+  }
 
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
@@ -523,11 +524,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     return;
   }
 
-  // If all three are positive, the object is behind the camera
-  if ((v0i._z | v1i._z | v2i._z) > 0) {
-    return;
-  }
-
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
   const short A12 = y1 - y2;
@@ -559,10 +555,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // Likewise from solving for z with equation of a plane
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
-
   T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
-  const TGAImage& img = *m._texture;
-  const __m256i textureClip = _mm256_set1_epi32(img.width *img.height);
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
@@ -658,6 +651,10 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+  // If any of the three are positive, the object is behind the camera
+  if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
+    return;
+  }
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -710,11 +707,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int z0 = v0i._z;
   const int z1 = v1i._z;
   const int z2 = v2i._z;
-
-  // If all three are positive, the object is behind the camera
-  if ((v0i._z | v1i._z | v2i._z) > 0) {
-    return;
-  }
 
   pMaxX = fast_max(pMaxX, maxX);
   pMinX = fast_min(pMinX, minX);
@@ -794,6 +786,10 @@ void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f, const vert
 
 template
 void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+
+template
+void drawTri<PlaneShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
 
 void plot(unsigned x, unsigned y, const unsigned color)

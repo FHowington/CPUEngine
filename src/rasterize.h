@@ -105,7 +105,6 @@ inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTra
 
     // If it is backfacing, vector will be pointing in +z, so cull it
     if (v._z < 0) {
-
       drawTri<T>(*model, t, light, v0i, v1i, v2i);
     }
   }

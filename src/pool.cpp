@@ -85,6 +85,11 @@ void Pool::job_wait() {
         renderModel<InterpGouraudShader>(job, cameraTransform, viewClip, light);
         break;
       }
+
+      case shaderType::PlaneShader: {
+        renderModel<PlaneShader>(job, cameraTransform, viewClip, light);
+        break;
+      }
     }
 
     Pool::copy_to_main_buffer();
