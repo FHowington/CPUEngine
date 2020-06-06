@@ -375,11 +375,24 @@ class InterpGouraudShader : public UntexturedShader {
   float _rowB;
 };
 
+
+// The goal of this texture is to create a grid pattern based on the global x/z coords of each pixel
 class PlaneShader : public UntexturedShader {
  public:
   PlaneShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
                         const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+    // Change in the texture coordinated for x/y, used for interpolation
 
+    _xDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
+    _yDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
+
+    _xDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
+    _yDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
+
+    _xRow = (f._t0x * w0 + f._t1x * w1 + f._t2x * w2) / wTotal;
+    _yRow = (f._t0y * w0 + f._t1y * w1 + f._t2y * w2) / wTotal;
+    _x = _xRow;
+    _y = _yRow;
   }
 
 
@@ -391,30 +404,34 @@ class PlaneShader : public UntexturedShader {
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
     unsigned __attribute__((aligned(32))) colorTemp[8];
     for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = 1000;
+      colorTemp[idx] = std::fmod(_x, 2) < 1 ? 100000 : 50000;
+      _x += _xDx;
+      _y += _yDx;
     }
+
     colorsData = _mm256_load_si256((__m256i*)(colorTemp));
   }
 #endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
+    _x += _xDx * step;
+    _y += _yDx * step;
   }
 
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
+    _xRow += _xDy;
+    _yRow += _yDy;
+    _x = _xRow;
+    _y = _yRow;
   }
 
  private:
-  float _R;
-  float _G;
-  float _B;
-  float _Rdx;
-  float _Rdy;
-  float _Gdx;
-  float _Gdy;
-  float _Bdx;
-  float _Bdy;
-
-  float _rowR;
-  float _rowG;
-  float _rowB;
+  float _xDx;
+  float _yDx;
+  float _xDy;
+  float _yDy;
+  float _xRow;
+  float _yRow;
+  float _x;
+  float _y;
 };

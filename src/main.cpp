@@ -50,7 +50,7 @@ int main() {
   planeNorms.emplace_back(0,1,0);
 
   std::vector<face> planeFaces;
-  planeFaces.emplace_back(2, 1, 0, 10, 0, 0, 0, 10, 0);
+  planeFaces.emplace_back(2, 1, 0, 10, -2, 0, -2, 10, -2);
 
   plane.setVertices(std::move(planeVertices));
   plane.setNormals(std::move(planeNorms));
@@ -139,7 +139,7 @@ int main() {
 
   ModelInstance planeInstance(plane, nullptr, shaderType::PlaneShader);
   planeInstance._position = matrix<4,4>::identity();
-  //modelsInScene.push_back(&planeInstance);
+  modelsInScene.push_back(&planeInstance);
 
   Pool pool(std::thread::hardware_concurrency());
 
