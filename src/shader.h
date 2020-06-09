@@ -28,7 +28,7 @@ class Shader {
   virtual const fcolor fragmentShader(const unsigned color = 0) = 0;
 
 #ifdef __AVX2__
-  virtual const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) { return; }
+  virtual const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) { return; }
 #endif
 
   virtual void stepXForX(const unsigned step) = 0;
@@ -67,7 +67,7 @@ class FlatShader : public TexturedShader {
   }
 
 #ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
     unsigned __attribute__((aligned(32))) colorTemp[8];
     const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
@@ -127,7 +127,7 @@ class GouraudShader : public TexturedShader {
   }
 
 #ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
 
     unsigned __attribute__((aligned(32))) colorTemp[8];
     float __attribute__((aligned(32))) lightTemp[8];
@@ -223,7 +223,7 @@ class InterpFlatShader : public UntexturedShader {
 
 
 #ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
     unsigned __attribute__((aligned(32))) colorTemp[8];
     for (unsigned idx = 0; idx < 8; ++idx) {
       colorTemp[idx] = (int)_R << 16 |
@@ -329,7 +329,7 @@ class InterpGouraudShader : public UntexturedShader {
   }
 
 #ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
     unsigned __attribute__((aligned(32))) colorTemp[8];
     for (unsigned idx = 0; idx < 8; ++idx) {
       colorTemp[idx] = (int)_R << 16 |
@@ -380,58 +380,80 @@ class InterpGouraudShader : public UntexturedShader {
 class PlaneShader : public UntexturedShader {
  public:
   PlaneShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                        const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+              const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
     // Change in the texture coordinated for x/y, used for interpolation
+    // _xDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
+    // _yDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
 
-    _xDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
-    _yDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
+    // _xDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
+    // _yDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
+    // //printf("%f %f due to %d %d %d and %d %d %d\n", _xDx, _xDy, B12, B20, B01, f._t0x, f._t1x, f._t2x);
 
-    _xDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
-    _yDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
+    // _xRow = (f._t0x * w0 + f._t1x * w1 + f._t2x * w2) / wTotal;
+    // _yRow = (f._t0y * w0 + f._t1y * w1 + f._t2y * w2) / wTotal;
+    // _x = _xRow;
+    // _y = _yRow;
 
-    _xRow = (f._t0x * w0 + f._t1x * w1 + f._t2x * w2) / wTotal;
-    _yRow = (f._t0y * w0 + f._t1y * w1 + f._t2y * w2) / wTotal;
-    _x = _xRow;
-    _y = _yRow;
+
+
+    // Instead calculate the actual barycentric coords..
+    // A12 is change is p0 weight, A20 for p1, A01 for p2
+    // B12 for same, except in moving down a row
+    // Lets instead do this by calculating actual coords each time
+    _A12 = A12;
+    _A20 = A20;
+    _A01 = A01;
+    _B12 = B12;
+    _B20 = B20;
+    _B01 = B01;
+    _w0 = w0;
+    _w0Row = w0;
+    _w1 = w1;
+    _w1Row = w1;
+    _w2 = w2;
+    _w2Row = w2;
+
   }
 
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    return 1000;
+    //return std::fmod(std::abs(_x), 2) < 1 ? 100000 : 50000;
+    return 10000;
   }
 
 #ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData) override {
-    unsigned __attribute__((aligned(32))) colorTemp[8];
-    for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = std::fmod(_x, 2) < 1 ? 100000 : 50000;
-      _x += _xDx;
-      _y += _yDx;
-    }
-
-    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
+    return;
   }
 #endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
-    _x += _xDx * step;
-    _y += _yDx * step;
+    _w0 += _A12;
+    _w1 += _A20;
+    _w2 += _A01;
   }
 
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
-    _xRow += _xDy;
-    _yRow += _yDy;
-    _x = _xRow;
-    _y = _yRow;
+    _w0Row += _B12;
+    _w1Row += _B20;
+    _w2Row += _B01;
+    _w0 = _w0Row;
+    _w1 = _w1Row;
+    _w2 = _w2Row;
   }
 
  private:
-  float _xDx;
-  float _yDx;
-  float _xDy;
-  float _yDy;
-  float _xRow;
-  float _yRow;
-  float _x;
-  float _y;
+  double _w0;
+  double _w1;
+  double _w2;
+  double _w0Row;
+  double _w1Row;
+  double _w2Row;
+  double _wTotal;
+  double _A12;
+  double _A20;
+  double _A01;
+  double _B12;
+  double _B20;
+  double _B01;
 };

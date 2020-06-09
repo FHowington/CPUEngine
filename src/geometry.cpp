@@ -1,6 +1,7 @@
 #include <iostream>
 #include "geometry.h"
 #include <immintrin.h>
+#include "Window.h"
 
 #ifdef __AVX__
 #define MakeShuffleMask(x,y,z,w)           (x | (y<<2) | (z<<4) | (w<<6))
@@ -373,7 +374,7 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
   float __attribute__((aligned(16))) result[4];
 
   // Model transform
@@ -416,41 +417,32 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   v2 = _mm_set_ps(cameraTransform._m[11], cameraTransform._m[6], cameraTransform._m[1], cameraTransform._m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  if (_mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2))) >= 0) {
-    // Set the result to some large pos value, exit early.
-    return vertex<int>(0, 0, 1);
+  float zDist = _mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2)));
+  // Apply clip boundaries
+  if (zDist >= -1 || zDist < -50) {
+    return false;
   }
 
   // Perspective projection
   v1 = _mm_permute_ps(res, 0b11111010);
 
-  v2 = _mm_set_ps(1.0, 1.0, -focalLength, -focalLength);
+  v2 = _mm_set_ps(-focalLength, 1.0, -focalLength, -focalLength);
   v1 = _mm_mul_ps(v1, v2);
   v1 = _mm_div_ps(res, v1);
 
-  // View clipping
-  res = _mm_set1_ps(0.0);
-  v2 = _mm_set_ps(viewClip._m[15], viewClip._m[10], viewClip._m[5], viewClip._m[0]);
+  _mm_stream_ps(result, v1);
+  result[0] *= W * xZoom;
+  result[0] += W / yZoom;
+  result[1] *= H * xFOV;
+  result[1] += H / yFOV;
 
-  res = _mm_fmadd_ps(v1, v2, res);
 
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(viewClip._m[3], viewClip._m[14], viewClip._m[9], viewClip._m[4]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(viewClip._m[7], viewClip._m[2], viewClip._m[13], viewClip._m[8]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  v1 = _mm_permute_ps(v1, 0b00111001);
-  v2 = _mm_set_ps(viewClip._m[11], viewClip._m[6], viewClip._m[1], viewClip._m[12]);
-  res = _mm_fmadd_ps(v1, v2, res);
-
-  _mm_stream_ps(result, res);
-  return vertex<int>(result[0], result[1], result[2]);
+  result[2] *= 0xFFFFF;
+  retResult = vertex<int>(result[0], result[1], result[2]);
+  return true;
 }
 #else
-const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
   matrix<4,1> imres(model * v2m(v));
   imres = (cameraTransform * imres);
 
@@ -458,7 +450,8 @@ const vertex<int> pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>
   imres._m[1] = imres._m[1] / (-focalLength * imres._m[2]);
 
   imres =  viewClip * imres;
-  return vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
+  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
+  return true;
 }
 #endif
 

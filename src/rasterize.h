@@ -96,16 +96,20 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template <typename T>
 inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const matrix<4,4>& viewClip, const vertex<float>& light) {
   for (auto t : model->_baseModel.getFaces()) {
-    const vertex<int> v0i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v0), 1.5));
-    const vertex<int> v1i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v1), 1.5));
-    const vertex<int> v2i(pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v2), 1.5));
+    vertex<int> v0i;
+    vertex<int> v1i;
+    vertex<int> v2i;
 
-    // We get the normal vector for every triangle
-    const vertex<float> v = cross(v0i, v1i, v2i);
+    if (pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v0), 1.5, v0i) &&
+        pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v1), 1.5, v1i) &&
+        pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v2), 1.5, v2i)) {
+      // We get the normal vector for every triangle
+      const vertex<float> v = cross(v0i, v1i, v2i);
 
-    // If it is backfacing, vector will be pointing in +z, so cull it
-    if (v._z < 0) {
-      drawTri<T>(*model, t, light, v0i, v1i, v2i);
+      // If it is backfacing, vector will be pointing in +z, so cull it
+      if (v._z < 0) {
+        drawTri<T>(*model, t, light, v0i, v1i, v2i);
+      }
     }
   }
 }

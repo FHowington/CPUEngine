@@ -12,7 +12,7 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
   m.set(3, 2, depth/2.f);
   m.set(0, 0, w);
   m.set(1, 1, h);
-  m.set(2,2, depth/1.5f);
+  m.set(2, 2, depth/1.5f);
   return m;
 }
 
@@ -20,11 +20,6 @@ const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
-
-  // If any of the three are positive, the object is behind the camera
-  if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
-    return;
-  }
 
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
@@ -201,7 +196,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         xColv = _mm256_and_si256(xColv, _mm256_cmpgt_epi32(xColv, ones));
 
         __m256i colorsData = _mm256_i32gather_epi32(img.data, xColv, 4);
-        shader.fragmentShader(colorsData);
+        shader.fragmentShader(colorsData, zUpdate);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
         _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
@@ -236,10 +231,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
-  // If any of the three are positive, the object is behind the camera
-  if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
-    return;
-  }
 
   const int x0 = v0i._x;
   const int x1 = v1i._x;
@@ -476,11 +467,6 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
-  // If any of the three are positive, the object is behind the camera
-   if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
-      return;
-  }
-
   // These are reused for every triangle in the model
   static const __m256i min = _mm256_set1_epi32(-1);
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
@@ -619,7 +605,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + offset + xVal));
 
         __m256i colorsData;
-        shader.fragmentShader(colorsData);
+        shader.fragmentShader(colorsData, zUpdate);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
         _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
@@ -651,11 +637,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
-  // If any of the three are positive, the object is behind the camera
-  if (v0i._z >= 0 ||  v1i._z >= 0 ||  v2i._z >= 0) {
-    return;
-  }
-
   const int x0 = v0i._x;
   const int x1 = v1i._x;
   const int x2 = v2i._x;

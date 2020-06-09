@@ -39,9 +39,13 @@ int main() {
   Model plane;
   std::vector<vertex<float>> planeVertices;
 
-  planeVertices.emplace_back(10, -2, 5);
-  planeVertices.emplace_back(0, -2, 1);
-  planeVertices.emplace_back(10,-2, -5);
+  planeVertices.emplace_back(5, -5, -20);
+  planeVertices.emplace_back(0, -5, -20);
+  planeVertices.emplace_back(5, -5, -25);
+
+  planeVertices.emplace_back(5, -5, -25);
+  planeVertices.emplace_back(0, -5, -20);
+  planeVertices.emplace_back(0, -5, -25);
 
   std::vector<vertex<float>> planeNorms;
 
@@ -49,8 +53,13 @@ int main() {
   planeNorms.emplace_back(0,1,0);
   planeNorms.emplace_back(0,1,0);
 
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+
   std::vector<face> planeFaces;
-  planeFaces.emplace_back(2, 1, 0, 10, -2, 0, -2, 10, -2);
+  planeFaces.emplace_back(2, 1, 0, 5, -5, 0, -5, 5, -5);
+  planeFaces.emplace_back(5, 4, 3, 0, -5, 0, -5, 5, -5);
 
   plane.setVertices(std::move(planeVertices));
   plane.setNormals(std::move(planeNorms));
@@ -139,7 +148,7 @@ int main() {
 
   ModelInstance planeInstance(plane, nullptr, shaderType::PlaneShader);
   planeInstance._position = matrix<4,4>::identity();
-  modelsInScene.push_back(&planeInstance);
+  //modelsInScene.push_back(&planeInstance);
 
   Pool pool(std::thread::hardware_concurrency());
 
