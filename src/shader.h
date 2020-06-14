@@ -398,88 +398,73 @@ class PlaneShader : public UntexturedShader {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _f(f), _v0(v0), _v1(v1), _v2(v2) {
-
-    // Change in the texture coordinated for x/y, used for interpolation
-    // _xDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
-    // _yDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
-
-    // _xDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
-    // _yDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
-    // //printf("%f %f due to %d %d %d and %d %d %d\n", _xDx, _xDy, B12, B20, B01, f._t0x, f._t1x, f._t2x);
-
-    // _xRow = (f._t0x * w0 + f._t1x * w1 + f._t2x * w2) / wTotal;
-    // _yRow = (f._t0y * w0 + f._t1y * w1 + f._t2y * w2) / wTotal;
-    // _x = _xRow;
-    // _y = _yRow;
-
-
-
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2)
+  {
     // Instead calculate the actual barycentric coords..
     // A12 is change is p0 weight, A20 for p1, A01 for p2
     // B12 for same, except in moving down a row
     // Lets instead do this by calculating actual coords each time
-    _A12 = A12;
-    _A20 = A20;
-    _A01 = A01;
-    _B12 = B12;
-    _B20 = B20;
-    _B01 = B01;
-    _w0 = w0;
-    _w0Row = w0;
-    _w1 = w1;
-    _w1Row = w1;
-    _w2 = w2;
-    _w2Row = w2;
+    const float z0Inv = 1.0/v0._z;
+    const float z1Inv = 1.0/v1._z;
+    const float z2Inv = 1.0/v2._z;
+    const float t0xCorr = f._t0x * z0Inv;
+    const float t1xCorr = f._t1x * z1Inv;
+    const float t2xCorr = f._t2x * z2Inv;
+
+    _wTotal = w0 * z0Inv + w1 * z1Inv + w2 * z2Inv;
+    _wTotalRow = _wTotal;
+
+    _wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
+    _wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
+
+    _xDx = (A12 * t0xCorr + A20 * t1xCorr + A01 * t2xCorr);
+    _xDy = (B12 * t0xCorr + B20 * t1xCorr + B01 * t2xCorr);
+
+    _x = (w0 * t0xCorr + w1 * t1xCorr + w2 * t2xCorr);
+    _xRow = _x;
   }
 
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    float _x = (_w0 * (float)_f._t0x * (1/(float)_v0._z) + _w1 * (float)_f._t1x * (1/(float)_v1._z) + _w2 * (float)_f._t2x * (1/(float)_v2._z)) / (_w0 * (1/(float)_v0._z) + _w1 * (1/(float)_v1._z) + _w2 * (1/(float)_v2._z));
-    return std::fmod(std::abs(_x), 2) < 1 ? 100000 : 50000;
-
-    //printf("%f\n", _x);
-    //return _x;
+    return std::fmod(std::abs(_x/_wTotal), 2) < 1 ? 100000 : 50000;
   }
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
-    return;
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    // TODO: Vectorize
+    // Step 1: create vector of x values to add (fill array with 0-7, mult with xDx
+    // Step 2: Add array to _x
+    // Step 3: Fill one array with 100000, one with 50000
+    // Find modulo..not sure how to do this.
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = std::fmod(std::abs(_x/_wTotal), 2) < 1 ? 100000 : 50000;
+      _x += _xDx;
+    }
+
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
   }
 #endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
-    _w0 += _A12;
-    _w1 += _A20;
-    _w2 += _A01;
+    _x += _xDx * step;
+    _wTotal += _wDiffX * step;
   }
 
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
-    _w0Row += _B12;
-    _w1Row += _B20;
-    _w2Row += _B01;
-    _w0 = _w0Row;
-    _w1 = _w1Row;
-    _w2 = _w2Row;
+    _wTotalRow += _wDiffY;
+    _wTotal = _wTotalRow;
+    _xRow += _xDy;
+    _x = _xRow;
   }
 
  private:
-  const face& _f;
-  double _w0;
-  double _w1;
-  double _w2;
-  double _w0Row;
-  double _w1Row;
-  double _w2Row;
   double _wTotal;
-  double _A12;
-  double _A20;
-  double _A01;
-  double _B12;
-  double _B20;
-  double _B01;
-  const vertex<int>& _v0;
-  const vertex<int>& _v1;
-  const vertex<int>& _v2;
-
+  double _wTotalRow;
+  double _wDiffX;
+  double _wDiffY;
+  double _xDx;
+  double _xDy;
+  double _x;
+  double _xRow;
 };

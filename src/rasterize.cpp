@@ -254,10 +254,12 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
 
   // If this number is 0, triangle has no area!
-  float wTotal = w0Row + w1Row + w2Row;
-  if (!wTotal) {
+  if (!(w0Row + w1Row + w2Row)) {
     return;
   }
+
+  float wTotal = w0Row + w1Row + w2Row;
+
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
