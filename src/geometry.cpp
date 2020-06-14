@@ -374,7 +374,7 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
   float __attribute__((aligned(16))) result[4];
 
   // Model transform
@@ -432,9 +432,9 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
 
   _mm_stream_ps(result, v1);
   result[0] *= W * xZoom;
-  result[0] += W / yZoom;
-  result[1] *= H * xFOV;
-  result[1] += H / yFOV;
+  result[0] += W * xFOV;
+  result[1] *= H * yZoom;
+  result[1] += H * yFOV;
 
 
   result[2] *= 0xFFFFF;
@@ -442,14 +442,27 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
   return true;
 }
 #else
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
   matrix<4,1> imres(model * v2m(v));
   imres = (cameraTransform * imres);
 
+    // Apply clip boundaries
+  if (imres._m[2] >= -1 || imres._m[2] < -50) {
+    return false;
+  }
+
   imres._m[0] = imres._m[0] / (-focalLength * imres._m[2]);
   imres._m[1] = imres._m[1] / (-focalLength * imres._m[2]);
+  imres._m[3] = imres._m[3] / (-focalLength);
 
-  imres =  viewClip * imres;
+  imres._m[0] *= W * xZoom;
+  imres._m[0] += W * xFOV;
+  imres._m[1] *= H * yZoom;
+  imres._m[1] += H * yFOV;
+
+
+  imres._m[2] *= 0xFFFFF;
+
   retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
   return true;
 }

@@ -11,5 +11,5 @@ const unsigned W4 = W*4;
 
 const unsigned xZoom = 2;
 const unsigned yZoom = 2;
-const unsigned xFOV = 2;
-const unsigned yFOV = 2;
+const float xFOV = .5;
+const float yFOV = .5;

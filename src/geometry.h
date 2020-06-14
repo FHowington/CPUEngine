@@ -117,5 +117,5 @@ const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v);
 matrix<4,1> v2m(const vertex<float>& v);
 vertex<int> m2v(const matrix<4,1> m);
 vertex<float> m2vf(const matrix<4,1> m);
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const matrix<4,4>& viewClip, const vertex<float>& v, const float focalLength, vertex<int>& retResult);
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, const float focalLength, vertex<int>& retResult);
 const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v);

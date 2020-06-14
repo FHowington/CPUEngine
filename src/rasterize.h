@@ -81,8 +81,6 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color);
 
 const matrix<4,4> getProjection(float focalLength);
 
-const matrix<4,4> viewport(const int x, const int y, const int w, const int h);
-
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr>
@@ -94,15 +92,15 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
 
 template <typename T>
-inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const matrix<4,4>& viewClip, const vertex<float>& light) {
+inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const vertex<float>& light) {
   for (auto t : model->_baseModel.getFaces()) {
     vertex<int> v0i;
     vertex<int> v1i;
     vertex<int> v2i;
 
-    if (pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v0), 1.5, v0i) &&
-        pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v1), 1.5, v1i) &&
-        pipeline(cameraTransform, model->_position, viewClip, model->_baseModel.getVertex(t._v2), 1.5, v2i)) {
+    if (pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), 1.5, v0i) &&
+        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), 1.5, v1i) &&
+        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), 1.5, v2i)) {
       // We get the normal vector for every triangle
       const vertex<float> v = cross(v0i, v1i, v2i);
 

@@ -47,8 +47,12 @@ class UntexturedShader : public Shader {
 // The type of shader will be a compile time CONSTANT!
 class FlatShader : public TexturedShader {
  public:
-  FlatShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                    const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+  FlatShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+             const short A12, const short A20, const short A01,
+             const short B12, const short B20, const short B01,
+             const float wTotal, int w0, int w1, int w2,
+             const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
+
     const vertex<float> v0iLight(multToVector(m._position, m._baseModel.getVertex(f._v0)));
     const vertex<float> v1iLight(multToVector(m._position, m._baseModel.getVertex(f._v1)));
     const vertex<float> v2iLight(multToVector(m._position, m._baseModel.getVertex(f._v2)));
@@ -95,8 +99,12 @@ class FlatShader : public TexturedShader {
 
 class GouraudShader : public TexturedShader {
  public:
-  GouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                    const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+  GouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+                const short A12, const short A20, const short A01,
+                const short B12, const short B20, const short B01,
+                const float wTotal, int w0, int w1, int w2,
+                const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
+
     // Change in the texture coordinated for x/y, used for interpolation
     const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
     const vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
@@ -170,8 +178,12 @@ class GouraudShader : public TexturedShader {
 
 class InterpFlatShader : public UntexturedShader {
  public:
-  InterpFlatShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                        const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+  InterpFlatShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+                   const short A12, const short A20, const short A01,
+                   const short B12, const short B20, const short B01,
+                   const float wTotal, int w0, int w1, int w2,
+                   const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
+
     const vertex<float> v0iLight(multToVector(m._position, m._baseModel.getVertex(f._v0)));
     const vertex<float> v1iLight(multToVector(m._position, m._baseModel.getVertex(f._v1)));
     const vertex<float> v2iLight(multToVector(m._position, m._baseModel.getVertex(f._v2)));
@@ -271,8 +283,11 @@ class InterpFlatShader : public UntexturedShader {
 
 class InterpGouraudShader : public UntexturedShader {
  public:
-  InterpGouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-                        const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+  InterpGouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+                      const short A12, const short A20, const short A01,
+                      const short B12, const short B20, const short B01,
+                      const float wTotal, int w0, int w1, int w2,
+                      const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
 
     const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
     const vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
@@ -379,8 +394,12 @@ class InterpGouraudShader : public UntexturedShader {
 // The goal of this texture is to create a grid pattern based on the global x/z coords of each pixel
 class PlaneShader : public UntexturedShader {
  public:
-  PlaneShader(const ModelInstance& m, const face& f, const vertex<float>& light, const short A12, const short A20, const short A01,
-              const short B12, const short B20, const short B01, const float wTotal, int w0, int w1, int w2) {
+  PlaneShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+              const short A12, const short A20, const short A01,
+              const short B12, const short B20, const short B01,
+              const float wTotal, int w0, int w1, int w2,
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _f(f), _v0(v0), _v1(v1), _v2(v2) {
+
     // Change in the texture coordinated for x/y, used for interpolation
     // _xDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
     // _yDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
@@ -412,13 +431,15 @@ class PlaneShader : public UntexturedShader {
     _w1Row = w1;
     _w2 = w2;
     _w2Row = w2;
-
   }
 
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    //return std::fmod(std::abs(_x), 2) < 1 ? 100000 : 50000;
-    return 10000;
+    float _x = (_w0 * (float)_f._t0x * (1/(float)_v0._z) + _w1 * (float)_f._t1x * (1/(float)_v1._z) + _w2 * (float)_f._t2x * (1/(float)_v2._z)) / (_w0 * (1/(float)_v0._z) + _w1 * (1/(float)_v1._z) + _w2 * (1/(float)_v2._z));
+    return std::fmod(std::abs(_x), 2) < 1 ? 100000 : 50000;
+
+    //printf("%f\n", _x);
+    //return _x;
   }
 
 #ifdef __AVX2__
@@ -443,6 +464,7 @@ class PlaneShader : public UntexturedShader {
   }
 
  private:
+  const face& _f;
   double _w0;
   double _w1;
   double _w2;
@@ -456,4 +478,8 @@ class PlaneShader : public UntexturedShader {
   double _B12;
   double _B20;
   double _B01;
+  const vertex<int>& _v0;
+  const vertex<int>& _v1;
+  const vertex<int>& _v2;
+
 };

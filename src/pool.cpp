@@ -9,8 +9,6 @@ extern std::atomic<unsigned> remaining_models;
 extern unsigned pixels[W*H];
 extern int zbuff[W*H];
 
-const matrix<4,4> viewClip = viewport((W) / 2.0, (H) / 2.0, 2*W, 2*H);
-
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
 std::condition_variable Pool::render_condition;
@@ -67,27 +65,27 @@ void Pool::job_wait() {
 
     switch (job->_shader) {
       case shaderType::FlatShader: {
-        renderModel<FlatShader>(job, cameraTransform, viewClip, light);
+        renderModel<FlatShader>(job, cameraTransform, light);
         break;
       }
 
       case shaderType::GouraudShader: {
-        renderModel<GouraudShader>(job, cameraTransform, viewClip, light);
+        renderModel<GouraudShader>(job, cameraTransform, light);
         break;
       }
 
       case shaderType::InterpFlatShader: {
-        renderModel<InterpFlatShader>(job, cameraTransform, viewClip, light);
+        renderModel<InterpFlatShader>(job, cameraTransform, light);
         break;
       }
 
       case shaderType::InterpGouraudShader: {
-        renderModel<InterpGouraudShader>(job, cameraTransform, viewClip, light);
+        renderModel<InterpGouraudShader>(job, cameraTransform, light);
         break;
       }
 
       case shaderType::PlaneShader: {
-        renderModel<PlaneShader>(job, cameraTransform, viewClip, light);
+        renderModel<PlaneShader>(job, cameraTransform, light);
         break;
       }
     }

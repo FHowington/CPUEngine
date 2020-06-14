@@ -4,18 +4,6 @@
 
 const unsigned depth = 0XFFFF;
 
-const matrix<4,4> viewport(const int x, const int y, const int w, const int h) {
-  matrix m = matrix<4,4>::identity();
-  float focalLength = -2.0/3.0;
-  m.set(3, 0, x);
-  m.set(3, 1, y);
-  m.set(3, 2, depth/2.f);
-  m.set(0, 0, w);
-  m.set(1, 1, h);
-  m.set(2, 2, depth/1.5f);
-  return m;
-}
-
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
@@ -120,7 +108,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   float yCol;
 
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
   const TGAImage& img = *m._texture;
 
   // If the traingle is wider than tall, we want to vectorize on x
@@ -328,7 +316,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   float textureOffset = yColRow;
   const float yColDy4 = 4 * yColDy;
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
   const TGAImage& img = *m._texture;
 
   for (y = minY; y <= maxY; ++y) {
@@ -541,7 +529,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // Likewise from solving for z with equation of a plane
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
@@ -714,7 +702,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   unsigned offset = minY * W;
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row);
+  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
