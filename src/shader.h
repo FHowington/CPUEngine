@@ -431,18 +431,33 @@ class PlaneShader : public UntexturedShader {
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
-    unsigned __attribute__((aligned(32))) colorTemp[8];
-    // TODO: Vectorize
-    // Step 1: create vector of x values to add (fill array with 0-7, mult with xDx
-    // Step 2: Add array to _x
-    // Step 3: Fill one array with 100000, one with 50000
-    // Find modulo..not sure how to do this.
-    for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = std::fmod(std::abs(_x/_wTotal), 2) < 1 ? 100000 : 50000;
-      _x += _xDx;
-    }
+    __m256i xVals = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+    __m256i xDiff = _mm256_set1_ps(_xDx);
+    xDiff = _mm256_mul_ps(xVals, xDiff);
+    xVals = _mm256_set1_ps(_x);
+    xVals = _mm256_add_ps(xVals, xDiff);
 
-    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+    __m256i denom = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+    __m256i denomDiff = _mm256_set1_ps(_wDiffX);
+    denomDiff = _mm256_mul_ps(denom, denomDiff);
+    denom = _mm256_set1_ps(_wTotal);
+    denom = _mm256_add_ps(denom, denomDiff);
+    xVals = _mm256_div_ps(xVals, denom);
+
+    //Round down, then convert to int
+    xVals = _mm256_round_ps (xVals, (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC) );
+    xVals = _mm256_cvtps_epi32 (xVals);
+
+    __m256i oddMask = _mm256_set1_epi32(1);
+
+    xVals = _mm256_and_si256(oddMask, xVals);
+    xVals = _mm256_cmpeq_epi32(xVals, _mm256_set1_epi32(0));
+
+    __m256i blue = _mm256_set1_epi32(50000);
+    __m256i green = _mm256_set1_epi32(100000);
+    colorsData = _mm256_blendv_ps(blue, green, xVals);
+
+    _x += 8 * _xDx;
   }
 #endif
 
@@ -459,12 +474,12 @@ class PlaneShader : public UntexturedShader {
   }
 
  private:
-  double _wTotal;
-  double _wTotalRow;
-  double _wDiffX;
-  double _wDiffY;
-  double _xDx;
-  double _xDy;
-  double _x;
-  double _xRow;
+  float _wTotal;
+  float _wTotalRow;
+  float _wDiffX;
+  float _wDiffY;
+  float _xDx;
+  float _xDy;
+  float _x;
+  float _xRow;
 };
