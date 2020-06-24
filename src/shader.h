@@ -79,9 +79,9 @@ class FlatShader : public TexturedShader {
 
     // TODO: Figure out to do this all in registers
     for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = ((int)(((colorTemp[idx] >> 16) & 0xff) * _light)) << 16 |
-                       ((int)(((colorTemp[idx] >> 8) & 0xff) * _light)) << 8 |
-                       (int)(((colorTemp[idx]) & 0xff) * _light);
+      colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * _light))) << 16 |
+                       fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * _light))) << 8 |
+                       fast_min(255, (int)(((colorTemp[idx]) & 0xff) * _light));
     }
 
     colorsData = _mm256_load_si256((__m256i*)(colorTemp));
@@ -148,9 +148,9 @@ class GouraudShader : public TexturedShader {
 
     // TODO: Figure out to do this all in registers
     for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = ((int)(((colorTemp[idx] >> 16) & 0xff) * lightTemp[idx])) << 16 |
-                       ((int)(((colorTemp[idx] >> 8) & 0xff) * lightTemp[idx])) << 8 |
-                       (int)(((colorTemp[idx]) & 0xff) * lightTemp[idx]);
+      colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * lightTemp[idx]))) << 16 |
+                       fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * lightTemp[idx]))) << 8 |
+                       fast_min(255, (int)(((colorTemp[idx]) & 0xff) * lightTemp[idx]));
 
     }
 
@@ -200,17 +200,17 @@ class InterpFlatShader : public UntexturedShader {
     const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
     const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
 
-    const float R0 = ((col0 >> 16) & 0xff) * _light;
-    const float G0 = ((col0 >> 8) & 0xff) * _light;
-    const float B0 = (col0 & 0xff) * _light;
+    const float R0 = fast_min(255, ((col0 >> 16) & 0xff) * _light);
+    const float G0 = fast_min(255, ((col0 >> 8) & 0xff) * _light);
+    const float B0 = fast_min(255, (col0 & 0xff) * _light);
 
-    const float R1 = ((col1 >> 16) & 0xff) * _light;
-    const float G1 = ((col1 >> 8) & 0xff) * _light;
-    const float B1 = (col1 & 0xff) * _light;
+    const float R1 = fast_min(255, ((col1 >> 16) & 0xff) * _light);
+    const float G1 = fast_min(255, ((col1 >> 8) & 0xff) * _light);
+    const float B1 = fast_min(255, (col1 & 0xff) * _light);
 
-    const float R2 = ((col2 >> 16) & 0xff) * _light;
-    const float G2 = ((col2 >> 8) & 0xff) * _light;
-    const float B2 = (col2 & 0xff) * _light;
+    const float R2 = fast_min(255, ((col2 >> 16) & 0xff) * _light);
+    const float G2 = fast_min(255, ((col2 >> 8) & 0xff) * _light);
+    const float B2 = fast_min(255, (col2 & 0xff) * _light);
 
     _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
     _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;
@@ -310,17 +310,17 @@ class InterpGouraudShader : public UntexturedShader {
     const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
     const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
 
-    const float R0 = ((col0 >> 16) & 0xff) * light0;
-    const float G0 = ((col0 >> 8) & 0xff) * light0;
-    const float B0 = (col0 & 0xff) * light0;
+    const float R0 = fast_min(255, ((col0 >> 16) & 0xff) * light0);
+    const float G0 = fast_min(255, ((col0 >> 8) & 0xff) * light0);
+    const float B0 = fast_min(255, (col0 & 0xff) * light0);
 
-    const float R1 = ((col1 >> 16) & 0xff) * light1;
-    const float G1 = ((col1 >> 8) & 0xff) * light1;
-    const float B1 = (col1 & 0xff) * light1;
+    const float R1 = fast_min(255, ((col1 >> 16) & 0xff) * light1);
+    const float G1 = fast_min(255, ((col1 >> 8) & 0xff) * light1);
+    const float B1 = fast_min(255, (col1 & 0xff) * light1);
 
-    const float R2 = ((col2 >> 16) & 0xff) * light2;
-    const float G2 = ((col2 >> 8) & 0xff) * light2;
-    const float B2 = (col2 & 0xff) * light2;
+    const float R2 = fast_min(255, ((col2 >> 16) & 0xff) * light2);
+    const float G2 = fast_min(255, ((col2 >> 8) & 0xff) * light2);
+    const float B2 = fast_min(255, (col2 & 0xff) * light2);
 
     _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
     _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;
@@ -398,7 +398,7 @@ class PlaneShader : public UntexturedShader {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2)
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _light(-dot(m._baseModel.getVertexNormal(f._v2), light))
   {
     // Instead calculate the actual barycentric coords..
     // A12 is change is p0 weight, A20 for p1, A01 for p2
@@ -422,6 +422,9 @@ class PlaneShader : public UntexturedShader {
 
     _x = (w0 * t0xCorr + w1 * t1xCorr + w2 * t2xCorr);
     _xRow = _x;
+    if (_light < 0.2) {
+      _light = 0.2;
+    }
   }
 
 
@@ -457,6 +460,18 @@ class PlaneShader : public UntexturedShader {
     __m256i green = _mm256_set1_epi32(100000);
     colorsData = _mm256_blendv_ps(blue, green, xVals);
 
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
+
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * _light))) << 16 |
+                       fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * _light))) << 8 |
+                       fast_min(255, (int)(((colorTemp[idx]) & 0xff) * _light));
+
+    }
+
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+
     _x += 8 * _xDx;
   }
 #endif
@@ -482,4 +497,5 @@ class PlaneShader : public UntexturedShader {
   float _xDy;
   float _x;
   float _xRow;
+  float _light;
 };

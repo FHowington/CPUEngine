@@ -23,20 +23,6 @@ const unsigned halfH = H/2;
 extern unsigned pixels[W * H];
 extern int zbuff[W * H];
 
-// Fast bitwise algorithms for finding max/min3
-// Requires that highest bit not be used
-inline __attribute__((always_inline)) int fast_max(int a, int b) {
-  int diff = a - b;
-  int dsgn = diff >> 31;
-  return a - (diff & dsgn);
-}
-
-inline __attribute__((always_inline)) int fast_min(int a, int b) {
-  int diff = a - b;
-  int dsgn = diff >> 31;
-  return b + (diff & dsgn);
-}
-
 typedef std::pair<double, double> SlopePair;
 inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, const unsigned color);
 

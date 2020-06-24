@@ -39,13 +39,13 @@ int main() {
   Model plane;
   std::vector<vertex<float>> planeVertices;
 
-  planeVertices.emplace_back(5, -5, -20);
+  planeVertices.emplace_back(10, -5, -20);
   planeVertices.emplace_back(0, -5, -20);
-  planeVertices.emplace_back(5, -5, -25);
+  planeVertices.emplace_back(10, -5, -30);
 
-  //planeVertices.emplace_back(5, -5, -25);
-  //planeVertices.emplace_back(0, -5, -20);
-  //planeVertices.emplace_back(0, -5, -25);
+  planeVertices.emplace_back(5, -5, -25);
+  planeVertices.emplace_back(0, -5, -20);
+  planeVertices.emplace_back(0, -5, -25);
 
   std::vector<vertex<float>> planeNorms;
 
@@ -53,13 +53,13 @@ int main() {
   planeNorms.emplace_back(0,1,0);
   planeNorms.emplace_back(0,1,0);
 
-  //planeNorms.emplace_back(0,1,0);
-  //planeNorms.emplace_back(0,1,0);
-  //planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
 
   std::vector<face> planeFaces;
-  planeFaces.emplace_back(2, 1, 0, 5, -5, 0, -5, 5, -5);
-  //planeFaces.emplace_back(5, 4, 3, 0, -5, 0, -5, 5, -5);
+  planeFaces.emplace_back(2, 1, 0, 10, -5, 0, -5, 10, -5);
+  planeFaces.emplace_back(5, 4, 3, 0, -5, 0, -5, 5, -5);
 
   plane.setVertices(std::move(planeVertices));
   plane.setNormals(std::move(planeNorms));
@@ -220,6 +220,22 @@ int main() {
             case SDLK_d:
               mRight = true;
               break;
+
+            case SDLK_i:
+              y += 0.2;
+              break;
+
+            case SDLK_k:
+              y -= 0.2;
+              break;
+
+            case SDLK_l:
+              x += 0.2;
+              break;
+
+            case SDLK_j:
+              x -= 0.2;
+              break;
           }
           break;
 
@@ -316,7 +332,7 @@ int main() {
     matrix<4,4> newPostion = matrix<4,4>::rotationY(rot);
     newPostion.set(3, 2, -5);
 
-    vertex<float> newLight = vertex<float>(x, y, -1);
+    vertex<float> newLight = vertex<float>(x, y, -1.5);
 
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
