@@ -61,9 +61,7 @@ class FlatShader : public TexturedShader {
     _light = dot(vLight, light);
 
     // Effectively, this is the global illumination
-    if (_light < 0.2) {
-      _light = 0.2;
-    };
+    _light = std::max(_light, m._globalIllumination);
   }
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
@@ -111,17 +109,13 @@ class GouraudShader : public TexturedShader {
     const vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
 
     float light0 = -dot(light, v0iNorm);
-    if (light0 < 0.2) {
-      light0 = 0.2;
-    }
+    light0 = std::max(light0, m._globalIllumination);
+
     float light1 = -dot(light, v1iNorm);
-    if (light1 < 0.2) {
-      light1 = 0.2;
-    }
+    light1 = std::max(light1, m._globalIllumination);
+
     float light2 = -dot(light, v2iNorm);
-    if (light2 < 0.2) {
-      light2 = 0.2;
-    }
+    light2 = std::max(light2, m._globalIllumination);
 
     _lDx = (light0 * A12 + light1 * A20 + light2 * A01) / wTotal;
     _lDy = (light0 * B12 + light1 * B20 + light2 * B01) / wTotal;
@@ -191,10 +185,7 @@ class InterpFlatShader : public UntexturedShader {
     vLight.normalize();
     float _light = dot(vLight, light);
 
-    // Effectively, this is the global illumination
-    if (_light < 0.2) {
-      _light = 0.2;
-    };
+    _light = std::max(_light, m._globalIllumination);
 
     const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
     const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
@@ -294,17 +285,13 @@ class InterpGouraudShader : public UntexturedShader {
     const vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
 
     float light0 = -dot(light, v0iNorm);
-    if (light0 < 0.2) {
-      light0 = 0.2;
-    }
+    light0 = std::max(light0, m._globalIllumination);
+
     float light1 = -dot(light, v1iNorm);
-    if (light1 < 0.2) {
-      light1 = 0.2;
-    }
+    light1 = std::max(light1, m._globalIllumination);
+
     float light2 = -dot(light, v2iNorm);
-    if (light2 < 0.2) {
-      light2 = 0.2;
-    }
+    light1 = std::max(light1, m._globalIllumination);
 
     const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
     const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
@@ -422,14 +409,17 @@ class PlaneShader : public UntexturedShader {
 
     _x = (w0 * t0xCorr + w1 * t1xCorr + w2 * t2xCorr);
     _xRow = _x;
-    if (_light < 0.2) {
-      _light = 0.2;
-    }
+    _light = std::max(_light, m._globalIllumination);
+
   }
 
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    return std::fmod(std::abs(_x/_wTotal), 2) < 1 ? 100000 : 50000;
+    unsigned res = std::fmod(std::abs(_x/_wTotal), 2) < 1 ? 123456 : 4321;
+    res = fast_min(255, ((int)(((res >> 16) & 0xff) * _light))) << 16 |
+                       fast_min(255, ((int)(((res >> 8) & 0xff) * _light))) << 8 |
+                       fast_min(255, (int)(((res) & 0xff) * _light));
+    return res;
   }
 
 #ifdef __AVX2__
@@ -456,8 +446,8 @@ class PlaneShader : public UntexturedShader {
     xVals = _mm256_and_si256(oddMask, xVals);
     xVals = _mm256_cmpeq_epi32(xVals, _mm256_set1_epi32(0));
 
-    __m256i blue = _mm256_set1_epi32(50000);
-    __m256i green = _mm256_set1_epi32(100000);
+    __m256i blue = _mm256_set1_epi32(4321);
+    __m256i green = _mm256_set1_epi32(123456);
     colorsData = _mm256_blendv_ps(blue, green, xVals);
 
     unsigned __attribute__((aligned(32))) colorTemp[8];

@@ -501,13 +501,13 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   }
 
   // Deltas for change in x or y for the 3 sides of a triangle
-  const short A01 = y0 - y1;
-  const short A12 = y1 - y2;
-  const short A20 = y2 - y0;
+  const int A01 = y0 - y1;
+  const int A12 = y1 - y2;
+  const int A20 = y2 - y0;
 
-  const short B01 = x1 - x0;
-  const short B12 = x2 - x1;
-  const short B20 = x0 - x2;
+  const int B01 = x1 - x0;
+  const int B12 = x2 - x1;
+  const int B20 = x0 - x2;
 
   const int z0 = v0i._z;
   const int z1 = v1i._z;
@@ -517,7 +517,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   int w0, w1, w2, z;
 
-  const int div = (((B20) * (-A01)) + (B01) * (A20));
+  const int div = (((long long)(B20) * (-A01)) + (long long)(B01) * (A20));
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
@@ -525,8 +525,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // Obtained by taking partial derivative with respect to x or y from equation of a plane
   // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
   // Using these deltas, we interpolate over face of the whole triangle
-  const int zdx = (A20 * z10 + A01 * z20) / div;
-  const int zdy = (B20 * z10 + B01 * z20) / div;
+  const int zdx = ((long long)A20 * z10 + (long long)A01 * z20) / div;
+  const int zdy = ((long long)B20 * z10 + (long long)B01 * z20) / div;
 
   // Likewise from solving for z with equation of a plane
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
@@ -560,7 +560,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // We will enter inner loop at least once, otherwise numInner is always 0
   unsigned offset = minY * Wt;
   for (y = minY; y <= maxY; ++y) {
-
     w0 = w0Row;
     w1 = w1Row;
     w2 = w2Row;
@@ -688,7 +687,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   int w0, w1, w2, z;
 
-  const int div = (((B20) * (-A01)) + (B01) * (A20));
+  const int div = ((long long)(B20) * (-A01)) + ((long long)(B01) * (A20));
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
@@ -696,8 +695,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // Obtained by taking partial derivative with respect to x or y from equation of a plane
   // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
   // Using these deltas, we interpolate over face of the whole triangle
-  const int zdx = (A20 * z10 + A01 * z20) / div;
-  const int zdy = (B20 * z10 + B01 * z20) / div;
+  const int zdx = ((long long)A20 * z10 + ((long long)A01 * z20)) / div;
+  const int zdy = ((long long)B20 * z10 + ((long long)B01 * z20)) / div;
 
   // Likewise from solving for z with equation of a plane
   int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);

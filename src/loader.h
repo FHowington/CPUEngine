@@ -53,9 +53,10 @@ class Model {
 
 
 struct ModelInstance {
-  ModelInstance (const Model& mod, const TGAImage* text, const shaderType shader) : _baseModel(mod), _texture(text), _shader(shader) {}
+  ModelInstance (const Model& mod, const TGAImage* text, const shaderType shader, const float globalIllumination = 0.2) : _baseModel(mod), _texture(text), _shader(shader), _globalIllumination(globalIllumination) {}
   const Model& _baseModel;
   const TGAImage* _texture;
   matrix<4,4> _position;
   const shaderType _shader;
+  const float _globalIllumination;
 };
