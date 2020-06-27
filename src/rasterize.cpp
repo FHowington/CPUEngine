@@ -88,7 +88,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int zdy = (B20 * z10 + B01 * z20) / div;
 
   // Likewise from solving for z with equation of a plane
-  int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
+  int zOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
 
   // X and y values for the TEXTURE at the starting coordinates
   // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
@@ -295,7 +295,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int zdy = (B20 * z10 + B01 * z20) / div;
 
   // Likewise from solving for z with equation of a plane
-  int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
+  int zOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
 
   // X and y values for the TEXTURE at the starting coordinates
   // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
@@ -529,7 +529,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int zdy = ((long long)B20 * z10 + (long long)B01 * z20) / div;
 
   // Likewise from solving for z with equation of a plane
-  int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
+  int zOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
 
   T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
@@ -687,7 +687,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
   int w0, w1, w2, z;
 
-  const int div = ((long long)(B20) * (-A01)) + ((long long)(B01) * (A20));
+  const int div = -((long long)(-B20) * (-A01)) + ((long long)(B01) * (A20));
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
@@ -695,12 +695,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // Obtained by taking partial derivative with respect to x or y from equation of a plane
   // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
   // Using these deltas, we interpolate over face of the whole triangle
-  const int zdx = ((long long)A20 * z10 + ((long long)A01 * z20)) / div;
-  const int zdy = ((long long)B20 * z10 + ((long long)B01 * z20)) / div;
+  const int zdx = (((long long)A20 * z10) + ((long long)A01 * z20)) / div;
+  const int zdy = (((long long)B20 * z10) + ((long long)B01 * z20)) / div;
 
   // Likewise from solving for z with equation of a plane
-  int zOrig = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, minX, minY);
-
+  int zOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
   unsigned offset = minY * W;
 
   T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
@@ -737,10 +736,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   }
 }
 #endif
-
-float zPos(const int cx, const int bx, const int ax, const int cy, const int by, const int ay, const int cz, const int bz, const int az, const int x, const int y) {
-  return  az + ((bx - ax) * (cz - az) - (cx - ax) * (bz - az))*(y - ay)/ ((bx-ax) * (cy-ay) - (cx-ax) * (by-ay)) - ((by-ay) * (cz-az) - (cy-ay)*(bz-az))*(x-ax)/((bx-ax)*(cy-ay) - (cx-ax) * (by-ay));
-}
 
 template
 void drawTri<FlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light,

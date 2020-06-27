@@ -55,7 +55,9 @@ inline int directionality(const T& p0, const T& p1, const T& p2)
   return p0._x*(p1._y - p2._y) - p0._y*(p1._x - p2._x) + p2._y*p1._x - p1._y*p2._x;
 }
 
-float zPos(const int cx, const int bx, const int ax, const int cy, const int by, const int ay, const int cz, const int bz, const int az, const int x, const int y);
+inline float zPos(const long long cx, const long long bx, const long long ax, const long long cy, const long long by, const long long ay, const long long cz, const long long bz, const long long az, const long long x, const long long y) {
+    return (ax*(cz*(by - y) - bz*(cy - y)) + bx*(cz*(-ay + y) + az*(cy - y)) + cx*(bz*(ay - y) + az*(y - by)) + x*(ay*(cz - bz) + by*(az - cz) + cy*(bz - az)))/(ax*(by - cy) + bx*(cy - ay) + cx*(ay - by));
+}
 
 inline bool colinear(const int x0, const int x1, const int x2, const int y0, const int y1,const int y2) {
   return x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1) == 0;
