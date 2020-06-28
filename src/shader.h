@@ -101,73 +101,103 @@ class GouraudShader : public TexturedShader {
                 const short A12, const short A20, const short A01,
                 const short B12, const short B20, const short B01,
                 const float wTotal, int w0, int w1, int w2,
-                const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
+                const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _light(light), _m(m) {
 
     // Change in the texture coordinated for x/y, used for interpolation
     const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
     const vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
     const vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
 
-    float light0 = -dot(light, v0iNorm);
-    light0 = std::max(light0, m._globalIllumination);
+    _aDxX = (v0iNorm._x * A12 + v1iNorm._x * A20 + v2iNorm._x * A01) / wTotal;
+    _aDxY = (v0iNorm._y * A12 + v1iNorm._y * A20 + v2iNorm._y * A01) / wTotal;
+    _aDxZ = (v0iNorm._z * A12 + v1iNorm._z * A20 + v2iNorm._z * A01) / wTotal;
+    _aDyX = (v0iNorm._x * B12 + v1iNorm._x * B20 + v2iNorm._x * B01) / wTotal;
+    _aDyY = (v0iNorm._y * B12 + v1iNorm._y * B20 + v2iNorm._y * B01) / wTotal;
+    _aDyZ = (v0iNorm._z * B12 + v1iNorm._z * B20 + v2iNorm._z * B01) / wTotal;
 
-    float light1 = -dot(light, v1iNorm);
-    light1 = std::max(light1, m._globalIllumination);
-
-    float light2 = -dot(light, v2iNorm);
-    light2 = std::max(light2, m._globalIllumination);
-
-    _lDx = (light0 * A12 + light1 * A20 + light2 * A01) / wTotal;
-    _lDy = (light0 * B12 + light1 * B20 + light2 * B01) / wTotal;
-
-    _light = (light0 * w0 + light1 * w1 + light2 * w2) / wTotal;
-    _lightRow = _light;
+    _angleX = (v0iNorm._x * w0 + v1iNorm._x * w1 + v2iNorm._x * w2) / wTotal;
+    _angleY = (v0iNorm._y * w0 + v1iNorm._y * w1 + v2iNorm._y * w2) / wTotal;
+    _angleZ = (v0iNorm._z * w0 + v1iNorm._z * w1 + v2iNorm._z * w2) / wTotal;
+    _angleRowX = _angleX;
+    _angleRowY = _angleY;
+    _angleRowZ = _angleZ;
   }
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    return fcolor(color, _light);
+    float light = -dot(_light, vertex<float>(_angleX, _angleY, _angleZ));
+    light = std::max(light, _m._globalIllumination);
+    return fcolor(color, light);
   }
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
 
     unsigned __attribute__((aligned(32))) colorTemp[8];
-    float __attribute__((aligned(32))) lightTemp[8];
+    float angleTemp[24];
     const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-    const __m256i lightAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_lDx));
-    const __m256i lightRow = _mm256_add_ps(_mm256_set1_ps(_light), lightAdd);
+    const __m256i angleAddX = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxX));
+    const __m256i angleRowX = _mm256_add_ps(_mm256_set1_ps(_angleX), angleAddX);
+    _mm256_stream_si256((__m256i *)(angleTemp), angleRowX);
+
+    const __m256i angleAddY = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxY));
+    const __m256i angleRowY = _mm256_add_ps(_mm256_set1_ps(_angleY), angleAddY);
+    _mm256_stream_si256((__m256i *)(angleTemp + 8), angleRowY);
+
+    const __m256i angleAddZ = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxZ));
+    const __m256i angleRowZ = _mm256_add_ps(_mm256_set1_ps(_angleZ), angleAddZ);
+    _mm256_stream_si256((__m256i *)(angleTemp + 16), angleRowZ);
 
     _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
-    _mm256_stream_si256((__m256i *)(lightTemp), lightRow);
 
     // TODO: Figure out to do this all in registers
     for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * lightTemp[idx]))) << 16 |
-                       fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * lightTemp[idx]))) << 8 |
-                       fast_min(255, (int)(((colorTemp[idx]) & 0xff) * lightTemp[idx]));
+      float light = -dot(_light, vertex<float>(angleTemp[idx], angleTemp[idx + 8], angleTemp[idx + 16]));
+      light = std::max(light, _m._globalIllumination);
+
+      colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * light))) << 16 |
+                       fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * light))) << 8 |
+                       fast_min(255, (int)(((colorTemp[idx]) & 0xff) * light));
 
     }
 
-    _light += _lDx * 8;
+    _angleX += _aDxX * 8;
+    _angleY += _aDxY * 8;
+    _angleZ += _aDxZ * 8;
     colorsData = _mm256_load_si256((__m256i*)(colorTemp));
   }
 #endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
-    _light += _lDx * step;
+    _angleX += _aDxX * step;
+    _angleY += _aDxY * step;
+    _angleZ += _aDxZ * step;
   }
 
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 1) override
   {
-    _lightRow += _lDy * step;
-    _light = _lightRow;
+    _angleRowX += _aDyX * step;
+    _angleX = _angleRowX;
+    _angleRowY += _aDyY * step;
+    _angleY = _angleRowY;
+    _angleRowZ += _aDyZ * step;
+    _angleZ = _angleRowZ;
   }
 
  private:
-  float _lDx;
-  float _lDy;
-  float _light;
-  float _lightRow;
+  double _aDxX;
+  double _aDxY;
+  double _aDxZ;
+  double _aDyX;
+  double _aDyY;
+  double _aDyZ;
+  double _angleX;
+  double _angleY;
+  double _angleZ;
+  double _angleRowX;
+  double _angleRowY;
+  double _angleRowZ;
+  const vertex<float>& _light;
+  const ModelInstance& _m;
 };
 
 class InterpFlatShader : public UntexturedShader {
@@ -291,7 +321,7 @@ class InterpGouraudShader : public UntexturedShader {
     light1 = std::max(light1, m._globalIllumination);
 
     float light2 = -dot(light, v2iNorm);
-    light1 = std::max(light1, m._globalIllumination);
+    light2 = std::max(light2, m._globalIllumination);
 
     const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
     const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
@@ -415,7 +445,8 @@ class PlaneShader : public UntexturedShader {
 
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    unsigned res = std::fmod(std::abs(_x/_wTotal), 2) < 1 ? 123456 : 4321;
+    unsigned res = (((unsigned)floor(_x/_wTotal)) & 0x1) ? 123456 : 4321;
+
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * _light))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * _light))) << 8 |
                        fast_min(255, (int)(((res) & 0xff) * _light));

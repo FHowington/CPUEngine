@@ -31,7 +31,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int minX = min3(x0, x1, x2);
   const int minY = min3(y0, y1, y2);
 
-  const int maxX = max3(x0, x1, x2, (int)W);
+  const int maxX = max3(x0, x1, x2, (int)W - 1);
   const int maxY = max3(y0, y1, y2, (int)H - 1);
 
   // Same idea. These have no area (happens when triangle is outside of viewing area)
@@ -161,7 +161,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
     xVal = minX;
     for (inner = 0; inner < numInner; ++inner) {
-      const __m256i zbuffv = _mm256_load_si256((__m256i*)(t_zbuff + xVal + offset));
+      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff + xVal + offset));
 
       const __m256i zInit = _mm256_set1_epi32(z);
       const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
@@ -169,7 +169,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + xVal + offset));
+        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels + xVal + offset));
 
         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
@@ -236,7 +236,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int minX = min3(x0, x1, x2);
   const int minY = min3(y0, y1, y2);
 
-  const int maxX = max3(x0, x1, x2, (int)W);
+  const int maxX = max3(x0, x1, x2, (int)W - 1);
   const int maxY = max3(y0, y1, y2, (int)H - 1);
 
   // Same idea. These have no area (happens when triangle is outside of viewing area)
@@ -477,7 +477,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int minX = min3(x0, x1, x2);
   const int minY = min3(y0, y1, y2);
 
-  const int maxX = max3(x0, x1, x2, (int)W);
+  const int maxX = max3(x0, x1, x2, (int)W - 1);
   const int maxY = max3(y0, y1, y2, (int)H - 1);
 
   // Same idea. These have no area (happens when triangle is outside of viewing area)
@@ -583,7 +583,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     xVal = minX;
 
     for (inner = 0; inner < numInner; ++inner) {
-      const __m256i zbuffv = _mm256_load_si256((__m256i*)(t_zbuff + xVal + offset));
+      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff + xVal + offset));
 
       const __m256i zInit = _mm256_set1_epi32(z);
       const __m256i zv = _mm256_add_epi32(zInit, zdxAdd);
@@ -591,7 +591,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_load_si256((__m256i*)(t_pixels + offset + xVal));
+        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels + offset + xVal));
 
         __m256i colorsData;
         shader.fragmentShader(colorsData, zUpdate);
@@ -642,7 +642,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int minX = min3(x0, x1, x2);
   const int minY = min3(y0, y1, y2);
 
-  const int maxX = max3(x0, x1, x2, (int)W);
+  const int maxX = max3(x0, x1, x2, (int)W - 1);
   const int maxY = max3(y0, y1, y2, (int)H - 1);
 
   // Same idea. These have no area (happens when triangle is outside of viewing area)

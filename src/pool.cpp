@@ -130,13 +130,13 @@ void Pool::copy_to_main_buffer() {
     unsigned xVal = pMinX;
 
     for (unsigned loop = 0; loop < loops; ++loop) {
-      const __m256i zbuffV = _mm256_load_si256((__m256i*)(zbuff + offset + xVal));
-      const __m256i t_zbuffV = _mm256_load_si256((__m256i*)(t_zbuff + offset_t + xVal));
+      const __m256i zbuffV = _mm256_loadu_si256((__m256i*)(zbuff + offset + xVal));
+      const __m256i t_zbuffV = _mm256_loadu_si256((__m256i*)(t_zbuff + offset_t + xVal));
       const __m256i needsUpdate = _mm256_cmpgt_epi32(t_zbuffV, zbuffV);
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         // Any pixels with X > W need to have zbuff set to 0
-        const __m256i colV = _mm256_load_si256((__m256i*)(pixels + offsetH + xVal));
-        const __m256i t_colV = _mm256_load_si256((__m256i*)(t_pixels + offset_t + xVal));
+        const __m256i colV = _mm256_loadu_si256((__m256i*)(pixels + offsetH + xVal));
+        const __m256i t_colV = _mm256_loadu_si256((__m256i*)(t_pixels + offset_t + xVal));
         const __m256i colUpdate = _mm256_blendv_epi8(colV, t_colV, needsUpdate);
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffV, t_zbuffV, needsUpdate);
         _mm256_storeu_si256((__m256i*)(zbuff + offset + xVal), zUpdate);
