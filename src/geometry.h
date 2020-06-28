@@ -54,8 +54,11 @@ struct fcolor {
   };
   fcolor (uint8_t a, uint8_t r, uint8_t g, uint8_t b) : _color((a << 24) | (r << 16) | (g << 8) | b) {}
   fcolor (const unsigned color) { _color = color; }
-  fcolor (const unsigned color, float light) { _color = color;
+  fcolor (const unsigned color, const float light) : _color(color) {
     r = fast_min(255, r * light); g = fast_min(255, g * light); b = fast_min(255, b * light);
+  }
+  fcolor (const unsigned color, const float R, const float G, const float B) : _color(color) {
+    r = fast_min(255, r * R); g = fast_min(255, g * G); b = fast_min(255, b * B);
   }
   operator unsigned() const { return _color; }
 };

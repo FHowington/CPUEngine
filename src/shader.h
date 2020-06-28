@@ -7,6 +7,7 @@
 #include "geometry.h"
 #include <immintrin.h>
 #include "loader.h"
+#include "light.h"
 
 // We do this instead of the typical inheritance route because dynamic binding of function calls
 // incurs a perf. hit for shaders. They are simply called too many time.
@@ -124,9 +125,8 @@ class GouraudShader : public TexturedShader {
   }
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const unsigned color = 0) override {
-    float light = -dot(_light, vertex<float>(_angleX, _angleY, _angleZ));
-    light = std::max(light, _m._globalIllumination);
-    return fcolor(color, light);
+    illumination il = getLight(vertex<float>(_angleX, _angleY, _angleZ), _m._globalIllumination, 0, 0, 0);
+    return fcolor(color, il._R, il._G, il._B);
   }
 
 #ifdef __AVX2__

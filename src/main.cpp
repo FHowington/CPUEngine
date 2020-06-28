@@ -12,6 +12,7 @@
 #include <vector>
 #include "Window.h"
 #include "geometry.h"
+#include "light.h"
 
 #define SPEED 80000000
 
@@ -43,9 +44,9 @@ int main() {
   planeVertices.emplace_back(-10, -5, -5);
   planeVertices.emplace_back(10, -5, -25);
 
-  //planeVertices.emplace_back(10, -5, -25);
-  //planeVertices.emplace_back(-10, -5, -5);
-  //planeVertices.emplace_back(-10, -5, -25);
+  planeVertices.emplace_back(10, -5, -25);
+  planeVertices.emplace_back(-10, -5, -5);
+  planeVertices.emplace_back(-10, -5, -25);
 
   std::vector<vertex<float>> planeNorms;
 
@@ -53,13 +54,13 @@ int main() {
   planeNorms.emplace_back(0,1,0);
   planeNorms.emplace_back(0,1,0);
 
-  //planeNorms.emplace_back(0,1,0);
-  //planeNorms.emplace_back(0,1,0);
-  //planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
+  planeNorms.emplace_back(0,1,0);
 
   std::vector<face> planeFaces;
   planeFaces.emplace_back(2, 1, 0, 10, -5, -10, -5, 10, -5);
-  //planeFaces.emplace_back(5, 4, 3, -10, -5, -10, -5, 10, -5);
+  planeFaces.emplace_back(5, 4, 3, -10, -5, -10, -5, 10, -5);
 
   plane.setVertices(std::move(planeVertices));
   plane.setNormals(std::move(planeNorms));
@@ -71,6 +72,7 @@ int main() {
   unsigned frame = 0;
   float x = 1;
   float y = -3;
+  Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(x, y, -1.5), .5, 1, 1);
   auto start = std::chrono::high_resolution_clock::now();
   auto lastFrame = start;
   float rot = 0;
