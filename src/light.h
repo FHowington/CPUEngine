@@ -19,6 +19,11 @@ class Light {
     assert(lt == LightType::Directional && "Only directional light may have a vector defined");
   }
 
+  Light (const LightType lt, const float x, const float y, const float z, const float strength, const float R, const float G, const float B) :
+      _type(lt), _x(x), _y(y), _z(z), _strength(strength), _R(R), _G(G), _B(B) {
+    assert(lt == LightType::Point && "Only point light may position without direction");
+  }
+
   static std::list<Light> sceneLights;
 
   LightType _type;
@@ -26,8 +31,13 @@ class Light {
   float _R;
   float _G;
   float _B;
-  const matrix<4,4> _orientation;
-  const vertex<float> _direction; // Only used for directional light
+  // Needed for point lights, may be removed in the future.
+  float _x;
+  float _y;
+  float _z;
+  // Needed for shadow stencils
+  matrix<4,4> _orientation;
+  vertex<float> _direction; // Only used for directional light
 };
 
 const illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z);

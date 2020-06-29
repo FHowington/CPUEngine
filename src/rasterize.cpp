@@ -307,8 +307,20 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const float xColDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
   const float yColDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
 
+  const float xDx = (x0 * A12 + x1 * A20 + x2 * A01) / wTotal;
+  const float yDx = (y0 * A12 + y1 * A20 + y2 * A01) / wTotal;
+
   const float xColDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
   const float yColDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
+
+  const float xDy = (x0 * B12 + x1 * B20 + x2 * B01) / wTotal;
+  const float yDy = (y0 * B12 + y1 * B20 + y2 * B01) / wTotal;
+
+
+  // Current real world coordinates
+  float xLoc = (x0 * w0Row + x1 * w1Row + x2 * w2Row) / wTotal;
+  float yLoc = (y0 * w0Row + y1 * w1Row + y2 * w2Row) / wTotal;
+  float xLocRow, yLocRow;
 
   // Current texture coordinates
   float xCol;
@@ -329,13 +341,16 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     xCol = xColRow;
     yCol = yColRow;
 
+    xLoc = xLocRow;
+    yLoc = yLocRow;
+
     for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
       if ((w0 | w1 | w2) >= 0) {
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          t_pixels[x + offset] = shader.fragmentShader(img.fast_get(xCol, yCol));
+          t_pixels[x + offset] = shader.fragmentShader(xLoc, yLoc, img.fast_get(xCol, yCol));
           t_zbuff[x + offset] = z;
         }
       }
@@ -345,6 +360,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       z += zdx;
       xCol += xColDx;
       yCol += yColDx;
+      xLoc += xDx;
+      yLoc += yDx;
       shader.stepXForX();
     }
 
@@ -354,6 +371,8 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     zOrig += zdy;
     xColRow += xColDy;
     yColRow += yColDy;
+    xLocRow += xDy;
+    yLocRow += yDy;
     offset += W;
     textureOffset += yColDy4;
     shader.stepYForX();
@@ -716,7 +735,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          t_pixels[x + offset] = shader.fragmentShader();
+          t_pixels[x + offset] = shader.fragmentShader(0, 0);
           t_zbuff[x + offset] = z;
         }
       }
