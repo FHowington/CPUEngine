@@ -374,7 +374,7 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
   float __attribute__((aligned(16))) result[4];
 
   // Model transform
@@ -438,14 +438,15 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
 
 
   result[2] *= depth;
-  retResult = vertex<int>(result[0], result[1], result[2], result[3]);
+  retResult = vertex<int>(result[0], result[1], result[2]);
   return true;
 }
 #else
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
   matrix<4,1> imres(model * v2m(v));
-  imres = (cameraTransform * imres);
+  realResult = vertex<float>(imres._m[0], imres._m[1], imres._m[2]);
 
+  imres = (cameraTransform * imres);
     // Apply clip boundaries
   if (imres._m[2] >= -1 || imres._m[2] < -50) {
     return false;
@@ -462,7 +463,7 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
 
   imres._m[2] *= depth;
 
-  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2], imres._m[3]);
+  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
   return true;
 }
 #endif

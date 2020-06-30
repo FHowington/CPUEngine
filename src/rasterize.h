@@ -73,11 +73,13 @@ matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
-             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
-             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i);
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template <typename T>
 inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const vertex<float>& light) {
@@ -85,16 +87,19 @@ inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTra
     vertex<int> v0i;
     vertex<int> v1i;
     vertex<int> v2i;
+    vertex<float> v0;
+    vertex<float> v1;
+    vertex<float> v2;
 
-    if (pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), v0i) &&
-        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), v1i) &&
-        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2i)) {
+    if (pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), v0i, v0) &&
+        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), v1i, v1) &&
+        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2i, v2)) {
       // We get the normal vector for every triangle
       const vertex<float> v = cross(v0i, v1i, v2i);
 
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0) {
-        drawTri<T>(*model, t, light, v0i, v1i, v2i);
+        drawTri<T>(*model, t, light, v0i, v1i, v2i, v0, v1, v2);
       }
     }
   }
