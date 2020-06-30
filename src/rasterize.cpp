@@ -5,7 +5,7 @@
 
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
 
@@ -108,7 +108,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   float yCol;
 
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
+  T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
   const TGAImage& img = *m._texture;
 
   // If the traingle is wider than tall, we want to vectorize on x
@@ -217,7 +217,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 }
 #else
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
   const int x0 = v0i._x;
@@ -259,7 +259,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   }
 
   float wTotal = w0Row + w1Row + w2Row;
-
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
@@ -312,20 +311,40 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 
 
   // Current real world coordinates
-  float xLocRow = (v0._x * w0Row + v1._x * w1Row + v2._x * w2Row) / wTotal;
-  float yLocRow = (v0._y * w0Row + v1._y * w1Row + v2._y * w2Row) / wTotal;
-  float zLocRow = (v0._z * w0Row + v1._z * w1Row + v2._z * w2Row) / wTotal;
+  float z0Inv = 1.0/v0i._z;
+  float z1Inv = 1.0/v1i._z;
+  float z2Inv = 1.0/v2i._z;
 
-  const float xDx = (v0._x * A12 + v1._x * A20 + v2._x * A01) / wTotal;
-  const float yDx = (v0._y * A12 + v1._y * A20 + v2._y * A01) / wTotal;
-  const float zDx = (v0._z * A12 + v1._z * A20 + v2._z* A01) / wTotal;
+  float x0Corr = v0._x * z0Inv;
+  float x1Corr = v1._x * z1Inv;
+  float x2Corr = v2._x * z2Inv;
 
-  const float xDy = (v0._x * B12 + v1._x * B20 + v2._x * B01) / wTotal;
-  const float yDy = (v0._y * B12 + v1._y * B20 + v2._y * B01) / wTotal;
-  const float zDy = (v0._z * B12 + v1._z * B20 + v2._z * B01) / wTotal;
+  float y0Corr = v0._y * z0Inv;
+  float y1Corr = v1._y * z1Inv;
+  float y2Corr = v2._y * z2Inv;
 
-  float xLoc, yLoc, zLoc;
+  float z0Corr = v0._z * z0Inv;
+  float z1Corr = v1._z * z1Inv;
+  float z2Corr = v2._z * z2Inv;
 
+
+  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);
+  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);
+  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);
+
+  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;
+  float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
+  float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
+
+  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
+  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
+  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
+
+  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);
+  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
+  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
+
+  float xLoc, yLoc, zLoc, wTotalR;
 
   // Current texture coordinates
   float xCol;
@@ -335,7 +354,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   float textureOffset = yColRow;
   const float yColDy4 = 4 * yColDy;
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
+  T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
   const TGAImage& img = *m._texture;
 
   for (y = minY; y <= maxY; ++y) {
@@ -349,6 +368,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     xLoc = xLocRow;
     yLoc = yLocRow;
     zLoc = zLocRow;
+    wTotalR = wTotalRRow;
 
     for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
@@ -356,7 +376,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          t_pixels[x + offset] = shader.fragmentShader(xLoc, yLoc, zLoc, img.fast_get(xCol, yCol));
+          t_pixels[x + offset] = shader.fragmentShader(xLoc/wTotalR, yLoc/wTotalR, zLoc/wTotalR, img.fast_get(xCol, yCol));
           t_zbuff[x + offset] = z;
         }
       }
@@ -366,9 +386,12 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       z += zdx;
       xCol += xColDx;
       yCol += yColDx;
+
       xLoc += xDx;
       yLoc += yDx;
       zLoc += zDx;
+      wTotal += wDiffX;
+
       shader.stepXForX();
     }
 
@@ -378,11 +401,12 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     zOrig += zdy;
     xColRow += xColDy;
     yColRow += yColDy;
+    offset += W;
+    textureOffset += yColDy4;
     xLocRow += xDy;
     yLocRow += yDy;
     zLocRow += zDy;
-    offset += W;
-    textureOffset += yColDy4;
+    wTotalRRow += wDiffY;
     shader.stepYForX();
   }
 }
@@ -482,7 +506,7 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
 
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
   // These are reused for every triangle in the model
@@ -559,7 +583,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   // Likewise from solving for z with equation of a plane
   int zOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
+  T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
   // If the traingle is wider than tall, we want to vectorize on x
   // Otherwise, we vectorize on y
@@ -652,7 +676,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 }
 #else
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
   const int x0 = v0i._x;
@@ -720,7 +744,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
-
   // Current real world coordinates
   float z0Inv = 1.0/v0i._z;
   float z1Inv = 1.0/v1i._z;
@@ -747,8 +770,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
   float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
 
-
-
   const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
   const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
   const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
@@ -770,7 +791,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   int zOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
   unsigned offset = minY * W;
 
-  T shader(m, f, light, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
+  T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
@@ -821,27 +842,27 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 #endif
 
 template
-void drawTri<FlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri<FlatShader>(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template
-void drawTri<GouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri<GouraudShader>(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template
-void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri<InterpFlatShader>(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template
-void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template
-void drawTri<PlaneShader>(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri<PlaneShader>(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 

@@ -4,7 +4,6 @@
 
 
 extern matrix<4,4> cameraTransform;
-extern vertex<float> light;
 extern std::atomic<unsigned> remaining_models;
 extern unsigned pixels[W*H];
 extern int zbuff[W*H];
@@ -65,27 +64,27 @@ void Pool::job_wait() {
 
     switch (job->_shader) {
       case shaderType::FlatShader: {
-        renderModel<FlatShader>(job, cameraTransform, light);
+        renderModel<FlatShader>(job, cameraTransform);
         break;
       }
 
       case shaderType::GouraudShader: {
-        renderModel<GouraudShader>(job, cameraTransform, light);
+        renderModel<GouraudShader>(job, cameraTransform);
         break;
       }
 
       case shaderType::InterpFlatShader: {
-        renderModel<InterpFlatShader>(job, cameraTransform, light);
+        renderModel<InterpFlatShader>(job, cameraTransform);
         break;
       }
 
       case shaderType::InterpGouraudShader: {
-        renderModel<InterpGouraudShader>(job, cameraTransform, light);
+        renderModel<InterpGouraudShader>(job, cameraTransform);
         break;
       }
 
       case shaderType::PlaneShader: {
-        renderModel<PlaneShader>(job, cameraTransform, light);
+        renderModel<PlaneShader>(job, cameraTransform);
         break;
       }
     }

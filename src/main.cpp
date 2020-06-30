@@ -20,7 +20,6 @@ unsigned pixels[W * H];
 int zbuff[W * H];
 
 matrix<4,4> cameraTransform;
-vertex<float> light;
 std::atomic<unsigned> remaining_models;
 unsigned pixels_flipped[W * H];
 
@@ -98,7 +97,7 @@ int main() {
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
-  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
+  ModelInstance modInstance(head, &headtext, shaderType::FlatShader);
   modelsInScene.push_back(&modInstance);
 
   ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);
@@ -335,15 +334,12 @@ int main() {
     matrix<4,4> newPostion = matrix<4,4>::rotationY(rot);
     newPostion.set(3, 2, -5);
 
-    vertex<float> newLight = vertex<float>(x, y, -1.5);
-
     SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
 
     modInstance._position = newPostion;
     cameraTransform = newCameraTransform;
-    light = newLight;
 
     if (fps) {
       ++frame;

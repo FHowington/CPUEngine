@@ -48,25 +48,22 @@ class UntexturedShader : public Shader {
 // The type of shader will be a compile time CONSTANT!
 class FlatShader : public TexturedShader {
  public:
-  FlatShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+  FlatShader(const ModelInstance& m, const face& f,
              const short A12, const short A20, const short A01,
              const short B12, const short B20, const short B01,
              const float wTotal, int w0, int w1, int w2,
-             const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
+             const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination) {
 
     const vertex<float> v0iLight(multToVector(m._position, m._baseModel.getVertex(f._v0)));
     const vertex<float> v1iLight(multToVector(m._position, m._baseModel.getVertex(f._v1)));
     const vertex<float> v2iLight(multToVector(m._position, m._baseModel.getVertex(f._v2)));
-    vertex<float> vLight = cross(v0iLight, v1iLight, v2iLight);
-    vLight.normalize();
-    _light = dot(vLight, light);
-
-    // Effectively, this is the global illumination
-    _light = std::max(_light, m._globalIllumination);
+    _norm = cross(v2iLight, v1iLight, v0iLight);
+    _norm.normalize();
   }
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return fcolor(color, _light);
+    illumination il = getLight(_norm, _luminance, x, y, z);
+    return fcolor(color, il._R, il._G, il._B);
   }
 
 #ifdef __AVX2__
@@ -92,17 +89,18 @@ class FlatShader : public TexturedShader {
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { return; }
 
  private:
-  float _light;
+  vertex<float> _norm;
+  const float _luminance;
 };
 
 
 class GouraudShader : public TexturedShader {
  public:
-  GouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+  GouraudShader(const ModelInstance& m, const face& f,
                 const short A12, const short A20, const short A01,
                 const short B12, const short B20, const short B01,
                 const float wTotal, int w0, int w1, int w2,
-                const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _light(light), _m(m) {
+                const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination) {
 
     // Change in the texture coordinated for x/y, used for interpolation
     const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
@@ -125,7 +123,7 @@ class GouraudShader : public TexturedShader {
   }
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    illumination il = getLight(vertex<float>(_angleX, _angleY, _angleZ), _m._globalIllumination, x, y, z);
+    illumination il = getLight(vertex<float>(_angleX, _angleY, _angleZ), _luminance, x, y, z);
     return fcolor(color, il._R, il._G, il._B);
   }
 
@@ -184,160 +182,63 @@ class GouraudShader : public TexturedShader {
   }
 
  private:
-  double _aDxX;
-  double _aDxY;
-  double _aDxZ;
-  double _aDyX;
-  double _aDyY;
-  double _aDyZ;
-  double _angleX;
-  double _angleY;
-  double _angleZ;
-  double _angleRowX;
-  double _angleRowY;
-  double _angleRowZ;
-  const vertex<float>& _light;
-  const ModelInstance& _m;
+  float _aDxX;
+  float _aDxY;
+  float _aDxZ;
+  float _aDyX;
+  float _aDyY;
+  float _aDyZ;
+  float _angleX;
+  float _angleY;
+  float _angleZ;
+  float _angleRowX;
+  float _angleRowY;
+  float _angleRowZ;
+  const float _luminance;
 };
-
-class InterpFlatShader : public UntexturedShader {
- public:
-  InterpFlatShader(const ModelInstance& m, const face& f, const vertex<float>& light,
-                   const short A12, const short A20, const short A01,
-                   const short B12, const short B20, const short B01,
-                   const float wTotal, int w0, int w1, int w2,
-                   const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
-
-    const vertex<float> v0iLight(multToVector(m._position, m._baseModel.getVertex(f._v0)));
-    const vertex<float> v1iLight(multToVector(m._position, m._baseModel.getVertex(f._v1)));
-    const vertex<float> v2iLight(multToVector(m._position, m._baseModel.getVertex(f._v2)));
-    vertex<float> vLight = cross(v0iLight, v1iLight, v2iLight);
-    vLight.normalize();
-    float _light = dot(vLight, light);
-
-    _light = std::max(_light, m._globalIllumination);
-
-    const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
-    const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
-    const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
-
-    const float R0 = fast_min(255, ((col0 >> 16) & 0xff) * _light);
-    const float G0 = fast_min(255, ((col0 >> 8) & 0xff) * _light);
-    const float B0 = fast_min(255, (col0 & 0xff) * _light);
-
-    const float R1 = fast_min(255, ((col1 >> 16) & 0xff) * _light);
-    const float G1 = fast_min(255, ((col1 >> 8) & 0xff) * _light);
-    const float B1 = fast_min(255, (col1 & 0xff) * _light);
-
-    const float R2 = fast_min(255, ((col2 >> 16) & 0xff) * _light);
-    const float G2 = fast_min(255, ((col2 >> 8) & 0xff) * _light);
-    const float B2 = fast_min(255, (col2 & 0xff) * _light);
-
-    _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
-    _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;
-
-    _Gdx = (G0 * A12 + G1 * A20 + G2 * A01) / wTotal;
-    _Gdy = (G0 * B12 + G1 * B20 + G2 * B01) / wTotal;
-
-    _Bdx = (B0 * A12 + B1 * A20 + B2 * A01) / wTotal;
-    _Bdy = (B0 * B12 + B1 * B20 + B2 * B01) / wTotal;
-
-    _R = (R0 * w0 + R1 * w1 + R2 * w2) / wTotal;
-    _G = (G0 * w0 + G1 * w1 + G2 * w2) / wTotal;
-    _B = (B0 * w0 + B1 * w1 + B2 * w2) / wTotal;
-    _rowR = _R;
-    _rowG = _G;
-    _rowB = _B;
-  }
-
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return fcolor(0, _R, _G, _B);
-  }
-
-
-#ifdef __AVX2__
-  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
-    unsigned __attribute__((aligned(32))) colorTemp[8];
-    for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = (int)_R << 16 |
-                       (int)_G << 8 |
-                       (int)_B;
-          _R += _Rdx;
-          _G += _Gdx;
-          _B += _Bdx;
-    }
-    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
-  }
-#endif
-
-  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
-    _R += _Rdx * step;
-    _G += _Gdx * step;
-    _B += _Bdx * step;
-  }
-  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
-    _rowR += _Rdy;
-    _rowG += _Gdy;
-    _rowB += _Bdy;
-
-    _R = _rowR;
-    _G = _rowG;
-    _B = _rowB;
-  }
-
- private:
-  float _R;
-  float _G;
-  float _B;
-  float _Rdx;
-  float _Rdy;
-  float _Gdx;
-  float _Gdy;
-  float _Bdx;
-  float _Bdy;
-
-  float _rowR;
-  float _rowG;
-  float _rowB;
-};
-
 
 class InterpGouraudShader : public UntexturedShader {
  public:
-  InterpGouraudShader(const ModelInstance& m, const face& f, const vertex<float>& light,
-                      const short A12, const short A20, const short A01,
-                      const short B12, const short B20, const short B01,
-                      const float wTotal, int w0, int w1, int w2,
-                      const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) {
+  InterpGouraudShader(const ModelInstance& m, const face& f,
+                   const short A12, const short A20, const short A01,
+                   const short B12, const short B20, const short B01,
+                   const float wTotal, int w0, int w1, int w2,
+                   const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination) {
 
+    // Change in the texture coordinated for x/y, used for interpolation
     const vertex<float> v0iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v0)));
     const vertex<float> v1iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v1)));
     const vertex<float> v2iNorm = (rotateVector(m._position, m._baseModel.getVertexNormal(f._v2)));
 
-    float light0 = -dot(light, v0iNorm);
-    light0 = std::max(light0, m._globalIllumination);
+    _aDxX = (v0iNorm._x * A12 + v1iNorm._x * A20 + v2iNorm._x * A01) / wTotal;
+    _aDxY = (v0iNorm._y * A12 + v1iNorm._y * A20 + v2iNorm._y * A01) / wTotal;
+    _aDxZ = (v0iNorm._z * A12 + v1iNorm._z * A20 + v2iNorm._z * A01) / wTotal;
+    _aDyX = (v0iNorm._x * B12 + v1iNorm._x * B20 + v2iNorm._x * B01) / wTotal;
+    _aDyY = (v0iNorm._y * B12 + v1iNorm._y * B20 + v2iNorm._y * B01) / wTotal;
+    _aDyZ = (v0iNorm._z * B12 + v1iNorm._z * B20 + v2iNorm._z * B01) / wTotal;
 
-    float light1 = -dot(light, v1iNorm);
-    light1 = std::max(light1, m._globalIllumination);
-
-    float light2 = -dot(light, v2iNorm);
-    light2 = std::max(light2, m._globalIllumination);
+    _angleX = (v0iNorm._x * w0 + v1iNorm._x * w1 + v2iNorm._x * w2) / wTotal;
+    _angleY = (v0iNorm._y * w0 + v1iNorm._y * w1 + v2iNorm._y * w2) / wTotal;
+    _angleZ = (v0iNorm._z * w0 + v1iNorm._z * w1 + v2iNorm._z * w2) / wTotal;
+    _angleRowX = _angleX;
+    _angleRowY = _angleY;
+    _angleRowZ = _angleZ;
 
     const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
     const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
     const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
 
-    const float R0 = fast_min(255, ((col0 >> 16) & 0xff) * light0);
-    const float G0 = fast_min(255, ((col0 >> 8) & 0xff) * light0);
-    const float B0 = fast_min(255, (col0 & 0xff) * light0);
+    const float R0 = (col0 >> 16) & 0xff;
+    const float G0 = (col0 >> 8) & 0xff;
+    const float B0 = col0 & 0xff;
 
-    const float R1 = fast_min(255, ((col1 >> 16) & 0xff) * light1);
-    const float G1 = fast_min(255, ((col1 >> 8) & 0xff) * light1);
-    const float B1 = fast_min(255, (col1 & 0xff) * light1);
+    const float R1 = (col1 >> 16) & 0xff;
+    const float G1 = (col1 >> 8) & 0xff;
+    const float B1 = col1 & 0xff;
 
-    const float R2 = fast_min(255, ((col2 >> 16) & 0xff) * light2);
-    const float G2 = fast_min(255, ((col2 >> 8) & 0xff) * light2);
-    const float B2 = fast_min(255, (col2 & 0xff) * light2);
+    const float R2 = (col2 >> 16) & 0xff;
+    const float G2 = (col2 >> 8) & 0xff;
+    const float B2 = col2 & 0xff;
 
     _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
     _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;
@@ -357,8 +258,136 @@ class InterpGouraudShader : public UntexturedShader {
   }
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return fcolor(0, _R, _G, _B);
+    illumination il = getLight(vertex<float>(_angleX, _angleY, _angleZ), _luminance, x, y, z);
+    return fcolor(((unsigned)_R << 16) | ((unsigned)_G << 8) | (unsigned)_B, il._R, il._G, il._B);
   }
+
+
+#ifdef __AVX2__
+  const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
+    unsigned __attribute__((aligned(32))) colorTemp[8];
+    for (unsigned idx = 0; idx < 8; ++idx) {
+      colorTemp[idx] = (int)_R << 16 |
+                       (int)_G << 8 |
+                       (int)_B;
+          _R += _Rdx;
+          _G += _Gdx;
+          _B += _Bdx;
+    }
+    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+  }
+#endif
+
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
+    _R += _Rdx * step;
+    _G += _Gdx * step;
+    _B += _Bdx * step;
+
+    _angleX += _aDxX * step;
+    _angleY += _aDxY * step;
+    _angleZ += _aDxZ * step;
+  }
+  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
+    _rowR += _Rdy;
+    _rowG += _Gdy;
+    _rowB += _Bdy;
+
+    _R = _rowR;
+    _G = _rowG;
+    _B = _rowB;
+
+    _angleRowX += _aDyX * step;
+    _angleX = _angleRowX;
+    _angleRowY += _aDyY * step;
+    _angleY = _angleRowY;
+    _angleRowZ += _aDyZ * step;
+    _angleZ = _angleRowZ;
+  }
+
+ private:
+  float _R;
+  float _G;
+  float _B;
+  float _Rdx;
+  float _Rdy;
+  float _Gdx;
+  float _Gdy;
+  float _Bdx;
+  float _Bdy;
+
+  float _rowR;
+  float _rowG;
+  float _rowB;
+
+  float _aDxX;
+  float _aDxY;
+  float _aDxZ;
+  float _aDyX;
+  float _aDyY;
+  float _aDyZ;
+  float _angleX;
+  float _angleY;
+  float _angleZ;
+  float _angleRowX;
+  float _angleRowY;
+  float _angleRowZ;
+  const float _luminance;
+};
+
+
+class InterpFlatShader : public UntexturedShader {
+ public:
+  InterpFlatShader(const ModelInstance& m, const face& f,
+                   const short A12, const short A20, const short A01,
+                   const short B12, const short B20, const short B01,
+                   const float wTotal, int w0, int w1, int w2,
+                   const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination) {
+
+    const vertex<float> v0iLight(multToVector(m._position, m._baseModel.getVertex(f._v0)));
+    const vertex<float> v1iLight(multToVector(m._position, m._baseModel.getVertex(f._v1)));
+    const vertex<float> v2iLight(multToVector(m._position, m._baseModel.getVertex(f._v2)));
+    _norm = cross(v2iLight, v1iLight, v0iLight);
+    _norm.normalize();
+
+    // Change in the texture coordinated for x/y, used for interpolation
+    const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
+    const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
+    const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
+
+    const float R0 = (col0 >> 16) & 0xff;
+    const float G0 = (col0 >> 8) & 0xff;
+    const float B0 = col0 & 0xff;
+
+    const float R1 = (col1 >> 16) & 0xff;
+    const float G1 = (col1 >> 8) & 0xff;
+    const float B1 = col1 & 0xff;
+
+    const float R2 = (col2 >> 16) & 0xff;
+    const float G2 = (col2 >> 8) & 0xff;
+    const float B2 = col2 & 0xff;
+
+    _Rdx = (R0 * A12 + R1 * A20 + R2 * A01) / wTotal;
+    _Rdy = (R0 * B12 + R1 * B20 + R2 * B01) / wTotal;
+
+    _Gdx = (G0 * A12 + G1 * A20 + G2 * A01) / wTotal;
+    _Gdy = (G0 * B12 + G1 * B20 + G2 * B01) / wTotal;
+
+    _Bdx = (B0 * A12 + B1 * A20 + B2 * A01) / wTotal;
+    _Bdy = (B0 * B12 + B1 * B20 + B2 * B01) / wTotal;
+
+    _R = (R0 * w0 + R1 * w1 + R2 * w2) / wTotal;
+    _G = (G0 * w0 + G1 * w1 + G2 * w2) / wTotal;
+    _B = (B0 * w0 + B1 * w1 + B2 * w2) / wTotal;
+    _rowR = _R;
+    _rowG = _G;
+    _rowB = _B;
+  }
+
+  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
+    illumination il = getLight(_norm, _luminance, x, y, z);
+    return fcolor(((unsigned)_R << 16) | ((unsigned)_G << 8) | (unsigned)_B, il._R, il._G, il._B);
+  }
+
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv) override {
@@ -380,7 +409,6 @@ class InterpGouraudShader : public UntexturedShader {
     _G += _Gdx * step;
     _B += _Bdx * step;
   }
-
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
     _rowR += _Rdy;
     _rowG += _Gdy;
@@ -405,17 +433,20 @@ class InterpGouraudShader : public UntexturedShader {
   float _rowR;
   float _rowG;
   float _rowB;
+
+  vertex<float> _norm;
+  const float _luminance;
 };
 
 
 // The goal of this texture is to create a grid pattern based on the global x/z coords of each pixel
 class PlaneShader : public UntexturedShader {
  public:
-  PlaneShader(const ModelInstance& m, const face& f, const vertex<float>& light,
+  PlaneShader(const ModelInstance& m, const face& f,
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _m(m), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
 
 
@@ -423,7 +454,7 @@ class PlaneShader : public UntexturedShader {
     unsigned res = (((unsigned)floor(x)) & 0x1) ? 123456 : 4321;
 
     //TODO: Consider making these x,y,z coordinates perspective corrected. Maybe not worth computational cost.
-    illumination il = getLight(_norm, _m._globalIllumination, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -482,6 +513,6 @@ class PlaneShader : public UntexturedShader {
   }
 
  private:
-  const ModelInstance& _m;
+  const float _luminance;
   const vertex<float>& _norm;
 };

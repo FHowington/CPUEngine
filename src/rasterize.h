@@ -70,17 +70,17 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color);
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr>
-void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
+void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template <typename T>
-inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform, const vertex<float>& light) {
+inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform) {
   for (auto t : model->_baseModel.getFaces()) {
     vertex<int> v0i;
     vertex<int> v1i;
@@ -97,7 +97,7 @@ inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTra
 
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0) {
-        drawTri<T>(*model, t, light, v0i, v1i, v2i, v0, v1, v2);
+        drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
       }
     }
   }
