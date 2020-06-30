@@ -415,41 +415,19 @@ class PlaneShader : public UntexturedShader {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _light(-dot(m._baseModel.getVertexNormal(f._v2), light))
-  {
-    // Instead calculate the actual barycentric coords..
-    // A12 is change is p0 weight, A20 for p1, A01 for p2
-    // B12 for same, except in moving down a row
-    // Lets instead do this by calculating actual coords each time
-    const float z0Inv = 1.0/v0._z;
-    const float z1Inv = 1.0/v1._z;
-    const float z2Inv = 1.0/v2._z;
-    const float t0xCorr = f._t0x * z0Inv;
-    const float t1xCorr = f._t1x * z1Inv;
-    const float t2xCorr = f._t2x * z2Inv;
-
-    _wTotal = w0 * z0Inv + w1 * z1Inv + w2 * z2Inv;
-    _wTotalRow = _wTotal;
-
-    _wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
-    _wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
-
-    _xDx = (A12 * t0xCorr + A20 * t1xCorr + A01 * t2xCorr);
-    _xDy = (B12 * t0xCorr + B20 * t1xCorr + B01 * t2xCorr);
-
-    _x = (w0 * t0xCorr + w1 * t1xCorr + w2 * t2xCorr);
-    _xRow = _x;
-    _light = std::max(_light, m._globalIllumination);
-
-  }
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _m(m), _norm(m._baseModel.getVertexNormal(f._v2))
+  { }
 
 
   const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    unsigned res = (((unsigned)floor(_x/_wTotal)) & 0x1) ? 123456 : 4321;
+    unsigned res = (((unsigned)floor(x)) & 0x1) ? 123456 : 4321;
 
-    res = fast_min(255, ((int)(((res >> 16) & 0xff) * _light))) << 16 |
-                       fast_min(255, ((int)(((res >> 8) & 0xff) * _light))) << 8 |
-                       fast_min(255, (int)(((res) & 0xff) * _light));
+    //TODO: Consider making these x,y,z coordinates perspective corrected. Maybe not worth computational cost.
+    illumination il = getLight(_norm, _m._globalIllumination, x, y, z);
+
+    res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
+                       fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
+                       fast_min(255, (int)(((res) & 0xff) * il._B));
     return res;
   }
 
@@ -498,25 +476,12 @@ class PlaneShader : public UntexturedShader {
 #endif
 
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {
-    _x += _xDx * step;
-    _wTotal += _wDiffX * step;
   }
 
   inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override {
-    _wTotalRow += _wDiffY;
-    _wTotal = _wTotalRow;
-    _xRow += _xDy;
-    _x = _xRow;
   }
 
  private:
-  float _wTotal;
-  float _wTotalRow;
-  float _wDiffX;
-  float _wDiffY;
-  float _xDx;
-  float _xDy;
-  float _x;
-  float _xRow;
-  float _light;
+  const ModelInstance& _m;
+  const vertex<float>& _norm;
 };

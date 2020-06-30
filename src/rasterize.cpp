@@ -720,6 +720,45 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
   const int z10 = z1 - z0;
   const int z20 = z2 - z0;
 
+
+  // Current real world coordinates
+  float z0Inv = 1.0/v0i._z;
+  float z1Inv = 1.0/v1i._z;
+  float z2Inv = 1.0/v2i._z;
+
+  float x0Corr = v0._x * z0Inv;
+  float x1Corr = v1._x * z1Inv;
+  float x2Corr = v2._x * z2Inv;
+
+  float y0Corr = v0._y * z0Inv;
+  float y1Corr = v1._y * z1Inv;
+  float y2Corr = v2._y * z2Inv;
+
+  float z0Corr = v0._z * z0Inv;
+  float z1Corr = v1._z * z1Inv;
+  float z2Corr = v2._z * z2Inv;
+
+
+  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);
+  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);
+  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);
+
+  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;
+  float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
+  float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
+
+
+
+  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
+  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
+  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
+
+  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);
+  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
+  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
+
+  float xLoc, yLoc, zLoc, wTotalR;
+
   // Change in z for change in row/column
   // Obtained by taking partial derivative with respect to x or y from equation of a plane
   // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
@@ -737,6 +776,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     w0 = w0Row;
     w1 = w1Row;
     w2 = w2Row;
+
+    xLoc = xLocRow;
+    yLoc = yLocRow;
+    zLoc = zLocRow;
+    wTotalR = wTotalRRow;
     z = zOrig;
 
     for (x = minX; x <= maxX; ++x) {
@@ -745,7 +789,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          t_pixels[x + offset] = shader.fragmentShader(0, 0, 0);
+          t_pixels[x + offset] = shader.fragmentShader(xLoc/wTotalR, yLoc/wTotalR, zLoc/wTotalR);
           t_zbuff[x + offset] = z;
         }
       }
@@ -754,6 +798,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
       w2 += A01;
       z += zdx;
       shader.stepXForX();
+
+      xLoc += xDx;
+      yLoc += yDx;
+      zLoc += zDx;
+      wTotal += wDiffX;
     }
 
     w0Row += B12;
@@ -761,6 +810,11 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
     w2Row += B01;
     zOrig += zdy;
     offset += W;
+
+    xLocRow += xDy;
+    yLocRow += yDy;
+    zLocRow += zDy;
+    wTotalRRow += wDiffY;
     shader.stepYForX();
   }
 }

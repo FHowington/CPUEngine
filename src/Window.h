@@ -1,6 +1,6 @@
 #pragma once
 
-const unsigned W = 1920;
+const unsigned W = 1080;
 const unsigned H = 1080;
 
 #ifdef __AVX2__

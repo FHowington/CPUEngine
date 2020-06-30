@@ -67,8 +67,6 @@ inline bool colinear(const int x0, const int x1, const int x2, const int y0, con
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
 void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color);
 
-const matrix<4,4> getProjection(float focalLength);
-
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr>
