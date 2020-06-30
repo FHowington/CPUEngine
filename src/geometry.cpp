@@ -374,7 +374,7 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult) {
   float __attribute__((aligned(16))) result[4];
 
   // Model transform
@@ -424,7 +424,7 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
   }
 
   // Perspective projection
-  v1 = _mm_permute_ps(res, 0b11111010);
+  v1 = _mm_permute_ps(res, 0b10111010);
 
   v2 = _mm_set_ps(-focalLength, 1.0, -focalLength, -focalLength);
   v1 = _mm_mul_ps(v1, v2);
@@ -437,12 +437,12 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
   result[1] += H * yFOV;
 
 
-  result[2] *= 0xFFFFF;
-  retResult = vertex<int>(result[0], result[1], result[2]);
+  result[2] *= depth;
+  retResult = vertex<int>(result[0], result[1], result[2], result[3]);
   return true;
 }
 #else
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, const float focalLength, vertex<int>& retResult) {
+const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult) {
   matrix<4,1> imres(model * v2m(v));
   imres = (cameraTransform * imres);
 
@@ -451,19 +451,18 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
     return false;
   }
 
-  imres._m[0] = imres._m[0] / (-focalLength * imres._m[2]);
-  imres._m[1] = imres._m[1] / (-focalLength * imres._m[2]);
-  imres._m[3] = imres._m[3] / (-focalLength);
+  imres._m[3] = 1 / (-focalLength * imres._m[2]);
+  imres._m[0] = imres._m[0] *= imres._m[3];
+  imres._m[1] = imres._m[1] *= imres._m[3];
 
   imres._m[0] *= W * xZoom;
   imres._m[0] += W * xFOV;
   imres._m[1] *= H * yZoom;
   imres._m[1] += H * yFOV;
 
+  imres._m[2] *= depth;
 
-  imres._m[2] *= 0xFFFFF;
-
-  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
+  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2], imres._m[3]);
   return true;
 }
 #endif

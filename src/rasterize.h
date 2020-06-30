@@ -86,9 +86,9 @@ inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTra
     vertex<int> v1i;
     vertex<int> v2i;
 
-    if (pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), 1.5, v0i) &&
-        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), 1.5, v1i) &&
-        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), 1.5, v2i)) {
+    if (pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), v0i) &&
+        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), v1i) &&
+        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2i)) {
       // We get the normal vector for every triangle
       const vertex<float> v = cross(v0i, v1i, v2i);
 

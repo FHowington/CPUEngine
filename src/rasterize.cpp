@@ -2,7 +2,6 @@
 #include "geometry.h"
 #include "rasterize.h"
 
-const unsigned depth = 0XFFFF;
 
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
@@ -219,7 +218,6 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
-
   const int x0 = v0i._x;
   const int x1 = v1i._x;
   const int x2 = v2i._x;
@@ -350,7 +348,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          t_pixels[x + offset] = shader.fragmentShader(xLoc, yLoc, img.fast_get(xCol, yCol));
+          t_pixels[x + offset] = shader.fragmentShader(xLoc, yLoc, z, img.fast_get(xCol, yCol));
           t_zbuff[x + offset] = z;
         }
       }
@@ -735,7 +733,7 @@ void drawTri(const ModelInstance& m, const face& f, const vertex<float>& light,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < z) {
-          t_pixels[x + offset] = shader.fragmentShader(0, 0);
+          t_pixels[x + offset] = shader.fragmentShader(0, 0, 0);
           t_zbuff[x + offset] = z;
         }
       }
