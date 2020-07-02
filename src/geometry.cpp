@@ -398,6 +398,9 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
 
   v1 = _mm_fmadd_ps(v1, v2, res);
 
+  _mm_stream_ps(result, v1);
+  realResult = vertex<float>(result[0], result[1], result[2]);
+
   // Camera transform (model space to camera space)
   v2 = _mm_set_ps(cameraTransform._m[15], cameraTransform._m[10], cameraTransform._m[5], cameraTransform._m[0]);
   res = _mm_set1_ps(0.0);
@@ -435,7 +438,6 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
   result[0] += W * xFOV;
   result[1] *= H * yZoom;
   result[1] += H * yFOV;
-
 
   result[2] *= depth;
   retResult = vertex<int>(result[0], result[1], result[2]);

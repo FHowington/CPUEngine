@@ -71,8 +71,8 @@ int main() {
   unsigned frame = 0;
   float x = 1;
   float y = -3;
-  Light::sceneLights.emplace_back(LightType::Point, 1, -3, -10, 20, 1, .5, .5);
-  //Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(-1, y, -1.5), 1, 0, 0);
+  Light::sceneLights.emplace_back(LightType::Point, 1, -3, -10, 2000, 1, .5, .5);
+  //Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(5, y, -1.5), 1, .5, .5);
   auto start = std::chrono::high_resolution_clock::now();
   auto lastFrame = start;
   float rot = 0;
@@ -97,7 +97,7 @@ int main() {
   // This is where the per model will be done.
   std::vector<ModelInstance*> modelsInScene;
 
-  ModelInstance modInstance(head, &headtext, shaderType::FlatShader);
+  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
   modelsInScene.push_back(&modInstance);
 
   ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);

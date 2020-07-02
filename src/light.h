@@ -1,6 +1,8 @@
 // Created by Forbes Howington 5/19/20
 #pragma once
 #include <list>
+#include "immintrin.h"
+
 enum class LightType { Directional, Point, Spot };
 
 struct illumination {
@@ -41,3 +43,9 @@ class Light {
 };
 
 const illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z);
+
+#ifdef __AVX2__
+void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, float ambient,
+              const __m256& x, const __m256& y, const __m256& z,
+              __m256& R, __m256& G, __m256& B);
+#endif
