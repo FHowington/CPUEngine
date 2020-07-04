@@ -480,41 +480,8 @@ class PlaneShader : public UntexturedShader {
              _mm256_set1_ps(_norm._z), _luminance,
              xV, yV, zV, rV, gV, bV);
 
-    __m256 rBytes = _mm256_blendv_epi8(_mm256_setzero_si256(), colorsData,
-                                       _mm256_set_epi8 (0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0));
-    rBytes = _mm256_srli_epi32(rBytes, 16);
-    rBytes = _mm256_cvtepi32_ps(rBytes);
-    rBytes = _mm256_mul_ps(rV, rBytes);
-    rBytes = _mm256_cvttps_epi32(rBytes);
 
-    static const __m256i maxChar = _mm256_set1_epi32(255);
-    __m256i mask = _mm256_cmpgt_epi32(rBytes, maxChar);
-    rBytes = _mm256_blendv_ps(rBytes, maxChar, mask);
-    rBytes = _mm256_slli_epi32(rBytes, 16);
-
-    __m256 gBytes = _mm256_blendv_epi8(_mm256_setzero_si256(), colorsData,
-                                       _mm256_set_epi8 (0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0));
-    gBytes = _mm256_srli_epi32(gBytes, 8);
-    gBytes = _mm256_cvtepi32_ps(gBytes);
-    gBytes = _mm256_mul_ps(gV, gBytes);
-
-    gBytes = _mm256_cvttps_epi32(gBytes);
-
-    mask = _mm256_cmpgt_epi32(gBytes, maxChar);
-    gBytes = _mm256_blendv_ps(gBytes, maxChar, mask);
-    gBytes = _mm256_slli_epi32(gBytes, 8);
-
-    __m256 bBytes = _mm256_blendv_epi8(_mm256_setzero_si256(), colorsData,
-                                       _mm256_set_epi8 (0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF));
-    bBytes = _mm256_cvtepi32_ps(bBytes);
-    bBytes = _mm256_mul_ps(bV, bBytes);
-
-    bBytes = _mm256_cvttps_epi32(bBytes);
-
-    mask = _mm256_cmpgt_epi32(bBytes, maxChar);
-    bBytes = _mm256_blendv_ps(bBytes, maxChar, mask);
-
-    colorsData = _mm256_or_si256(bBytes, _mm256_or_si256(rBytes, gBytes));
+    colorsData = vectorLight(colorsData, rV, gV, bV);
   }
 #endif
 
