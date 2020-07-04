@@ -472,11 +472,6 @@ class PlaneShader : public UntexturedShader {
     __m256i green = _mm256_set1_epi32(123456);
     colorsData = _mm256_blendv_ps(blue, green, xVals);
 
-    unsigned __attribute__((aligned(32))) colorTemp[8];
-    unsigned __attribute__((aligned(32))) rt[8];
-    unsigned __attribute__((aligned(32))) gt[8];
-    unsigned __attribute__((aligned(32))) bt[8];
-
     __m256 rV;
     __m256 gV;
     __m256 bV;
@@ -490,16 +485,12 @@ class PlaneShader : public UntexturedShader {
     rBytes = _mm256_srli_epi32(rBytes, 16);
     rBytes = _mm256_cvtepi32_ps(rBytes);
     rBytes = _mm256_mul_ps(rV, rBytes);
-
     rBytes = _mm256_cvttps_epi32(rBytes);
 
     static const __m256i maxChar = _mm256_set1_epi32(255);
     __m256i mask = _mm256_cmpgt_epi32(rBytes, maxChar);
     rBytes = _mm256_blendv_ps(rBytes, maxChar, mask);
-    rBytes = _mm256_srli_epi32(rBytes, 16);
-
-
-    _mm256_stream_si256((__m256i*)rt, rBytes);
+    rBytes = _mm256_slli_epi32(rBytes, 16);
 
     __m256 gBytes = _mm256_blendv_epi8(_mm256_setzero_si256(), colorsData,
                                        _mm256_set_epi8 (0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0));
@@ -513,8 +504,6 @@ class PlaneShader : public UntexturedShader {
     gBytes = _mm256_blendv_ps(gBytes, maxChar, mask);
     gBytes = _mm256_slli_epi32(gBytes, 8);
 
-    _mm256_stream_si256((__m256i*)gt, gBytes);
-
     __m256 bBytes = _mm256_blendv_epi8(_mm256_setzero_si256(), colorsData,
                                        _mm256_set_epi8 (0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF,0,0,0,0xFF));
     bBytes = _mm256_cvtepi32_ps(bBytes);
@@ -525,17 +514,7 @@ class PlaneShader : public UntexturedShader {
     mask = _mm256_cmpgt_epi32(bBytes, maxChar);
     bBytes = _mm256_blendv_ps(bBytes, maxChar, mask);
 
-    _mm256_stream_si256((__m256i*)bt, bBytes);
-
-    // TODO: Vectorize both color conversions, and getLight
-     for (unsigned idx = 0; idx < 8; ++idx) {
-       colorTemp[idx] = rt[idx] |
-                        gt[idx] |
-                        bt[idx];
-     }
-
-
-    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+    colorsData = _mm256_or_si256(bBytes, _mm256_or_si256(rBytes, gBytes));
   }
 #endif
 
