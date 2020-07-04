@@ -68,19 +68,16 @@ class FlatShader : public TexturedShader {
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& x, const __m256i& y, const __m256i& z) override {
-    // unsigned __attribute__((aligned(32))) colorTemp[8];
-    // const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+    __m256 rV;
+    __m256 gV;
+    __m256 bV;
 
-    // _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
+    getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
+             _mm256_set1_ps(_norm._z), _luminance,
+             x, y, z, rV, gV, bV);
 
-    // // TODO: Figure out to do this all in registers
-    // for (unsigned idx = 0; idx < 8; ++idx) {
-    //   colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * _light))) << 16 |
-    //                    fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * _light))) << 8 |
-    //                    fast_min(255, (int)(((colorTemp[idx]) & 0xff) * _light));
-    // }
 
-    // colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+    colorsData = vectorLight(colorsData, rV, gV, bV);
   }
 #endif
 

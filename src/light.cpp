@@ -66,9 +66,9 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
       }
       case LightType::Point: {
         // Need to calculate xNorm, yNorm, zNorm.
-        __m256 lXNorm = _mm256_sub_ps(x, _mm256_set1_ps(l._x));
-        __m256 lYNorm = _mm256_sub_ps(y, _mm256_set1_ps(l._y));
-        __m256 lZNorm = _mm256_sub_ps(z, _mm256_set1_ps(l._z));
+        __m256 lXNorm = _mm256_sub_ps(_mm256_set1_ps(l._x), x);
+        __m256 lYNorm = _mm256_sub_ps(_mm256_set1_ps(l._y), y);
+        __m256 lZNorm = _mm256_sub_ps(_mm256_set1_ps(l._z), z);
 
         __m256 dist = _mm256_mul_ps(lXNorm, lXNorm);
         dist = _mm256_fmadd_ps(lYNorm, lYNorm, dist);
@@ -80,8 +80,8 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         lZNorm = _mm256_mul_ps(lZNorm, recipRoot);
 
         __m256 dot = _mm256_mul_ps(lXNorm, xNorm);
-        dot = _mm256_fmsub_ps(lYNorm, yNorm, dot);
-        dot = _mm256_fmsub_ps(lZNorm, zNorm, dot);
+        dot = _mm256_fmadd_ps(lYNorm, yNorm, dot);
+        dot = _mm256_fmadd_ps(lZNorm, zNorm, dot);
 
         dot = _mm256_div_ps(dot, dist);
         dot = _mm256_mul_ps(dot, _mm256_set1_ps(l._strength));
