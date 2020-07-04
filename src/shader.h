@@ -125,38 +125,30 @@ class GouraudShader : public TexturedShader {
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& x, const __m256i& y, const __m256i& z) override {
-    // unsigned __attribute__((aligned(32))) colorTemp[8];
-    // float angleTemp[24];
-    // const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
-    // const __m256i angleAddX = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxX));
-    // const __m256i angleRowX = _mm256_add_ps(_mm256_set1_ps(_angleX), angleAddX);
-    // _mm256_stream_si256((__m256i *)(angleTemp), angleRowX);
+    static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+    const __m256i angleAddX = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxX));
+    const __m256i angleRowX = _mm256_add_ps(_mm256_set1_ps(_angleX), angleAddX);
 
-    // const __m256i angleAddY = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxY));
-    // const __m256i angleRowY = _mm256_add_ps(_mm256_set1_ps(_angleY), angleAddY);
-    // _mm256_stream_si256((__m256i *)(angleTemp + 8), angleRowY);
+    const __m256i angleAddY = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxY));
+    const __m256i angleRowY = _mm256_add_ps(_mm256_set1_ps(_angleY), angleAddY);
 
-    // const __m256i angleAddZ = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxZ));
-    // const __m256i angleRowZ = _mm256_add_ps(_mm256_set1_ps(_angleZ), angleAddZ);
-    // _mm256_stream_si256((__m256i *)(angleTemp + 16), angleRowZ);
+    const __m256i angleAddZ = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxZ));
+    const __m256i angleRowZ = _mm256_add_ps(_mm256_set1_ps(_angleZ), angleAddZ);
 
-    // _mm256_stream_si256((__m256i *)(colorTemp), colorsData);
+    __m256 rV;
+    __m256 gV;
+    __m256 bV;
 
-    // // TODO: Figure out to do this all in registers
-    // for (unsigned idx = 0; idx < 8; ++idx) {
-    //   float light = -dot(_light, vertex<float>(angleTemp[idx], angleTemp[idx + 8], angleTemp[idx + 16]));
-    //   light = std::max(light, _m._globalIllumination);
+    getLight(angleRowX, angleRowY,
+             angleRowZ, _luminance,
+             x, y, z, rV, gV, bV);
 
-    //   colorTemp[idx] = fast_min(255, ((int)(((colorTemp[idx] >> 16) & 0xff) * light))) << 16 |
-    //                    fast_min(255, ((int)(((colorTemp[idx] >> 8) & 0xff) * light))) << 8 |
-    //                    fast_min(255, (int)(((colorTemp[idx]) & 0xff) * light));
 
-    // }
+    colorsData = vectorLight(colorsData, rV, gV, bV);
 
-    // _angleX += _aDxX * 8;
-    // _angleY += _aDxY * 8;
-    // _angleZ += _aDxZ * 8;
-    // colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+    _angleX += _aDxX * 8;
+    _angleY += _aDxY * 8;
+    _angleZ += _aDxZ * 8;
   }
 #endif
 
@@ -260,16 +252,48 @@ class InterpGouraudShader : public UntexturedShader {
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& x, const __m256i& y, const __m256i& z) override {
-    unsigned __attribute__((aligned(32))) colorTemp[8];
-    for (unsigned idx = 0; idx < 8; ++idx) {
-      colorTemp[idx] = (int)_R << 16 |
-                       (int)_G << 8 |
-                       (int)_B;
-          _R += _Rdx;
-          _G += _Gdx;
-          _B += _Bdx;
-    }
-    colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+    static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+
+    const __m256i angleAddX = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxX));
+    const __m256i angleRowX = _mm256_add_ps(_mm256_set1_ps(_angleX), angleAddX);
+
+    const __m256i angleAddY = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxY));
+    const __m256i angleRowY = _mm256_add_ps(_mm256_set1_ps(_angleY), angleAddY);
+
+    const __m256i angleAddZ = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_aDxZ));
+    const __m256i angleRowZ = _mm256_add_ps(_mm256_set1_ps(_angleZ), angleAddZ);
+
+    const __m256i rAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_Rdx));
+    __m256i rRow = _mm256_add_ps(_mm256_set1_ps(_R), rAdd);
+    rRow = _mm256_cvttps_epi32(rRow);
+    rRow = _mm256_slli_epi32(rRow, 16);
+
+    const __m256i gAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_Gdx));
+    __m256i gRow = _mm256_add_ps(_mm256_set1_ps(_G), gAdd);
+    gRow = _mm256_cvttps_epi32(gRow);
+    gRow = _mm256_slli_epi32(gRow, 8);
+
+    const __m256i bAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_Bdx));
+    __m256i bRow = _mm256_add_ps(_mm256_set1_ps(_B), bAdd);
+    bRow = _mm256_cvttps_epi32(bRow);
+
+    __m256 rV;
+    __m256 gV;
+    __m256 bV;
+
+    getLight(angleRowX, angleRowY,
+             angleRowZ, _luminance,
+             x, y, z, rV, gV, bV);
+
+    colorsData = _mm256_or_si256(rRow, _mm256_or_si256(gRow, bRow));
+    colorsData = vectorLight(colorsData, rV, gV, bV);
+
+    _angleX += _aDxX * 8;
+    _angleY += _aDxY * 8;
+    _angleZ += _aDxZ * 8;
+    _R += _Rdx * 8;
+    _G += _Gdx * 8;
+    _B += _Bdx * 8;
   }
 #endif
 
@@ -386,16 +410,35 @@ class InterpFlatShader : public UntexturedShader {
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& x, const __m256i& y, const __m256i& z) override {
-    // unsigned __attribute__((aligned(32))) colorTemp[8];
-    // for (unsigned idx = 0; idx < 8; ++idx) {
-    //   colorTemp[idx] = (int)_R << 16 |
-    //                    (int)_G << 8 |
-    //                    (int)_B;
-    //       _R += _Rdx;
-    //       _G += _Gdx;
-    //       _B += _Bdx;
-    // }
-    // colorsData = _mm256_load_si256((__m256i*)(colorTemp));
+    static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+    const __m256i rAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_Rdx));
+    __m256i rRow = _mm256_add_ps(_mm256_set1_ps(_R), rAdd);
+    rRow = _mm256_cvttps_epi32(rRow);
+    rRow = _mm256_slli_epi32(rRow, 16);
+
+    const __m256i gAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_Gdx));
+    __m256i gRow = _mm256_add_ps(_mm256_set1_ps(_G), gAdd);
+    gRow = _mm256_cvttps_epi32(gRow);
+    gRow = _mm256_slli_epi32(gRow, 8);
+
+    const __m256i bAdd = _mm256_mul_ps(scaleFloat, _mm256_set1_ps(_Bdx));
+    __m256i bRow = _mm256_add_ps(_mm256_set1_ps(_B), bAdd);
+    bRow = _mm256_cvttps_epi32(bRow);
+
+    __m256 rV;
+    __m256 gV;
+    __m256 bV;
+
+    getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
+             _mm256_set1_ps(_norm._z), _luminance,
+             x, y, z, rV, gV, bV);
+
+    colorsData = _mm256_or_si256(rRow, _mm256_or_si256(gRow, bRow));
+    colorsData = vectorLight(colorsData, rV, gV, bV);
+
+    _R += _Rdx * 8;
+    _G += _Gdx * 8;
+    _B += _Bdx * 8;
   }
 #endif
 
