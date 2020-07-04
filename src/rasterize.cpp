@@ -40,9 +40,9 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 
   // Bias to make sure only top or left edges fall on line
-  const int bias0 = -isTopLeft(v1i, v2i);
-  const int bias1 = -isTopLeft(v2i, v0i);
-  const int bias2 = -isTopLeft(v0i, v1i);
+  const int bias0 = isTopLeft(v1i, v2i);
+  const int bias1 = isTopLeft(v2i, v0i);
+  const int bias2 = isTopLeft(v0i, v1i);
 
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
@@ -50,9 +50,6 @@ void drawTri(const ModelInstance& m, const face& f,
 
   // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
-  if (!wTotal) {
-    return;
-  }
 
   pMaxX = fast_max(pMaxX, maxX);
   pMinX = fast_min(pMinX, minX);
@@ -303,18 +300,12 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 
   // Bias to make sure only top or left edges fall on line
-  const int bias0 = -isTopLeft(v1i, v2i);
-  const int bias1 = -isTopLeft(v2i, v0i);
-  const int bias2 = -isTopLeft(v0i, v1i);
+  const int bias0 = isTopLeft(v1i, v2i);
+  const int bias1 = isTopLeft(v2i, v0i);
+  const int bias2 = isTopLeft(v0i, v1i);
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
-
-
-  // If this number is 0, triangle has no area!
-  if (!(w0Row + w1Row + w2Row)) {
-    return;
-  }
 
   float wTotal = w0Row + w1Row + w2Row;
 
@@ -597,9 +588,9 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 
   // Bias to make sure only top or left edges fall on line
-  const int bias0 = -isTopLeft(v1i, v2i);
-  const int bias1 = -isTopLeft(v2i, v0i);
-  const int bias2 = -isTopLeft(v0i, v1i);
+  const int bias0 = isTopLeft(v1i, v2i);
+  const int bias1 = isTopLeft(v2i, v0i);
+  const int bias2 = isTopLeft(v0i, v1i);
 
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
@@ -607,9 +598,6 @@ void drawTri(const ModelInstance& m, const face& f,
 
   // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
-  if (!wTotal) {
-    return;
-  }
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const int A01 = y0 - y1;
@@ -825,19 +813,14 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 
   // Bias to make sure only top or left edges fall on line
-  const int bias0 = -isTopLeft(v1i, v2i);
-  const int bias1 = -isTopLeft(v2i, v0i);
-  const int bias2 = -isTopLeft(v0i, v1i);
+  const int bias0 = isTopLeft(v1i, v2i);
+  const int bias1 = isTopLeft(v2i, v0i);
+  const int bias2 = isTopLeft(v0i, v1i);
   int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
   int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
   int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
 
-
-  // If this number is 0, triangle has no area!
   float wTotal = w0Row + w1Row + w2Row;
-  if (!wTotal) {
-    return;
-  }
 
   // Deltas for change in x or y for the 3 sides of a triangle
   const short A01 = y0 - y1;
