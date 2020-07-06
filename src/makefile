@@ -26,4 +26,4 @@ light.o: light.h light.cpp
 geometry.o: geometry.cpp geometry.h Window.h
 
 clean:
-	rm main.o tgaimage.o loader.o rasterize.o geometry.o pool.o engine
+	rm main.o tgaimage.o loader.o rasterize.o geometry.o pool.o light.o engine

@@ -104,27 +104,27 @@ int main() {
   modInstance2._position = matrix<4,4>::identity();
   modInstance2._position.set(3,0,4);
   modInstance2._position.set(3,2,-5);
-  //modelsInScene.push_back(&modInstance2);
+  modelsInScene.push_back(&modInstance2);
 
 
   ModelInstance modInstance3(head, &headtext, shaderType::GouraudShader);
   modInstance3._position = matrix<4,4>::identity();
   modInstance3._position.set(3,0,0.5);
   modInstance3._position.set(3,2,-5);
-  //modelsInScene.push_back(&modInstance3);
+  modelsInScene.push_back(&modInstance3);
 
   ModelInstance modInstance4(head, &headtext, shaderType::GouraudShader);
   modInstance4._position = matrix<4,4>::identity();
   modInstance4._position.set(3,0,-1);
   modInstance4._position.set(3,2,-5);
-  //modelsInScene.push_back(&modInstance4);
+  modelsInScene.push_back(&modInstance4);
 
   ModelInstance modInstance5(head, &headtext, shaderType::GouraudShader);
   modInstance5._position = matrix<4,4>::identity();
   modInstance5._position.set(3,0,1);
   modInstance5._position.set(3,2,-10);
   modInstance5._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance5);
+  modelsInScene.push_back(&modInstance5);
 
 
   ModelInstance modInstance6(head, &headtext, shaderType::GouraudShader);
@@ -133,20 +133,20 @@ int main() {
   modInstance6._position.set(3,2,-10);
   modInstance6._position.set(3,1,3.5);
 
-  //modelsInScene.push_back(&modInstance6);
+  modelsInScene.push_back(&modInstance6);
 
   ModelInstance modInstance7(head, &headtext, shaderType::GouraudShader);
   modInstance7._position = matrix<4,4>::identity();
   modInstance7._position.set(3,0,-1);
   modInstance7._position.set(3,2,-10);
   modInstance7._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance7);
+  modelsInScene.push_back(&modInstance7);
 
   ModelInstance modInstance8(head, &headtext, shaderType::GouraudShader);
   modInstance8._position = matrix<4,4>::identity();
   modInstance8._position.set(3,2,-10);
   modInstance8._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance8);
+  modelsInScene.push_back(&modInstance8);
 
   ModelInstance planeInstance(plane, nullptr, shaderType::PlaneShader);
   planeInstance._position = matrix<4,4>::identity();
