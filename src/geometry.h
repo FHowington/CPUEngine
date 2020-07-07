@@ -26,9 +26,9 @@ template <unsigned N, unsigned M>
 struct matrix {
   float __attribute__((aligned(16))) _m[N * M];
 
-  static matrix identity();
-  static matrix rotationX(float rotX);
-  static matrix rotationY(float rotY);
+  static auto identity() -> matrix;
+  static auto rotationX(float rotX) -> matrix;
+  static auto rotationY(float rotY) -> matrix;
 
   template <unsigned O>
   matrix<N,O> operator*(const matrix<M,O>& rhs) const;

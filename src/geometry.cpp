@@ -1,10 +1,10 @@
-#include <iostream>
+#include "Window.h"
 #include "geometry.h"
 #include <immintrin.h>
-#include "Window.h"
+#include <iostream>
 
 #ifdef __AVX__
-#define MakeShuffleMask(x,y,z,w)           (x | (y<<2) | (z<<4) | (w<<6))
+#define MakeShuffleMask(x,y,z,w)           ((x) | ((y)<<2) | ((z)<<4) | ((w)<<6))
 
 // vec(0, 1, 2, 3) -> (vec[x], vec[y], vec[z], vec[w])
 #define VecSwizzleMask(vec, mask)          _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(vec), mask))
@@ -24,14 +24,14 @@
 // we use __m128 to represent 2x2 matrix as A = | A0  A1 |
 //                                              | A2  A3 |
 // 2x2 row major Matrix multiply A*B
- __m128 Mat2Mul(__m128 vec1, __m128 vec2)
+ auto Mat2Mul(__m128 vec1, __m128 vec2) -> __m128
 {
   return
       _mm_add_ps(_mm_mul_ps(                     vec1, VecSwizzle(vec2, 0,3,0,3)),
                  _mm_mul_ps(VecSwizzle(vec1, 1,0,3,2), VecSwizzle(vec2, 2,1,2,1)));
 }
 // 2x2 row major Matrix adjugate multiply (A#)*B
- __m128 Mat2AdjMul(__m128 vec1, __m128 vec2)
+ auto Mat2AdjMul(__m128 vec1, __m128 vec2) -> __m128
 {
   return
       _mm_sub_ps(_mm_mul_ps(VecSwizzle(vec1, 3,3,0,0), vec2),
@@ -39,7 +39,7 @@
 
 }
 // 2x2 row major Matrix multiply adjugate A*(B#)
-__m128 Mat2MulAdj(__m128 vec1, __m128 vec2)
+auto Mat2MulAdj(__m128 vec1, __m128 vec2) -> __m128
 {
   return
       _mm_sub_ps(_mm_mul_ps(                     vec1, VecSwizzle(vec2, 3,0,3,0)),
@@ -48,7 +48,7 @@ __m128 Mat2MulAdj(__m128 vec1, __m128 vec2)
 #endif
 
 template <>
-matrix<4,4> matrix<4,4>::identity() {
+auto matrix<4,4>::identity() -> matrix<4,4> {
   matrix<4,4> res;
   for (unsigned idx = 0; idx < 4; ++idx) {
     res._m[idx * 4 + idx] = 1;
@@ -57,7 +57,7 @@ matrix<4,4> matrix<4,4>::identity() {
 }
 
 template <>
-matrix<4,4> matrix<4,4>::rotationY(float rotY) {
+auto matrix<4,4>::rotationY(float rotY) -> matrix<4,4> {
   matrix<4,4> res = identity();
   res.set(0, 0, cos(rotY));
   res.set(0, 2, -sin(rotY));
@@ -67,7 +67,7 @@ matrix<4,4> matrix<4,4>::rotationY(float rotY) {
 }
 
 template <>
-matrix<4,4> matrix<4,4>::rotationX(float rotX) {
+auto matrix<4,4>::rotationX(float rotX) -> matrix<4,4> {
   matrix<4,4> res = identity();
   res.set(1, 1, cos(rotX));
   res.set(1, 2, sin(rotX));
@@ -78,7 +78,7 @@ matrix<4,4> matrix<4,4>::rotationX(float rotX) {
 
 template <>
 template <>
-matrix<4,4> matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const {
+auto matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const -> matrix<4,4> {
   // This needs to be vectorized
   matrix<4,4> result;
 
@@ -99,7 +99,7 @@ matrix<4,4> matrix<4,4>::operator*<4>(const matrix<4,4>& rhs) const {
 #ifdef __FMA__
 template <>
 template <>
-matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const {
+auto matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const -> matrix<4,1> {
   matrix<4,1> result;
 
   __m128 res = _mm_set1_ps(0.0);
@@ -142,7 +142,7 @@ matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& lhs) const {
 // Fast matrix inverse using SIMD
 // I did NOT write this, only modified. Credit goes to Eric Zhang
 // Taken from: https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
-matrix<4,4> invert(const matrix<4,4>& inM)
+auto invert(const matrix<4,4>& inM) -> matrix<4,4>
 {
   __m128 A = VecShuffle_0101(*((__m128*)&inM._m[0]), *((__m128*)&inM._m[4]));
   __m128 B = VecShuffle_2323(*((__m128*)&inM._m[0]), *((__m128*)&inM._m[4]));
@@ -188,7 +188,7 @@ matrix<4,4> invert(const matrix<4,4>& inM)
   // |M| = |A|*|D| + |B|*|C| - tr((A#B)(D#C)
   detM = _mm_sub_ps(detM, tr);
 
-  const __m128 adjSignMask = _mm_setr_ps(1.f, -1.f, -1.f, 1.f);
+  const __m128 adjSignMask = _mm_setr_ps(1.F, -1.F, -1.F, 1.F);
   // (1/|M|, -1/|M|, -1/|M|, 1/|M|)
   __m128 rDetM = _mm_div_ps(adjSignMask, detM);
 
@@ -200,10 +200,10 @@ matrix<4,4> invert(const matrix<4,4>& inM)
   matrix<4,4> r;
 
   // apply adjugate and store, here we combine adjugate shuffle and store shuffle
-  *((__m128*)&r._m[0]) = VecShuffle(X_, Y_, 3,1,3,1);
-  *((__m128*)&r._m[4]) = VecShuffle(X_, Y_, 2,0,2,0);
-  *((__m128*)&r._m[8]) = VecShuffle(Z_, W_, 3,1,3,1);
-  *((__m128*)&r._m[12]) = VecShuffle(Z_, W_, 2,0,2,0);
+  *(reinterpret_cast<__m128*>(&r._m[0])) = VecShuffle(X_, Y_, 3,1,3,1);
+  *(reinterpret_cast<__m128*>(&r._m[4])) = VecShuffle(X_, Y_, 2,0,2,0);
+  *(reinterpret_cast<__m128*>(&r._m[8])) = VecShuffle(Z_, W_, 3,1,3,1);
+  *(reinterpret_cast<__m128*>(&r._m[12])) = VecShuffle(Z_, W_, 2,0,2,0);
 
   return r;
 }
@@ -356,7 +356,7 @@ void printMatrix(const matrix<4,4>& mat) {
   }
 }
 
-matrix<4,1> v2m(const vertex<float>& v) {
+auto v2m(const vertex<float>& v) -> matrix<4,1> {
   matrix<4,1> m;
   m.set(0, 0, v._x);
   m.set(0, 1, v._y);
@@ -365,16 +365,16 @@ matrix<4,1> v2m(const vertex<float>& v) {
   return m;
 }
 
-vertex<int> m2v(const matrix<4,1> m) {
+auto m2v(const matrix<4,1> m) -> vertex<int> {
   return vertex<int>(m._m[0], m._m[1], m._m[2]);
 }
 
- vertex<float> m2vf(const matrix<4,1> m) {
+ auto m2vf(const matrix<4,1> m) -> vertex<float> {
   return vertex<float>(m._m[0], m._m[1], m._m[2]);
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+auto pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) -> const bool {
   float __attribute__((aligned(16))) result[4];
 
   // Model transform
@@ -472,7 +472,7 @@ const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model
 
 
 #ifdef __FMA__
-const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
+auto multToVector(const matrix<4,4> m, const vertex<float>& v) -> const vertex<float> {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
   float __attribute__((aligned(16))) result[4];
@@ -509,7 +509,7 @@ const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
 #endif
 
 #ifdef __FMA__
-const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
+auto rotateVector(const matrix<4,4> m, const vertex<float>& v) -> const vertex<float> {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
   float __attribute__((aligned(16))) result[4];

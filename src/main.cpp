@@ -1,30 +1,30 @@
 //
 // Created by Forbes Howington on 3/27/20.
 //
-#include <array>
-#include <chrono>
-#include <iostream>
-#include "pool.h"
-#include "rasterize.h"
-#include <SDL2/SDL.h>
-#include <thread>
-#include "tgaimage.h"
-#include <vector>
 #include "Window.h"
 #include "geometry.h"
 #include "light.h"
+#include "pool.h"
+#include "rasterize.h"
+#include "tgaimage.h"
+#include <SDL2/SDL.h>
+#include <array>
+#include <chrono>
+#include <iostream>
+#include <thread>
+#include <vector>
 
 #define SPEED 80000000
 
-unsigned pixels[W * H];
-int zbuff[W * H];
+std::array<unsigned, W * H> pixels;
+std::array<int, W*H> zbuff;
 
 matrix<4,4> cameraTransform;
 std::atomic<unsigned> remaining_models;
-unsigned pixels_flipped[W * H];
+std::array<unsigned, W * H> pixels_flipped;
 
 
-int main() {
+auto main() -> int {
   remaining_models = 0;
   // Create a screen.
   SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
@@ -155,19 +155,22 @@ int main() {
 
   for(bool interrupted=false; !interrupted;)
   {
-    for(auto& p: pixels) p = 0;
-    for(auto& p: zbuff) p = std::numeric_limits<int>::min();
+    for(auto& p: pixels) { p = 0;
+}
+    for(auto& p: zbuff) { p = std::numeric_limits<int>::min();
+}
 
     for (const auto m : modelsInScene) {
       ++remaining_models;
       pool.enqueue_model(m);
     }
 
-    // TODO: Change this to something..better. A conditional perhaps.
-    while(remaining_models);
+    // TODO(forbes): Change this to something..better. A conditional perhaps.
+    while(remaining_models != 0U) {;
+}
 
     SDL_Event ev;
-    while(SDL_PollEvent(&ev))
+    while(SDL_PollEvent(&ev) != 0) {
       switch(ev.type)
       {
         case SDL_QUIT: interrupted = true; break;
@@ -276,6 +279,7 @@ int main() {
               break;
           }
       }
+}
 
     if (lUp) {
       cameraRotX -= 0.03;
@@ -291,7 +295,7 @@ int main() {
     }
 
 
-    // TODO: Convert to more understandable numbers
+    // TODO(forbes): Convert to more understandable numbers
 
     matrix<4,4> cameraRotXM = matrix<4,4>::rotationX(cameraRotX);
     matrix<4,4> cameraRotYM = matrix<4,4>::rotationY(cameraRotY);
@@ -302,24 +306,24 @@ int main() {
     lastFrame = frameTime;
 
     if (mForward) {
-      float movemt = (float)d.count() / SPEED;
+      float movemt = static_cast<float>(d.count()) / SPEED;
       cameraX -= movemt * cameraRot._m[8];
       cameraY -= movemt * cameraRot._m[9];
       cameraZ -= movemt * cameraRot._m[10];
     } else if (mBackward) {
-      float movemt = (float)d.count() / SPEED;
+      float movemt = static_cast<float>(d.count()) / SPEED;
       cameraX += movemt * cameraRot._m[8];
       cameraY += movemt * cameraRot._m[9];
       cameraZ += movemt * cameraRot._m[10];
     }
 
     if (mLeft) {
-      float movemt = (float)d.count() / SPEED;
+      float movemt = static_cast<float>(d.count()) / SPEED;
       cameraX -= movemt * cameraRot._m[0];
       cameraY -= movemt * cameraRot._m[1];
       cameraZ -= movemt * cameraRot._m[2];
     } else if (mRight) {
-      float movemt = (float)d.count() / SPEED;
+      float movemt = static_cast<float>(d.count()) / SPEED;
       cameraX += movemt * cameraRot._m[0];
       cameraY += movemt * cameraRot._m[1];
       cameraZ += movemt * cameraRot._m[2];
@@ -333,7 +337,7 @@ int main() {
     matrix<4,4> newPostion = matrix<4,4>::rotationY(rot);
     newPostion.set(3, 2, -5);
 
-    SDL_UpdateTexture(texture, nullptr, pixels, 4*W);
+    SDL_UpdateTexture(texture, nullptr, pixels.data(), 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
 

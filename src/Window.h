@@ -1,3 +1,6 @@
+#ifndef _USERS_FORBES_CLIONPROJECTS_CPUENGINE_SRC_WINDOW_H
+#define _USERS_FORBES_CLIONPROJECTS_CPUENGINE_SRC_WINDOW_H
+
 #pragma once
 
 const unsigned W = 1080;
@@ -17,3 +20,5 @@ const float yFOV = .5;
 const float focalLength = 1.5;
 
 const unsigned depth = 0xFFFFF;
+
+#endif

@@ -5,8 +5,8 @@
 
 extern matrix<4,4> cameraTransform;
 extern std::atomic<unsigned> remaining_models;
-extern unsigned pixels[W*H];
-extern int zbuff[W*H];
+extern std::array<unsigned, W * H> pixels;
+extern std::array<int, W*H> zbuff;
 
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
@@ -21,8 +21,8 @@ thread_local unsigned pMaxX;
 thread_local unsigned pMinY;
 thread_local unsigned pMaxY;
 
-thread_local __attribute__((aligned(32))) unsigned t_pixels[Wt * H + H];
-thread_local __attribute__((aligned(32))) int t_zbuff[Wt * H + H];
+thread_local __attribute__((aligned(32))) std::array<unsigned, Wt * H + H> t_pixels;
+thread_local __attribute__((aligned(32))) std::array<int, Wt * H + H> t_zbuff;
 
 Pool::Pool(const unsigned numThreads) {
   for(int i = 0; i < numThreads; ++i) {
@@ -129,17 +129,17 @@ void Pool::copy_to_main_buffer() {
     unsigned xVal = pMinX;
 
     for (unsigned loop = 0; loop < loops; ++loop) {
-      const __m256i zbuffV = _mm256_loadu_si256((__m256i*)(zbuff + offset + xVal));
-      const __m256i t_zbuffV = _mm256_loadu_si256((__m256i*)(t_zbuff + offset_t + xVal));
+      const __m256i zbuffV = _mm256_loadu_si256((__m256i*)(zbuff.data() + offset + xVal));
+      const __m256i t_zbuffV = _mm256_loadu_si256((__m256i*)(t_zbuff.data() + offset_t + xVal));
       const __m256i needsUpdate = _mm256_cmpgt_epi32(t_zbuffV, zbuffV);
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         // Any pixels with X > W need to have zbuff set to 0
-        const __m256i colV = _mm256_loadu_si256((__m256i*)(pixels + offsetH + xVal));
-        const __m256i t_colV = _mm256_loadu_si256((__m256i*)(t_pixels + offset_t + xVal));
+        const __m256i colV = _mm256_loadu_si256((__m256i*)(pixels.data() + offsetH + xVal));
+        const __m256i t_colV = _mm256_loadu_si256((__m256i*)(t_pixels.data() + offset_t + xVal));
         const __m256i colUpdate = _mm256_blendv_epi8(colV, t_colV, needsUpdate);
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffV, t_zbuffV, needsUpdate);
-        _mm256_storeu_si256((__m256i*)(zbuff + offset + xVal), zUpdate);
-        _mm256_storeu_si256((__m256i*)(pixels + offsetH + xVal), colUpdate);
+        _mm256_storeu_si256((__m256i*)(zbuff.data() + offset + xVal), zUpdate);
+        _mm256_storeu_si256((__m256i*)(pixels.data() + offsetH + xVal), colUpdate);
       }
       xVal += 8;
     }

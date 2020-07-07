@@ -8,8 +8,8 @@
 #include "Window.h"
 
 
-extern thread_local unsigned t_pixels[Wt * H + H];
-extern thread_local int t_zbuff[Wt * H + H];
+extern thread_local std::array<unsigned, Wt * H + H> t_pixels;
+extern thread_local std::array<int, Wt * H + H> t_zbuff;
 extern thread_local unsigned pMinX;
 extern thread_local unsigned pMaxX;
 extern thread_local unsigned pMinY;

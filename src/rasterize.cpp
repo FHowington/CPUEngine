@@ -197,7 +197,7 @@ void drawTri(const ModelInstance& m, const face& f,
 
     xVal = minX;
     for (inner = 0; inner < numInner; ++inner) {
-      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff + xVal + offset));
+      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff.data() + xVal + offset));
 
       const __m256i zInit = _mm256_set1_epi32(depth);
       const __m256i zv = _mm256_add_epi32(zInit, depthDxAdd);
@@ -205,7 +205,7 @@ void drawTri(const ModelInstance& m, const face& f,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels + xVal + offset));
+        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels.data() + xVal + offset));
 
         __m256 xColv = _mm256_add_ps(_mm256_set1_ps(xCol), xColAdd);
         __m256 yColv = _mm256_add_ps(_mm256_set1_ps(yCol), yColAdd);
@@ -229,8 +229,8 @@ void drawTri(const ModelInstance& m, const face& f,
         shader.fragmentShader(colorsData, zUpdate, xV, yV, zV);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
-        _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
-        _mm256_storeu_si256((__m256i*)(t_pixels + xVal + offset), colorsData);
+        _mm256_storeu_si256((__m256i*)(t_zbuff.data() + xVal + offset), zUpdate);
+        _mm256_storeu_si256((__m256i*)(t_pixels.data() + xVal + offset), colorsData);
       } else {
         shader.stepXForX(8);
       }
@@ -632,7 +632,7 @@ void drawTri(const ModelInstance& m, const face& f,
     xVal = minX;
 
     for (inner = 0; inner < numInner; ++inner) {
-      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff + xVal + offset));
+      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff.data() + xVal + offset));
 
       const __m256i zInit = _mm256_set1_epi32(depth);
       const __m256i zv = _mm256_add_epi32(zInit, depthDxAdd);
@@ -640,7 +640,7 @@ void drawTri(const ModelInstance& m, const face& f,
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
-        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels + offset + xVal));
+        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels.data() + offset + xVal));
 
         __m256 wTotalRV = _mm256_add_ps(_mm256_set1_ps(wTotalR), wTotalRAdd);
         __m256 xV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(xLoc), xRAdd), wTotalRV);
@@ -651,8 +651,8 @@ void drawTri(const ModelInstance& m, const face& f,
         shader.fragmentShader(colorsData, zUpdate, xV, yV, zV);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
 
-        _mm256_storeu_si256((__m256i*)(t_zbuff + xVal + offset), zUpdate);
-        _mm256_storeu_si256((__m256i*)(t_pixels + offset + xVal), colorsData);
+        _mm256_storeu_si256((__m256i*)(t_zbuff.data() + xVal + offset), zUpdate);
+        _mm256_storeu_si256((__m256i*)(t_pixels.data() + offset + xVal), colorsData);
       } else {
         shader.stepXForX(8);
       }

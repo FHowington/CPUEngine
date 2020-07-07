@@ -20,8 +20,8 @@ const unsigned halfW = W/2;
 const unsigned halfH = H/2;
 
 
-extern unsigned pixels[W * H];
-extern int zbuff[W * H];
+extern std::array<unsigned, W * H> pixels;
+extern std::array<int, W * H> zbuff;
 
 typedef std::pair<double, double> SlopePair;
 inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, const unsigned color);
