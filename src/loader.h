@@ -4,15 +4,15 @@
 
 #pragma once
 
+#include "Window.h"
+#include "geometry.h"
+#include "tgaimage.h"
 #include <cmath>
 #include <fstream>
-#include "geometry.h"
 #include <iostream>
 #include <memory>
 #include <sstream>
-#include "tgaimage.h"
 #include <vector>
-#include "Window.h"
 
 class TGAImage;
 enum class shaderType;
@@ -20,11 +20,11 @@ enum class shaderType;
 class Model {
  public:
   Model(const std::string& fileName, const unsigned width, const unsigned height) { loadModel(fileName, width, height); }
-  Model() { }
+  Model() = default;
 
-  const std::vector<face>& getFaces() const { return faces; }
-  const vertex<float>& getVertex(const unsigned idx) const { return vertices[idx]; }
-  const vertex<float>& getVertexNormal(const unsigned idx) const { return vertexNormals[idx]; }
+  [[nodiscard]] const std::vector<face>& getFaces() const { return faces; }
+  [[nodiscard]] const vertex<float>& getVertex(const unsigned idx) const { return vertices[idx]; }
+  [[nodiscard]] const vertex<float>& getVertexNormal(const unsigned idx) const { return vertexNormals[idx]; }
 
   template<typename T>
   void setVertices(T&& newVertices)
@@ -48,7 +48,7 @@ class Model {
   std::vector<vertex<float>> vertices;
   std::vector<vertex<float>> vertexNormals;
   std::vector<face> faces;
-  void loadModel(const std::string& fileName, const unsigned width, const unsigned height);
+  void loadModel(const std::string& fileName, unsigned width, unsigned height);
 };
 
 

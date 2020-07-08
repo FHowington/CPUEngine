@@ -10,7 +10,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
   std::ifstream infile(fileName);
 
   if (!infile) {
-    printf("File failed\n");
+    std::cout << "File failed" << std::endl;
     return;
   }
 
@@ -26,7 +26,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
       float y;
       float z;
       if (!(iss >> x >> y >> z)) {
-        printf("Parsing for vectors failed at line: %s\n", line.c_str());
+        std::cout << "Parsing for vectors failed at line: " << line << std::endl;
         break;
       }
 
@@ -38,14 +38,14 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
       float x;
       float y;
       if (!(iss >> x >> y)) {
-        printf("Parsing for textures failed at line: %s\n", line.c_str());
+        std::cout << "Parsing for textures failed at line: " << line << std::endl;
         break;
       }
 
       textures.emplace_back(x, y, 0);
 
     } else if (line.size() > 1 && line[0] == 'f' && line[1] == ' ') {
-      if (line.find("/") != std::string::npos) {
+      if (line.find('/') != std::string::npos) {
 
         std::replace(line.begin(), line.end(), '/', ' ');
         line = line.substr(1, line.size());
@@ -61,14 +61,14 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
         unsigned trash;
 
         if (!(iss >> v0 >> t0 >> trash >> v1 >> t1 >> trash >> v2 >> t2)) {
-          printf("Parsing for faces failed at line: %s\n", line.c_str());
+          std::cout << "Parsing for faces failed at line: " <<  line << std::endl;
           break;
         }
 
         faces.emplace_back(v0 - 1, v1 - 1, v2-1,
-                           textures.at(t0-1)._x * width, textures.at(t0-1)._y * height,
-                           textures.at(t1-1)._x * width, textures.at(t1-1)._y * height,
-                           textures.at(t2-1)._x * width, textures.at(t2-1)._y * height);
+                           textures.at(t0-1)._x * (float)width, textures.at(t0-1)._y * (float)height,
+                           textures.at(t1-1)._x * (float)width, textures.at(t1-1)._y * (float)height,
+                           textures.at(t2-1)._x * (float)width, textures.at(t2-1)._y * (float)height);
       } else {
         line = line.substr(1, line.size());
         std::istringstream iss(line);
@@ -78,7 +78,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
         unsigned v2;
 
         if (!(iss >> v0 >> v1 >> v2)) {
-          printf("Parsing for faces failed at line: %s\n", line.c_str());
+          std::cout << "Parsing for faces failed at line: " <<  line << std::endl;
           break;
         }
 
@@ -91,7 +91,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
       float y;
       float z;
       if (!(iss >> x >> y >> z)) {
-        printf("Parsing for vertex normals failed at line: %s\n", line.c_str());
+          std::cout << "Parsing for vertex normals failed at line: " <<  line << std::endl;
         break;
       }
 
