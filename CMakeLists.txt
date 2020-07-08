@@ -8,12 +8,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 # includes cmake/FindSDL2.cmake
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+#set(CMAKE_CXX_CLANG_TIDY clang-tidy ../src/geometry.cpp -checks=cppcoreguidelines*,clang-analyzer*,boost*,llvm*,llvmlibc*,modernize*,performance*,readability*,-readability-magic-numbers,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-pro-type-union-access,-llvm-header-guard,-cppcoreguidelines-pro-type-member-init,-cppcoreguidelines-avoid-magic-numbers)
+
 
 
 option(SIMD "Use AVX2/FMA instructions" ON)
 option(DEBUG "Build debug variant with no optimizations" OFF)
 if(SIMD)
-  SET(CLANG_INSTRUCTIONS "-mavx2 -mfma -Rpass-analysis=loop-vectorize -Rpass=loop-vectorize")
+  SET(CLANG_INSTRUCTIONS "-mavx2 -mfma -Rpass=loop-vectorize")
 else()
   SET(CLANG_INSTRUCTIONS "-mno-avx")
 endif()
@@ -25,7 +27,7 @@ else()
   message("DEBUG")
 endif()
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CLANG_SPEED} ${CLANG_INSTRUCTIONS}")
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CLANG_SPEED} ${CLANG_INSTRUCTIONS} -Werror")
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})

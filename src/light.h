@@ -1,9 +1,10 @@
 // Created by Forbes Howington 5/19/20
 #pragma once
-#include <list>
+#include "geometry.h"
 #include "immintrin.h"
+#include <list>
 
-enum class LightType { Directional, Point, Spot };
+enum class LightType { Directional, Point };
 
 struct illumination {
   float _R;
@@ -18,12 +19,12 @@ class Light {
 
   Light (const LightType lt, const vertex<float> direction, const float R, const float G, const float B) :
       _type(lt), _direction(direction), _R(R), _G(G), _B(B) {
-    assert(lt == LightType::Directional && "Only directional light may have a vector defined");
+    assert(lt == LightType::Directional && "Only directional light may have a vector defined"); // NOLINT
   }
 
   Light (const LightType lt, const float x, const float y, const float z, const float strength, const float R, const float G, const float B) :
       _type(lt), _x(x), _y(y), _z(z), _strength(strength), _R(R), _G(G), _B(B) {
-    assert(lt == LightType::Point && "Only point light may position without direction");
+    assert(lt == LightType::Point && "Only point light may position without direction"); // NOLINT
   }
 
   static std::list<Light> sceneLights;
@@ -42,7 +43,7 @@ class Light {
   vertex<float> _direction; // Only used for directional light
 };
 
-const illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z);
+illumination getLight(const vertex<float>& norm, float ambient, float x, float y, float z);
 
 #if defined(__AVX2__) && defined(__FMA__)
 void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, float ambient,

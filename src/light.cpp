@@ -3,8 +3,10 @@
 
 std::list<Light> Light::sceneLights;
 
-const illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z) {
-  float R = 0, G = 0, B = 0;
+illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z) {
+  float R = 0;
+  float G = 0;
+  float B = 0;
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
       case LightType::Directional: {
@@ -21,7 +23,7 @@ const illumination getLight(const vertex<float>& norm, const float ambient, cons
         float d = dot(vertex<float>(l._x - x, l._y - y, l._z - z).normalize(), norm);
         if (d > 0) {
           // Falls off according to inverse square law
-          float dist = pow(l._x - x, 2) +  pow(l._y - y, 2) +  pow(l._z - z, 2);
+          auto dist = (float)(pow(l._x - x, 2) +  pow(l._y - y, 2) +  pow(l._z - z, 2));
           d /= dist;
           d *= l._strength;
           R += d * l._R;
