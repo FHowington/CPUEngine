@@ -104,7 +104,7 @@ matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& rhs) const {
   matrix<4,1> result;
 
   __m128 res = _mm_set1_ps(0.0);
-  __m128 v1 = _mm_load_ps(lhs._m);
+  __m128 v1 = _mm_load_ps(rhs._m.data());
   __m128 v2 = _mm_set_ps(_m[15], _m[10], _m[5], _m[0]);
 
   res = _mm_fmadd_ps(v1, v2, res);
@@ -121,7 +121,7 @@ matrix<4,1> matrix<4,4>::operator*<1>(const matrix<4,1>& rhs) const {
   v2 = _mm_set_ps(_m[11], _m[6], _m[1], _m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  _mm_stream_ps(result._m, res);
+  _mm_stream_ps(result._m.data(), res);
   return result;
 }
 #else
@@ -214,7 +214,7 @@ matrix<4,4> invert(const matrix<4,4>& inM)
 // Lifted from the MESA implementation of GLU library
 // https://www.mesa3d.org/
 matrix<4,4> invert(const matrix<4,4>& in) {
-  const auto* m = static_cast<const float*>(in._m);
+  const auto* m = static_cast<const float*>(in._m.data());
 
   std::array<float, 16> inv{};
   float det;
@@ -370,7 +370,7 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-const bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
   float __attribute__((aligned(16))) result[4];
 
   // Model transform
@@ -468,7 +468,7 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
 
 
 #ifdef __FMA__
-const vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
+vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
   float __attribute__((aligned(16))) result[4];
@@ -505,7 +505,7 @@ vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
 #endif
 
 #ifdef __FMA__
-const vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
+vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
   float __attribute__((aligned(16))) result[4];

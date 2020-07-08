@@ -21,7 +21,7 @@ endif()
 if(DEBUG)
   SET(CLANG_SPEED "-O0 -g -DDEBUG")
 else()
-  SET(CLANG_SPEED "-Ofast -mavx2 -mfma -Rpass-analysis=loop-vectorize -Rpass=loop-vectorize")
+  SET(CLANG_SPEED "-Ofast")
   message("DEBUG")
 endif()
 

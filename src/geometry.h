@@ -1,8 +1,9 @@
- //
+//
 // Created by Forbes Howington on 4/12/20.
 //
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -24,7 +25,7 @@ inline __attribute__((always_inline)) int fast_min(int a, int b) {
 // This defines a 4x4 matrix
 template <unsigned N, unsigned M>
 struct matrix {
-  float __attribute__((aligned(16))) _m[N * M];
+  __attribute__((aligned(16))) std::array<float, N * M>_m{};
 
   static auto identity() -> matrix;
   static auto rotationX(float rotX) -> matrix;
@@ -33,11 +34,11 @@ struct matrix {
   template <unsigned O>
   matrix<N,O> operator*(const matrix<M,O>& rhs) const;
 
-  float at(const unsigned i, const unsigned j) const { return _m[M * i + j]; }
+  [[nodiscard]] float at(const unsigned i, const unsigned j) const { return _m[M * i + j]; }
   void set(const unsigned i, const unsigned j, const float val) { _m[M * i + j] = val; }
 
   matrix() {
-    memset(_m, 0, N * M * 4);
+    memset(_m.data(), 0, N * M * 4);
   }
 };
 
@@ -49,16 +50,19 @@ struct fcolor {
     struct {
       unsigned char b, g, r, a;
     };
-    unsigned char raw[4];
     unsigned _color;
   };
   fcolor (uint8_t a, uint8_t r, uint8_t g, uint8_t b) : _color((a << 24) | (r << 16) | (g << 8) | b) {}
   fcolor (const unsigned color) { _color = color; }
   fcolor (const unsigned color, const float light) : _color(color) {
-    r = fast_min(255, r * light); g = fast_min(255, g * light); b = fast_min(255, b * light);
+    r = fast_min(255, (int)((float)r * light));
+    g = fast_min(255, (int)((float)g * light));
+    b = fast_min(255, (int)((float)b * light));
   }
   fcolor (const unsigned color, const float R, const float G, const float B) : _color(color) {
-    r = fast_min(255, r * R); g = fast_min(255, g * G); b = fast_min(255, b * B);
+    r = fast_min(255, (int)((float)r * R));
+    g = fast_min(255, (int)((float)g * G));
+    b = fast_min(255, (int)((float)b * B));
   }
   operator unsigned() const { return _color; }
 };
@@ -72,7 +76,7 @@ struct vertex {
       float _e;
     };
     // This should ONLY be used if T is float
-    float raw[4];
+    float raw[4]; // NOLINT
   };
 
 
@@ -96,8 +100,8 @@ struct vertex {
 struct face {
   // Mapping to texture coords per vertex
 
-  face(unsigned v0, unsigned v1, unsigned v2, const unsigned t0x, const unsigned t0y,
-       const unsigned t1x, const unsigned t1y, const unsigned t2x, const unsigned t2y) :
+  face(unsigned v0, unsigned v1, unsigned v2, const int t0x, const int t0y,
+       const int t1x, const int t1y, const int t2x, const int t2y) :
       _v0(v0), _v1(v1), _v2(v2), _t0x(t0x), _t0y(t0y), _t1x(t1x), _t1y(t1y), _t2x(t2x), _t2y(t2y) {}
 
   face(unsigned v0, unsigned v1, unsigned v2) : face(v0, v1, v2, 0, 0, 0, 0, 0, 0) {}
@@ -134,9 +138,9 @@ T dot(const vertex<T>& l, const vertex<T>& r) {
 
 matrix<4,4> inverseNoTranslate(const matrix<4,4>& in);
 matrix<4,4> invert(const matrix<4,4>& in);
-vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v);
+vertex<float> multToVector(matrix<4,4> m, const vertex<float>& v);
 matrix<4,1> v2m(const vertex<float>& v);
-vertex<int> m2v(const matrix<4,1> m);
-vertex<float> m2vf(const matrix<4,1> m);
+vertex<int> m2v(matrix<4,1> m);
+vertex<float> m2vf(matrix<4,1> m);
 bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult);
-vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v);
+vertex<float> rotateVector(matrix<4,4> m, const vertex<float>& v);
