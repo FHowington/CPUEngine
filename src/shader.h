@@ -5,9 +5,9 @@
 #pragma once
 
 #include "geometry.h"
-#include <immintrin.h>
-#include "loader.h"
 #include "light.h"
+#include "loader.h"
+#include <immintrin.h>
 
 // We do this instead of the typical inheritance route because dynamic binding of function calls
 // incurs a perf. hit for shaders. They are simply called too many time.
@@ -22,18 +22,18 @@
 
 enum class shaderType { FlatShader, GouraudShader, InterpFlatShader, InterpGouraudShader, PlaneShader };
 
-class Shader {
+class Shader { // NOLINT
  public:
-  virtual ~Shader() {};
+  virtual ~Shader() = default;;
 
-  virtual const fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) = 0;
+  virtual fcolor fragmentShader(float x, float y, float z, unsigned color = 0) = 0;
 
 #ifdef __AVX2__
   virtual const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& x, const __m256i& y, const __m256i& z) { return; }
 #endif
 
-  virtual void stepXForX(const unsigned step) = 0;
-  virtual void stepYForX(const unsigned step) = 0;
+  virtual void stepXForX(unsigned step) = 0;
+  virtual void stepYForX(unsigned step) = 0;
 };
 
 class TexturedShader : public Shader {
@@ -61,7 +61,7 @@ class FlatShader : public TexturedShader {
     _norm.normalize();
   }
 
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
+  inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     illumination il = getLight(_norm, _luminance, x, y, z);
     return fcolor(color, il._R, il._G, il._B);
   }
@@ -81,8 +81,8 @@ class FlatShader : public TexturedShader {
   }
 #endif
 
-  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { return; }
-  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { return; }
+  inline __attribute__((always_inline)) void stepXForX(const unsigned step = 0) override { }
+  inline __attribute__((always_inline)) void stepYForX(const unsigned step = 0) override { }
 
  private:
   vertex<float> _norm;
@@ -118,7 +118,7 @@ class GouraudShader : public TexturedShader {
     _angleRowZ = _angleZ;
   }
 
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
+  inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     illumination il = getLight(vertex<float>(_angleX, _angleY, _angleZ), _luminance, x, y, z);
     return fcolor(color, il._R, il._G, il._B);
   }
@@ -244,7 +244,7 @@ class InterpGouraudShader : public UntexturedShader {
     _rowB = _B;
   }
 
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
+  inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     illumination il = getLight(vertex<float>(_angleX, _angleY, _angleZ), _luminance, x, y, z);
     return fcolor(((unsigned)_R << 16) | ((unsigned)_G << 8) | (unsigned)_B, il._R, il._G, il._B);
   }
@@ -402,7 +402,7 @@ class InterpFlatShader : public UntexturedShader {
     _rowB = _B;
   }
 
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
+  inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     illumination il = getLight(_norm, _luminance, x, y, z);
     return fcolor(((unsigned)_R << 16) | ((unsigned)_G << 8) | (unsigned)_B, il._R, il._G, il._B);
   }
@@ -488,8 +488,8 @@ class PlaneShader : public UntexturedShader {
   { }
 
 
-  const inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    unsigned res = (((unsigned)floor(x)) & 0x1) ? 123456 : 4321;
+  inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
+    unsigned res = (((unsigned)floor(x)) & 0x1) != 0U ? 123456 : 4321;
     illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |

@@ -1,12 +1,12 @@
 #include "pool.h"
-#include "shader.h"
 #include "rasterize.h"
+#include "shader.h"
 
 
 extern matrix<4,4> cameraTransform;
 extern std::atomic<unsigned> remaining_models;
-extern std::array<unsigned, W * H> pixels;
-extern std::array<int, W*H> zbuff;
+
+
 
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
@@ -26,7 +26,7 @@ thread_local __attribute__((aligned(32))) std::array<int, Wt * H + H> t_zbuff;
 
 Pool::Pool(const unsigned numThreads) {
   for(int i = 0; i < numThreads; ++i) {
-    thread_pool.push_back(std::thread(job_wait));
+    thread_pool.emplace_back(job_wait);
   }
 }
 
@@ -41,8 +41,10 @@ Pool::~Pool() {
 }
 
 void Pool::job_wait() {
-  for(auto& p: t_pixels) p = 0;
-  for(auto& p: t_zbuff) p = std::numeric_limits<int>::min();
+  for(auto& p: t_pixels) { p = 0;
+}
+  for(auto& p: t_zbuff) { p = std::numeric_limits<int>::min();
+}
 
   while(true) {
     std::unique_lock<std::mutex> lock(job_queue_mutex_);
@@ -92,8 +94,10 @@ void Pool::job_wait() {
     Pool::copy_to_main_buffer();
     --remaining_models;
 
-    for(auto& p: t_pixels) p = 0;
-    for(auto& p: t_zbuff) p = std::numeric_limits<int>::min();
+    for(auto& p: t_pixels) { p = 0;
+}
+    for(auto& p: t_zbuff) { p = std::numeric_limits<int>::min();
+}
   }
 }
 

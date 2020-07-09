@@ -1,17 +1,17 @@
-#include <iostream>
-#include <fstream>
-#include <string.h>
-#include <time.h>
-#include <math.h>
 #include "tgaimage.h"
+#include <cmath>
+#include <cstring>
+#include <ctime>
+#include <fstream>
 #include <immintrin.h>
+#include <iostream>
 
-TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {
+TGAImage::TGAImage() : data(nullptr), width(0), height(0), bytespp(0) {
 }
 
-TGAImage::TGAImage(int w, int h, int bpp) : data(NULL), width(w), height(h), bytespp(bpp) {
+TGAImage::TGAImage(int w, int h, int bpp) : data(nullptr), width(w), height(h), bytespp(bpp) {
   unsigned long nbytes = width*height*4;
-  data = new unsigned __attribute__((aligned(64))) char[nbytes];
+  data = new __attribute__((aligned(64))) char[nbytes]; // NOLINT
   memset(data, 0, nbytes);
 }
 
@@ -20,18 +20,19 @@ TGAImage::TGAImage(const TGAImage &img) {
   height = img.height;
   bytespp = img.bytespp;
   unsigned long nbytes = width*height*4;
-  data = new unsigned char[nbytes];
+  data = new char[nbytes]; // NOLINT
   memcpy(data, img.data, nbytes);
 }
 
 TGAImage::~TGAImage() {
-  if (data) delete [] data;
+  delete [] data;
 }
 
 
 bool TGAImage::read_tga_file(const char *filename) {
-  if (data) delete [] data;
-  data = NULL;
+  delete [] data;
+  data = nullptr;
+
   std::ifstream in;
   in.open (filename, std::ios::binary);
   if (!in.is_open()) {
@@ -40,7 +41,7 @@ bool TGAImage::read_tga_file(const char *filename) {
     return false;
   }
   TGA_Header header;
-  in.read((char *)&header, sizeof(header));
+  in.read((char *)&header, sizeof(header)); // NOLINT
   if (!in.good()) {
     in.close();
     std::cerr << "an error occured while reading the header\n";
@@ -55,7 +56,7 @@ bool TGAImage::read_tga_file(const char *filename) {
     return false;
   }
   unsigned long nbytes = 8*width*height;
-  data = new unsigned char[nbytes];
+  data = new char[nbytes]; // NOLINT
   if (3==header.datatypecode || 2==header.datatypecode) {
     in.read((char *)data, nbytes);
     if (!in.good()) {
@@ -74,10 +75,10 @@ bool TGAImage::read_tga_file(const char *filename) {
     std::cerr << "unknown file format " << (int)header.datatypecode << "\n";
     return false;
   }
-  if (!(header.imagedescriptor & 0x20)) {
+  if ((header.imagedescriptor & 0x20) == 0) {
     flip_vertically();
   }
-  if (header.imagedescriptor & 0x10) {
+  if ((header.imagedescriptor & 0x10) != 0) {
     flip_horizontally();
   }
   std::cerr << width << "x" << height << "/" << bytespp*8 << "\n";
@@ -147,46 +148,47 @@ bool TGAImage::load_rle_data(std::ifstream &in) {
   return true;
 }
 
-const TGAColor TGAImage::get(int x, int y) const {
-  if (!data || x<0 || y<0 || x>=width || y>=height) {
+TGAColor TGAImage::get(int x, int y) const {
+  if ((data == nullptr) || x<0 || y<0 || x>=width || y>=height) {
     return TGAColor();
   }
   return TGAColor(data+(x+y*width)*4, 3);
 }
 
-const fcolor TGAImage::get_and_light(const int x, const int y, const float light) const {
-  unsigned char* offset = data+(x+y*width)*4;
+fcolor TGAImage::get_and_light(const int x, const int y, const float light) const {
+  char* offset = data+(x+y*width)*4;
   return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
-const fcolor TGAImage::get_and_light(int index, const float light) const {
-  unsigned char* offset = data+index;
+fcolor TGAImage::get_and_light(int index, const float light) const {
+  char* offset = data+index;
 
   return fcolor(0, offset[2] * light, offset[1] * light, offset[0] * light);
 }
 
-const fcolor TGAImage::get(int index) const {
-  unsigned char* offset = data+index;
+fcolor TGAImage::get(int index) const {
+  char* offset = data+index;
 
-  return fcolor(0, offset[2], offset[1], offset[0]);
+  return fcolor(0, (uint8_t)offset[2], (uint8_t)offset[1], (uint8_t)offset[0]);
 }
 
 
-const unsigned TGAImage::fast_get(const int x, const int y) const {
-  unsigned char* offset = data+(x+y*width)*4;
-  return fcolor(0, offset[2], offset[1], offset[0]);
+unsigned TGAImage::fast_get(const int x, const int y) const {
+  char* offset = data+(x+y*width)*4;
+  return fcolor(0, (uint8_t)offset[2], (uint8_t)offset[1], (uint8_t)offset[0]);
 }
 
 bool TGAImage::set(int x, int y, TGAColor c) {
-  if (!data || x<0 || y<0 || x>=width || y>=height) {
+  if ((data == nullptr) || x<0 || y<0 || x>=width || y>=height) {
     return false;
   }
-  memcpy(data+(x+y*width)*bytespp, c.raw, bytespp);
+  memcpy(data+(x+y*width)*bytespp, (char *)c.raw, bytespp);
   return true;
 }
 
 bool TGAImage::flip_horizontally() {
-  if (!data) return false;
+  if (data == nullptr) { return false;
+}
   int half = width>>1;
   for (int i=0; i<half; i++) {
     for (int j=0; j<height; j++) {
@@ -200,17 +202,17 @@ bool TGAImage::flip_horizontally() {
 }
 
 bool TGAImage::flip_vertically() {
-  if (!data) return false;
+  if (data == nullptr) { return false;
+}
   unsigned long bytes_per_line = width*bytespp;
-  unsigned char *line = new unsigned char[bytes_per_line];
+  std::unique_ptr<unsigned char> line(new unsigned char[bytes_per_line]);
   int half = height>>1;
   for (int j=0; j<half; j++) {
     unsigned long l1 = j*bytes_per_line;
     unsigned long l2 = (height-1-j)*bytes_per_line;
-    memmove((void *)line,      (void *)(data+l1), bytes_per_line);
+    memmove((void *)line.get(),      (void *)(data+l1), bytes_per_line);
     memmove((void *)(data+l1), (void *)(data+l2), bytes_per_line);
-    memmove((void *)(data+l2), (void *)line,      bytes_per_line);
+    memmove((void *)(data+l2), (void *)line.get(),      bytes_per_line);
   }
-  delete [] line;
   return true;
 }

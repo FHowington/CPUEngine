@@ -1,6 +1,6 @@
-#include <immintrin.h>
 #include "geometry.h"
 #include "rasterize.h"
+#include <immintrin.h>
 
 
 #ifdef __AVX2__
@@ -325,9 +325,18 @@ void drawTri(const ModelInstance& m, const face& f,
   pMaxY = fast_max(pMaxY, maxY);
   pMinY = fast_min(pMinY, minY);
 
-  unsigned x, y, xVal, yVal, numInner, inner, numOuter;
+  unsigned x;
+  unsigned y;
+  unsigned xVal;
+  unsigned yVal;
+  unsigned numInner;
+  unsigned inner;
+  unsigned numOuter;
 
-  int w0, w1, w2, depth;
+  int w0;
+  int w1;
+  int w2;
+  int depth;
 
   const int div = (((B20) * (-A01)) + (B01) * (A20));
   const int z10 = z1 - z0;
@@ -391,7 +400,10 @@ void drawTri(const ModelInstance& m, const face& f,
   const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
   const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
 
-  float xLoc, yLoc, zLoc, wTotalR;
+  float xLoc;
+  float yLoc;
+  float zLoc;
+  float wTotalR;
 
   // Current texture coordinates
   float xCol;
@@ -744,9 +756,18 @@ void drawTri(const ModelInstance& m, const face& f,
   pMaxY = fast_max(pMaxY, maxY);
   pMinY = fast_min(pMinY, minY);
 
-  unsigned x, y, xVal, yVal, numInner, inner, numOuter;
+  unsigned x;
+  unsigned y;
+  unsigned xVal;
+  unsigned yVal;
+  unsigned numInner;
+  unsigned inner;
+  unsigned numOuter;
 
-  int w0, w1, w2, depth;
+  int w0;
+  int w1;
+  int w2;
+  int depth;
 
   const int div = -((long long)(-B20) * (-A01)) + ((long long)(B01) * (A20));
   const int z10 = z1 - z0;
@@ -786,7 +807,10 @@ void drawTri(const ModelInstance& m, const face& f,
   const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
   const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
 
-  float xLoc, yLoc, zLoc, wTotalR;
+  float xLoc;
+  float yLoc;
+  float zLoc;
+  float wTotalR;
 
   // Change in z for change in row/column
   // Obtained by taking partial derivative with respect to x or y from equation of a plane

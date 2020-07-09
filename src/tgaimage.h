@@ -1,6 +1,6 @@
 #pragma once
-#include <fstream>
 #include "loader.h"
+#include <fstream>
 
 #pragma pack(push,1)
 struct TGA_Header {
@@ -25,12 +25,12 @@ struct TGAColor {
     struct {
       unsigned char b, g, r, a;
     };
-    unsigned char raw[4];
+    char raw[4]; // NOLINT
     unsigned int val;
   };
-  int bytespp;
+  int bytespp{1};
 
- TGAColor() : val(0), bytespp(1) {
+ TGAColor() : val(0) {
  }
 
  TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A=255) : b(B), g(G), r(R), a(A), bytespp(4) {
@@ -42,25 +42,23 @@ struct TGAColor {
  TGAColor(const TGAColor &c) : val(c.val), bytespp(c.bytespp) {
  }
 
- TGAColor(const unsigned char *p, int bpp) : val(0), bytespp(bpp) {
+ TGAColor(const char *p, int bpp) : val(0), bytespp(bpp) {
    for (int i=0; i<bpp; i++) {
-     raw[i] = p[i];
+     raw[i] = (uint8_t)p[i];
    }
  }
 
-  TGAColor & operator =(const TGAColor &c) {
-    if (this != &c) {
-      bytespp = c.bytespp;
-      val = c.val;
-    }
-    return *this;
-  }
+  TGAColor(TGAColor&& rhs) = default;
+  TGAColor& operator=(TGAColor&& c) = default;
+
+  TGAColor& operator=(const TGAColor &c) = default;
+  ~TGAColor() = default;
 };
 
 
-class TGAImage {
+class TGAImage { // NOLINT
 public:
-  unsigned char* data;
+  char* data;
   int width;
   int height;
   int bytespp;
@@ -79,12 +77,12 @@ public:
   bool flip_horizontally();
   bool flip_vertically();
   bool read_tga_file(const char *filename);
-  const TGAColor get(int x, int y) const;
-  const fcolor get_and_light(const int x, const int y, const float light) const;
-  const fcolor get_and_light(int offset, const float light) const;
-  const fcolor get(int offset) const;
-  const unsigned fast_get(const int x, const int y) const;
+  [[nodiscard]] TGAColor get(int x, int y) const;
+  [[nodiscard]] fcolor get_and_light(int x, int y, float light) const;
+  [[nodiscard]] fcolor get_and_light(int index, float light) const;
+  [[nodiscard]] fcolor get(int index) const;
+  [[nodiscard]] unsigned fast_get(int x, int y) const;
   bool set(int x, int y, TGAColor c);
-  const unsigned get_width() { return width; }
-  const unsigned get_height() const { return height; }
+  unsigned get_width() { return width; }
+  [[nodiscard]] unsigned get_height() const { return height; }
 };

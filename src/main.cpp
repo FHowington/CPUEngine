@@ -14,7 +14,7 @@
 #include <thread>
 #include <vector>
 
-#define SPEED 80000000
+constexpr float SPEED = 80000000.0;
 
 std::array<unsigned, W * H> pixels;
 std::array<int, W*H> zbuff;
@@ -349,8 +349,8 @@ auto main() -> int {
         frame = 0;
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-        float fps = (100.0 / duration.count()) * 1000000;
-        printf("%f FPS\n", fps);
+        float fps = (100.0F / duration.count()) * 1000000;
+        std::cout << fps << " FPS" << std::endl;
         start = std::chrono::high_resolution_clock::now();
       }
     }

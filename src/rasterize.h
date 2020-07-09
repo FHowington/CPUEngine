@@ -4,17 +4,17 @@
 
 #pragma once
 
-#include <algorithm>
-#include <array>
+#include "Window.h"
 #include "geometry.h"
 #include "loader.h"
-#include <SDL2/SDL.h>
+#include "pool.h"
 #include "shader.h"
 #include "tgaimage.h"
+#include <SDL2/SDL.h>
+#include <algorithm>
+#include <array>
 #include <utility>
 #include <vector>
-#include "pool.h"
-#include "Window.h"
 
 const unsigned halfW = W/2;
 const unsigned halfH = H/2;
@@ -23,8 +23,7 @@ const unsigned halfH = H/2;
 extern std::array<unsigned, W * H> pixels;
 extern std::array<int, W * H> zbuff;
 
-typedef std::pair<double, double> SlopePair;
-inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, const unsigned color);
+inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, unsigned color);
 
 // We deal only with counter-clockwise triangles
 // Therefore, see if it is horizontal & higher than the other points (p1 is left of p0)
@@ -39,12 +38,12 @@ inline int orient2d(const int x0, const int x1, const int x2, const int y0, cons
   return (x1 - x0)*(y2 - y0) - (y1 - y0)*(x2 - x0);
 }
 
-inline const int min3(const int v0, const int v1, const int v2)
+inline int min3(const int v0, const int v1, const int v2)
 {
   return fast_max(0, fast_min(fast_min(v0, v1), v2));
 }
 
-inline const int max3(const int v0, const int v1, const int v2, const int border)
+inline int max3(const int v0, const int v1, const int v2, const int border)
 {
   return fast_min(border, fast_max(fast_max(v0, v1), v2));
 }
@@ -56,7 +55,7 @@ inline int directionality(const T& p0, const T& p1, const T& p2)
 }
 
 inline float zPos(const long long cx, const long long bx, const long long ax, const long long cy, const long long by, const long long ay, const long long cz, const long long bz, const long long az, const long long x, const long long y) {
-    return (ax*(cz*(by - y) - bz*(cy - y)) + bx*(cz*(-ay + y) + az*(cy - y)) + cx*(bz*(ay - y) + az*(y - by)) + x*(ay*(cz - bz) + by*(az - cz) + cy*(bz - az)))/(ax*(by - cy) + bx*(cy - ay) + cx*(ay - by));
+  return ((float)(ax*(cz*(by - y) - bz*(cy - y)) + bx*(cz*(-ay + y) + az*(cy - y)) + cx*(bz*(ay - y) + az*(y - by)) + x*(ay*(cz - bz) + by*(az - cz) + cy*(bz - az))))/((float)(ax*(by - cy) + bx*(cy - ay) + cx*(ay - by)));
 }
 
 inline bool colinear(const int x0, const int x1, const int x2, const int y0, const int y1,const int y2) {
@@ -65,7 +64,7 @@ inline bool colinear(const int x0, const int x1, const int x2, const int y0, con
 
 // Implementation of Bresenham's line algo
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
-void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color);
+void line(const vertex<int>& v0, const vertex<int>& v1, unsigned color);
 
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 

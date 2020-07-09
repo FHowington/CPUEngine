@@ -1,11 +1,11 @@
 // Created by Forbes Howington 5/19/20
 #pragma once
 
+#include "Window.h"
+#include "loader.h"
 #include <list>
 #include <map>
 #include <thread>
-#include "loader.h"
-#include "Window.h"
 
 
 extern thread_local std::array<unsigned, Wt * H + H> t_pixels;
@@ -15,12 +15,12 @@ extern thread_local unsigned pMaxX;
 extern thread_local unsigned pMinY;
 extern thread_local unsigned pMaxY;
 
-class Pool {
+class Pool { // NOLINT
  public:
   static void job_wait();
-  Pool(const unsigned numThreads);
+  Pool(unsigned numThreads);
   ~Pool();
-  void enqueue_model(const ModelInstance* model);
+  static void enqueue_model(const ModelInstance* model);
 
  private:
   static void copy_to_main_buffer();
