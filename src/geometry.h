@@ -112,10 +112,10 @@ struct face {
 
   // Texture coordinates
   int _t0x;
-  int _t1x;
-  int _t2x;
   int _t0y;
+  int _t1x;
   int _t1y;
+  int _t2x;
   int _t2y;
 };
 

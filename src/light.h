@@ -18,12 +18,12 @@ class Light {
       _type(lt), _strength(strength), _R(R), _G(G), _B(B) {}
 
   Light (const LightType lt, const vertex<float> direction, const float R, const float G, const float B) :
-      _type(lt), _direction(direction), _R(R), _G(G), _B(B) {
+      _type(lt), _R(R), _G(G), _B(B),_direction(direction) {
     assert(lt == LightType::Directional && "Only directional light may have a vector defined"); // NOLINT
   }
 
   Light (const LightType lt, const float x, const float y, const float z, const float strength, const float R, const float G, const float B) :
-      _type(lt), _x(x), _y(y), _z(z), _strength(strength), _R(R), _G(G), _B(B) {
+      _type(lt), _strength(strength), _R(R), _G(G), _B(B), _x(x), _y(y), _z(z) {
     assert(lt == LightType::Point && "Only point light may position without direction"); // NOLINT
   }
 

@@ -189,7 +189,7 @@ matrix<4,4> invert(const matrix<4,4>& inM)
   // |M| = |A|*|D| + |B|*|C| - tr((A#B)(D#C)
   detM = _mm_sub_ps(detM, tr);
 
-  const __m128 adjSignMask = _mm_setr_ps(1.f, -1.f, -1.f, 1.f);
+  const __m128 adjSignMask = _mm_setr_ps(1.F, -1.F, -1.F, 1.F);
   // (1/|M|, -1/|M|, -1/|M|, 1/|M|)
   __m128 rDetM = _mm_div_ps(adjSignMask, detM);
 
@@ -371,7 +371,7 @@ vertex<int> m2v(const matrix<4,1> m) {
 
 #if defined(__AVX__) && defined(__FMA__)
 bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
-  float __attribute__((aligned(16))) result[4];
+  float __attribute__((aligned(16))) result[4]; // NOLINT
 
   // Model transform
   __m128 res = _mm_set1_ps(0.0);
@@ -394,7 +394,7 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
 
   v1 = _mm_fmadd_ps(v1, v2, res);
 
-  _mm_stream_ps(result, v1);
+  _mm_stream_ps((float *)result, v1);
   realResult = vertex<float>(result[0], result[1], result[2]);
 
   // Camera transform (model space to camera space)
@@ -429,7 +429,7 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
   v1 = _mm_mul_ps(v1, v2);
   v1 = _mm_div_ps(res, v1);
 
-  _mm_stream_ps(result, v1);
+  _mm_stream_ps((float *)result, v1);
   result[0] *= W * xZoom;
   result[0] += W * xFOV;
   result[1] *= H * yZoom;
@@ -471,7 +471,7 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
 vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
-  float __attribute__((aligned(16))) result[4];
+  float __attribute__((aligned(16))) result[4]; // NOLINT
 
   __m128 res = _mm_set1_ps(0.0);
   __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
@@ -492,7 +492,7 @@ vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
   v2 = _mm_set_ps(m._m[11], m._m[6], m._m[1], m._m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  _mm_stream_ps(result, res);
+  _mm_stream_ps((float *)result, res);
 
   return vertex<float>(result[0], result[1], result[2]);
 }
@@ -508,8 +508,6 @@ vertex<float> multToVector(const matrix<4,4> m, const vertex<float>& v) {
 vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
   // Basically a streamlined approach to the vector multiplication
   // We are doing matrix multiplication between a 4x1 vector and a 4x4 matrix, yielding a 4x1 matrix/vector
-  float __attribute__((aligned(16))) result[4];
-
   __m128 res = _mm_set1_ps(0.0);
   __m128 v1 = _mm_set_ps(v._x, v._z, v._y, v._x);
   __m128 v2 = _mm_set_ps(0, m._m[10], m._m[5], m._m[0]);
@@ -526,7 +524,7 @@ vertex<float> rotateVector(const matrix<4,4> m, const vertex<float>& v) {
   res = _mm_fmadd_ps(v1, v2, res);
 
   vertex<float> resultV;
-  _mm_stream_ps(resultV.raw, res);
+  _mm_stream_ps((float *)resultV.raw, res);
 
   return resultV;
 }

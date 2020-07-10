@@ -162,7 +162,7 @@ auto main() -> int {
 
     for (const auto m : modelsInScene) {
       ++remaining_models;
-      pool.enqueue_model(m);
+      Pool::enqueue_model(m);
     }
 
     // TODO(forbes): Change this to something..better. A conditional perhaps.

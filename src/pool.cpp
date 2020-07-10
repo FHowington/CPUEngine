@@ -136,7 +136,7 @@ void Pool::copy_to_main_buffer() {
       const __m256i zbuffV = _mm256_loadu_si256((__m256i*)(zbuff.data() + offset + xVal));
       const __m256i t_zbuffV = _mm256_loadu_si256((__m256i*)(t_zbuff.data() + offset_t + xVal));
       const __m256i needsUpdate = _mm256_cmpgt_epi32(t_zbuffV, zbuffV);
-      if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
+      if (!(bool)_mm256_testz_si256(needsUpdate, needsUpdate)) {
         // Any pixels with X > W need to have zbuff set to 0
         const __m256i colV = _mm256_loadu_si256((__m256i*)(pixels.data() + offsetH + xVal));
         const __m256i t_colV = _mm256_loadu_si256((__m256i*)(t_pixels.data() + offset_t + xVal));
