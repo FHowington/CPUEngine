@@ -71,8 +71,9 @@ auto main() -> int {
   unsigned frame = 0;
   float x = 1;
   float y = -3;
-  Light::sceneLights.emplace_back(LightType::Point, 1, -3, -10, 100, 1, .5, .5);
-  Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(5, y, -1.5), .5, 1, 1);
+  Light::sceneLights.emplace_back(LightType::Point, -5, -3, -10, 100, 1, 0, 0);
+  Light::sceneLights.emplace_back(LightType::Point, 5, -3, -10, 100, 0, 1, 0);
+  Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(5, y, -1.5), 1, 1, 1);
   auto start = std::chrono::high_resolution_clock::now();
   auto lastFrame = start;
   float rot = 0;

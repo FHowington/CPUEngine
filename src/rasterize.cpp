@@ -335,11 +335,6 @@ void drawTri(const ModelInstance& m, const face& f,
 
   unsigned x;
   unsigned y;
-  unsigned xVal;
-  unsigned yVal;
-  unsigned numInner;
-  unsigned inner;
-  unsigned numOuter;
 
   int w0;
   int w1;
@@ -775,11 +770,6 @@ void drawTri(const ModelInstance& m, const face& f,
 
   unsigned x;
   unsigned y;
-  unsigned xVal;
-  unsigned yVal;
-  unsigned numInner;
-  unsigned inner;
-  unsigned numOuter;
 
   int w0;
   int w1;

@@ -489,18 +489,19 @@ class PlaneShader : public UntexturedShader {
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    unsigned res = (((unsigned)floor(x)) & 0x1) != 0U ? 123456 : 4321;
+    unsigned res = ((((unsigned)floor(x)) & 0x1) ^ (((unsigned)floor(z)) & 0x1)) != 0U ? 8405024 : 8421504;
     illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
                        fast_min(255, (int)(((res) & 0xff) * il._B));
+
     return res;
   }
 
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    __m256i xVals = xVals = _mm256_round_ps (xV, (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC) );
+    __m256i xVals = _mm256_round_ps (xV, (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC) );
     xVals = _mm256_cvtps_epi32 (xVals);
 
     __m256i oddMask = _mm256_set1_epi32(1);
@@ -508,8 +509,16 @@ class PlaneShader : public UntexturedShader {
     xVals = _mm256_and_si256(oddMask, xVals);
     xVals = _mm256_cmpeq_epi32(xVals, _mm256_setzero_si256());
 
-    __m256i blue = _mm256_set1_epi32(4321);
-    __m256i green = _mm256_set1_epi32(123456);
+    __m256i zVals = _mm256_round_ps (zV, (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC) );
+    zVals = _mm256_cvtps_epi32 (zVals);
+
+    zVals = _mm256_and_si256(oddMask, zVals);
+    zVals = _mm256_cmpeq_epi32(zVals, _mm256_setzero_si256());
+
+    xVals = _mm256_xor_si256(zVals, xVals);
+
+    __m256i blue = _mm256_set1_epi32(8421504);
+    __m256i green = _mm256_set1_epi32(8405024);
     colorsData = _mm256_blendv_ps(blue, green, xVals);
 
     __m256 rV;

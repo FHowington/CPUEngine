@@ -18,7 +18,8 @@ class Light {
       _type(lt), _strength(strength), _R(R), _G(G), _B(B) {}
 
   Light (const LightType lt, const vertex<float> direction, const float R, const float G, const float B) :
-      _type(lt), _R(R), _G(G), _B(B),_direction(direction) {
+      _type(lt), _R(R), _G(G), _B(B), _direction(direction) {
+    _direction.normalize();
     assert(lt == LightType::Directional && "Only directional light may have a vector defined"); // NOLINT
   }
 
