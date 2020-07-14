@@ -10,6 +10,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -60,3 +61,5 @@ struct ModelInstance {
   const shaderType _shader;
   const float _globalIllumination;
 };
+
+void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile);

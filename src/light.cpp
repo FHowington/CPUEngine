@@ -34,9 +34,9 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
       }
     }
   }
-  if (R < ambient || G < ambient || B < ambient) {
-    return {ambient, ambient, ambient};
-  }
+  R = std::max(ambient, R);
+  G = std::max(ambient, G);
+  B = std::max(ambient, B);
 
   return {R, G, B};
 }
@@ -99,11 +99,8 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   }
 
   const __m256 ambientV =_mm256_set1_ps(ambient);
-  __m256 mask = _mm256_cmpgt_epi32(ambientV, R);
-  mask = _mm256_or_si256(_mm256_cmpgt_epi32(ambientV, G), mask);
-  mask = _mm256_or_si256(_mm256_cmpgt_epi32(ambientV, B), mask);
-  R = _mm256_blendv_ps(R, ambientV, mask);
-  G = _mm256_blendv_ps(G, ambientV, mask);
-  B = _mm256_blendv_ps(B, ambientV, mask);
+  R = _mm256_max_ps(R, ambientV);
+  G = _mm256_max_ps(G, ambientV);
+  B = _mm256_max_ps(B, ambientV);
 }
 #endif

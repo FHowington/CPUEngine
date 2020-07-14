@@ -2,8 +2,11 @@
 // Created by Forbes Howington on 4/4/20.
 //
 
-#include "loader.h"
 #include "geometry.h"
+#include "loader.h"
+#include <fstream>
+#include <sstream>
+#include <string>
 
 void  Model::loadModel(const std::string& fileName, const unsigned width, const unsigned height) {
   std::string line;
@@ -97,6 +100,76 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
 
       vertexNormals.emplace_back(x, y, z);
 
+    }
+  }
+}
+
+void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile) {
+  std::string line;
+  std::ifstream infile(sceneFile);
+
+  while (std::getline(infile, line))
+  {
+    // Skip comments and empty lines
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+
+    if (line.size() > 8 && !(bool)strncmp(line.c_str(), "INSTANCE", 8)) {
+      line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ','), line.end());
+      std::istringstream iss(line);
+
+      std::string junk;
+      std::string modelName;
+      std::string textureName;
+      float x;
+      float y;
+      float z;
+      float xScale;
+      float yScale;
+      float zScale;
+      float xRot;
+      float yRot;
+      float zRot;
+      if (!(iss >> junk >> modelName >> textureName >> x >> y >> z >> xScale >> yScale >> zScale >> xRot >> yRot >> zRot)) {
+        std::cout << "Parsing failed for line " << line << std::endl;
+        break;
+      }
+    } else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "MODEL", 5)) {
+      line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ','), line.end());
+      std::istringstream iss(line);
+
+      std::string junk;
+      std::string modelName;
+      std::string modelFile;
+      if (!(iss >> junk >> modelName >> modelFile)) {
+        std::cout << "Parsing failed for line " << line << std::endl;
+        break;
+      }
+    } else if (line.size() > 7 && !(bool)strncmp(line.c_str(), "TEXTURE", 7)) {
+      line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ','), line.end());
+      std::istringstream iss(line);
+
+      std::string junk;
+      std::string textureName;
+      std::string textureFile;
+      if (!(iss >> junk >> textureName >> textureFile)) {
+        std::cout << "Parsing failed for line " << line << std::endl;
+        break;
+      }
+
+      textures[textureName] = TGAImage();
+      textures[textureName].read_tga_file(textureFile.c_str());
+      textures[textureName].flip_vertically();
+    } else {
+        std::cout << "Parsing failed for line " << line << std::endl;
+        break;
     }
   }
 }

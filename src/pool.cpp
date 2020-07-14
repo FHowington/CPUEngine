@@ -11,7 +11,7 @@ extern std::atomic<unsigned> remaining_models;
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
 std::condition_variable Pool::render_condition;
-std::list<const ModelInstance*> Pool::model_queue;
+std::list<std::shared_ptr<const ModelInstance>> Pool::model_queue;
 bool Pool::terminate = false;
 std::mutex Pool::main_buffer_mutex_;
 std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> Pool::buffer_zones;
@@ -54,7 +54,7 @@ void Pool::job_wait() {
       break;
     }
 
-    const ModelInstance* job = model_queue.front();
+    auto job = model_queue.front();
     model_queue.pop_front();
 
     lock.unlock();
@@ -178,7 +178,7 @@ void Pool::copy_to_main_buffer() {
   render_condition.notify_all();
 }
 
-void Pool::enqueue_model(const ModelInstance* model) {
+void Pool::enqueue_model(const std::shared_ptr<const ModelInstance>& model) {
   std::unique_lock<std::mutex> lock(job_queue_mutex_);
   model_queue.push_back(model);
   job_condition.notify_one();

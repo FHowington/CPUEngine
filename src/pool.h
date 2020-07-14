@@ -20,7 +20,7 @@ class Pool { // NOLINT
   static void job_wait();
   Pool(unsigned numThreads);
   ~Pool();
-  static void enqueue_model(const ModelInstance* model);
+  static void enqueue_model(const std::shared_ptr<const ModelInstance>& model);
 
  private:
   static void copy_to_main_buffer();
@@ -31,5 +31,5 @@ class Pool { // NOLINT
   static std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> buffer_zones;
   static bool terminate;
   std::vector<std::thread> thread_pool;
-  static std::list<const ModelInstance*> model_queue;
+  static std::list<std::shared_ptr<const ModelInstance>> model_queue;
 };

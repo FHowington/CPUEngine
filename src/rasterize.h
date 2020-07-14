@@ -79,7 +79,7 @@ void drawTri(const ModelInstance& m, const face& f,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template <typename T>
-inline void renderModel(const ModelInstance* model, const matrix<4,4>& cameraTransform) {
+inline void renderModel(std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform) {
   for (auto t : model->_baseModel.getFaces()) {
     vertex<int> v0i;
     vertex<int> v1i;

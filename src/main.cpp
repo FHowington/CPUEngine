@@ -24,7 +24,7 @@ std::atomic<unsigned> remaining_models;
 std::array<unsigned, W * H> pixels_flipped;
 
 
-auto main() -> int {
+int main() {
   remaining_models = 0;
   // Create a screen.
   SDL_Window* window = SDL_CreateWindow("Chip8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, W*4,H*4, SDL_WINDOW_RESIZABLE);
@@ -72,7 +72,7 @@ auto main() -> int {
   float x = 1;
   float y = -3;
   Light::sceneLights.emplace_back(LightType::Point, -5, -3, -10, 100, 1, 0, 0);
-  Light::sceneLights.emplace_back(LightType::Point, 5, -3, -10, 100, 0, 1, 0);
+  Light::sceneLights.emplace_back(LightType::Point, 5, -3, -10, 50, 0, 0, 1);
   Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(5, y, -1.5), 1, 1, 1);
   auto start = std::chrono::high_resolution_clock::now();
   auto lastFrame = start;
@@ -96,61 +96,19 @@ auto main() -> int {
   float cameraZ = 0;
 
   // This is where the per model will be done.
-  std::vector<ModelInstance*> modelsInScene;
-
-  ModelInstance modInstance(head, &headtext, shaderType::GouraudShader);
-  modelsInScene.push_back(&modInstance);
-
-  ModelInstance modInstance2(head, &headtext, shaderType::GouraudShader);
-  modInstance2._position = matrix<4,4>::identity();
-  modInstance2._position.set(3,0,4);
-  modInstance2._position.set(3,2,-5);
-  modelsInScene.push_back(&modInstance2);
+  std::vector<std::shared_ptr<const ModelInstance>> modelsInScene;
+  std::map<const std::string, Model> models;
+  std::map<const std::string, TGAImage> textures;
 
 
-  ModelInstance modInstance3(head, &headtext, shaderType::GouraudShader);
-  modInstance3._position = matrix<4,4>::identity();
-  modInstance3._position.set(3,0,0.5);
-  modInstance3._position.set(3,2,-5);
-  //modelsInScene.push_back(&modInstance3);
+  loadScene(modelsInScene, models, textures, "scene1.scn");
 
-  ModelInstance modInstance4(head, &headtext, shaderType::GouraudShader);
-  modInstance4._position = matrix<4,4>::identity();
-  modInstance4._position.set(3,0,-1);
-  modInstance4._position.set(3,2,-5);
-  //modelsInScene.push_back(&modInstance4);
+  std::shared_ptr<ModelInstance> modInstance = std::make_shared<ModelInstance>(head, &headtext, shaderType::GouraudShader);
+  modelsInScene.push_back(modInstance);
 
-  ModelInstance modInstance5(head, &headtext, shaderType::GouraudShader);
-  modInstance5._position = matrix<4,4>::identity();
-  modInstance5._position.set(3,0,1);
-  modInstance5._position.set(3,2,-10);
-  modInstance5._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance5);
-
-
-  ModelInstance modInstance6(head, &headtext, shaderType::GouraudShader);
-  modInstance6._position =  matrix<4,4>::identity();
-  modInstance6._position.set(3,0,0.5);
-  modInstance6._position.set(3,2,-10);
-  modInstance6._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance6);
-
-  ModelInstance modInstance7(head, &headtext, shaderType::GouraudShader);
-  modInstance7._position = matrix<4,4>::identity();
-  modInstance7._position.set(3,0,-1);
-  modInstance7._position.set(3,2,-10);
-  modInstance7._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance7);
-
-  ModelInstance modInstance8(head, &headtext, shaderType::GouraudShader);
-  modInstance8._position = matrix<4,4>::identity();
-  modInstance8._position.set(3,2,-10);
-  modInstance8._position.set(3,1,3.5);
-  //modelsInScene.push_back(&modInstance8);
-
-  ModelInstance planeInstance(plane, nullptr, shaderType::PlaneShader);
-  planeInstance._position = matrix<4,4>::identity();
-  modelsInScene.push_back(&planeInstance);
+  std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, nullptr, shaderType::PlaneShader);
+  planeInstance->_position = matrix<4,4>::identity();
+  modelsInScene.push_back(planeInstance);
 
   Pool pool(std::thread::hardware_concurrency());
 
@@ -161,7 +119,7 @@ auto main() -> int {
     for(auto& p: zbuff) { p = std::numeric_limits<int>::min();
 }
 
-    for (const auto m : modelsInScene) {
+    for (const auto& m : modelsInScene) {
       ++remaining_models;
       Pool::enqueue_model(m);
     }
@@ -336,13 +294,20 @@ auto main() -> int {
 
     matrix<4,4> newCameraTransform = invert(cameraRot);
     matrix<4,4> newPostion = matrix<4,4>::rotationY(rot);
+    static matrix<4,4> scaler;
+    scaler.set(0, 0, .5);
+    scaler.set(1, 1, .5);
+    scaler.set(2, 2, .5);
+    scaler.set(3, 3, 1);
+
+    newPostion = scaler * newPostion;
     newPostion.set(3, 2, -5);
 
     SDL_UpdateTexture(texture, nullptr, pixels.data(), 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
 
-    modInstance._position = newPostion;
+    modInstance->_position = newPostion;
     cameraTransform = newCameraTransform;
     if (fps) {
       ++frame;
