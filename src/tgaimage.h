@@ -83,6 +83,6 @@ public:
   [[nodiscard]] fcolor get(int index) const;
   [[nodiscard]] unsigned fast_get(int x, int y) const;
   bool set(int x, int y, TGAColor c);
-  unsigned get_width() { return width; }
+  [[nodiscard]] unsigned get_width() const { return width; }
   [[nodiscard]] unsigned get_height() const { return height; }
 };

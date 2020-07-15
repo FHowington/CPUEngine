@@ -34,7 +34,7 @@ int main() {
   TGAImage headtext;
   headtext.read_tga_file("/Users/forbes/CLionProjects/CPUEngine/african_head_diffuse.tga");
   headtext.flip_vertically();
-  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", headtext.get_width(), headtext.get_height());
+  Model head("/Users/forbes/CLionProjects/CPUEngine/african_head.obj", &headtext);
 
   Model plane;
   std::vector<vertex<float>> planeVertices;
@@ -101,12 +101,12 @@ int main() {
   std::map<const std::string, TGAImage> textures;
 
 
-  loadScene(modelsInScene, models, textures, "scene1.scn");
+  loadScene(modelsInScene, models, textures, "../src/scene1.scn");
 
-  std::shared_ptr<ModelInstance> modInstance = std::make_shared<ModelInstance>(head, &headtext, shaderType::GouraudShader);
+  std::shared_ptr<ModelInstance> modInstance = std::make_shared<ModelInstance>(head, shaderType::GouraudShader);
   modelsInScene.push_back(modInstance);
 
-  std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, nullptr, shaderType::PlaneShader);
+  std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, shaderType::PlaneShader);
   planeInstance->_position = matrix<4,4>::identity();
   modelsInScene.push_back(planeInstance);
 

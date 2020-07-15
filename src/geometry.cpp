@@ -59,7 +59,10 @@ matrix<4,4> matrix<4,4>::identity() {
 
 template <>
 matrix<4,4> matrix<4,4>::rotationY(float rotY) {
-  matrix<4,4> res = identity();
+  matrix<4,4> res;
+  res.set(1, 1, 1);
+  res.set(3, 3, 1);
+
   res.set(0, 0, cos(rotY));
   res.set(0, 2, -sin(rotY));
   res.set(2, 0, sin(rotY));
@@ -69,11 +72,27 @@ matrix<4,4> matrix<4,4>::rotationY(float rotY) {
 
 template <>
 matrix<4,4> matrix<4,4>::rotationX(float rotX) {
-  matrix<4,4> res = identity();
+  matrix<4,4> res;
+  res.set(0, 0, 1);
+  res.set(3, 3, 1);
+
   res.set(1, 1, cos(rotX));
   res.set(1, 2, sin(rotX));
   res.set(2, 1, -sin(rotX));
   res.set(2, 2, cos(rotX));
+  return res;
+}
+
+template <>
+matrix<4,4> matrix<4,4>::rotationZ(float rotZ) {
+  matrix<4,4> res;
+  res.set(2, 2, 1);
+  res.set(3, 3, 1);
+
+  res.set(0, 0, cos(rotZ));
+  res.set(0, 1, sin(rotZ));
+  res.set(1, 0, -sin(rotZ));
+  res.set(1, 1, cos(rotZ));
   return res;
 }
 

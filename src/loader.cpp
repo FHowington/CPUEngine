@@ -4,16 +4,21 @@
 
 #include "geometry.h"
 #include "loader.h"
+#include "shader.h"
+#include "tgaimage.h"
 #include <fstream>
 #include <sstream>
 #include <string>
+
+Model::Model(const std::string& fileName, const TGAImage* texture) : _texture(texture) { loadModel(fileName, texture->get_width(), texture->get_height()); }
+
 
 void  Model::loadModel(const std::string& fileName, const unsigned width, const unsigned height) {
   std::string line;
   std::ifstream infile(fileName);
 
   if (!infile) {
-    std::cout << "File failed" << std::endl;
+    std::cout << "File failed: " << fileName << std::endl;
     return;
   }
 
@@ -123,7 +128,7 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
 
       std::string junk;
       std::string modelName;
-      std::string textureName;
+      std::string shader;
       float x;
       float y;
       float z;
@@ -133,10 +138,50 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       float xRot;
       float yRot;
       float zRot;
-      if (!(iss >> junk >> modelName >> textureName >> x >> y >> z >> xScale >> yScale >> zScale >> xRot >> yRot >> zRot)) {
+      if (!(iss >> junk >> modelName >> shader >> x >> y >> z >> xScale >> yScale >> zScale >> xRot >> yRot >> zRot)) {
         std::cout << "Parsing failed for line " << line << std::endl;
         break;
       }
+
+      shaderType st;
+      std::for_each(shader.begin(), shader.end(), [](char & c){
+                                                c = ::tolower(c);
+                                              });
+
+      if (shader == "gourand") {
+        st = shaderType::GouraudShader;
+      } else if (shader == "flat") {
+        st = shaderType::FlatShader;
+      } else if (shader == "InterpolateFlat") {
+        st = shaderType::InterpFlatShader;
+      } else if (shader == "InterpolateGourand") {
+        st = shaderType::InterpGouraudShader;
+      } else {
+        std::cout << "Unknown shader type " << shader << " for instance " << line << std::endl;
+        break;
+      }
+
+      if (models.find(modelName) == models.end()) {
+        std::cout << "Unable to find model " << modelName << " for instance " << line << std::endl;
+        break;
+      }
+      std::shared_ptr<ModelInstance> modelInstance = std::make_shared<ModelInstance>(models[modelName], st);
+      modelInstance->_position.set(0, 0, xScale);
+      modelInstance->_position.set(1, 1, yScale);
+      modelInstance->_position.set(2, 2, zScale);
+      modelInstance->_position.set(3, 3, 1);
+
+      // Now rotate
+      modelInstance->_position = modelInstance->_position * matrix<4,4>::rotationX(xRot);
+      modelInstance->_position = modelInstance->_position * matrix<4,4>::rotationY(yRot);
+      modelInstance->_position = modelInstance->_position * matrix<4,4>::rotationZ(zRot);
+
+      // Finally apply coordinates
+      modelInstance->_position.set(3, 0, x);
+      modelInstance->_position.set(3, 1, y);
+      modelInstance->_position.set(3, 2, z);
+      modelInstances.push_back(modelInstance);
+
     } else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "MODEL", 5)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
       line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
@@ -146,10 +191,20 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       std::string junk;
       std::string modelName;
       std::string modelFile;
-      if (!(iss >> junk >> modelName >> modelFile)) {
+      std::string textureName;
+      if (!(iss >> junk >> modelName >> modelFile >> textureName)) {
         std::cout << "Parsing failed for line " << line << std::endl;
         break;
       }
+
+      if (textures.find(textureName) == textures.end()) {
+        std::cout << "Unable to find texture " << modelName << " for model " << line << std::endl;
+        break;
+      }
+      models.emplace(std::piecewise_construct,
+                     std::forward_as_tuple(modelName),
+                     std::forward_as_tuple(modelFile, &textures[textureName]));
+
     } else if (line.size() > 7 && !(bool)strncmp(line.c_str(), "TEXTURE", 7)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
       line.erase(std::remove(line.begin(), line.end(), ']'), line.end());

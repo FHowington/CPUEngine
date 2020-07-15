@@ -1,2 +1,11 @@
-# HELLO
-MODEL foo
+### EXAMPLE scene file ###
+### Comment lines begin with "#"
+
+#TYPE Texture Name      Texture file
+TEXTURE headTexture   /Users/forbes/CLionProjects/CPUEngine/african_head_diffuse.tga
+
+#TYPE Model Name                    Model file                                 Texture
+MODEL headModel    /Users/forbes/CLionProjects/CPUEngine/african_head.obj   headTexture
+
+#TYPE    Model      Shader  X,Y,Z coords  X,Y,Z scale  X,Y,Z rotation
+INSTANCE headModel  Gourand  [4, 0, -5]   [1, 1, 1]   [0, 0, .5]

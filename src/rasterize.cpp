@@ -149,7 +149,7 @@ void drawTri(const ModelInstance& m, const face& f,
   float wTotalR;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
-  const TGAImage& img = *m._texture;
+  const TGAImage& img = *m._baseModel._texture;
 
 
   const __m256i depthDxAdd = _mm256_cvttps_epi32(_mm256_mul_ps(scaleFloat,  _mm256_set1_ps(depthDx)));
@@ -417,7 +417,7 @@ void drawTri(const ModelInstance& m, const face& f,
   const float yColDy4 = 4 * yColDy;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
-  const TGAImage& img = *m._texture;
+  const TGAImage& img = *m._baseModel._texture;
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;

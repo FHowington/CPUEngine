@@ -7,6 +7,7 @@
 #include "geometry.h"
 #include "light.h"
 #include "loader.h"
+#include "tgaimage.h"
 #include <immintrin.h>
 
 // We do this instead of the typical inheritance route because dynamic binding of function calls
@@ -211,9 +212,9 @@ class InterpGouraudShader : public UntexturedShader {
     _angleRowY = _angleY;
     _angleRowZ = _angleZ;
 
-    const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
-    const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
-    const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
+    const unsigned col0 = m._baseModel._texture->fast_get(f._t0x, f._t0y);
+    const unsigned col1 = m._baseModel._texture->fast_get(f._t1x, f._t1y);
+    const unsigned col2 = m._baseModel._texture->fast_get(f._t2x, f._t2y);
 
     const float R0 = (col0 >> 16) & 0xff;
     const float G0 = (col0 >> 8) & 0xff;
@@ -369,9 +370,9 @@ class InterpFlatShader : public UntexturedShader {
     _norm.normalize();
 
     // Change in the texture coordinated for x/y, used for interpolation
-    const unsigned col0 = m._texture->fast_get(f._t0x, f._t0y);
-    const unsigned col1 = m._texture->fast_get(f._t1x, f._t1y);
-    const unsigned col2 = m._texture->fast_get(f._t2x, f._t2y);
+    const unsigned col0 = m._baseModel._texture->fast_get(f._t0x, f._t0y);
+    const unsigned col1 = m._baseModel._texture->fast_get(f._t1x, f._t1y);
+    const unsigned col2 = m._baseModel._texture->fast_get(f._t2x, f._t2y);
 
     const float R0 = (col0 >> 16) & 0xff;
     const float G0 = (col0 >> 8) & 0xff;

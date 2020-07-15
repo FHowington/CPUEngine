@@ -30,6 +30,7 @@ struct matrix {
   static auto identity() -> matrix;
   static auto rotationX(float rotX) -> matrix;
   static auto rotationY(float rotY) -> matrix;
+  static auto rotationZ(float rotZ) -> matrix;
 
   template <unsigned O>
   matrix<N,O> operator*(const matrix<M,O>& rhs) const;

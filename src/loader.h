@@ -6,7 +6,6 @@
 
 #include "Window.h"
 #include "geometry.h"
-#include "tgaimage.h"
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -15,13 +14,13 @@
 #include <sstream>
 #include <vector>
 
-class TGAImage;
 enum class shaderType;
+class TGAImage;
 
 class Model {
  public:
-  Model(const std::string& fileName, const unsigned width, const unsigned height) { loadModel(fileName, width, height); }
-  Model() = default;
+  Model(const std::string& fileName, const TGAImage* texture);
+  Model() : _texture(nullptr) {}
 
   [[nodiscard]] const std::vector<face>& getFaces() const { return faces; }
   [[nodiscard]] const vertex<float>& getVertex(const unsigned idx) const { return vertices[idx]; }
@@ -45,6 +44,8 @@ class Model {
     faces = std::forward<std::vector<face>>(newFaces);
   }
 
+  const TGAImage* _texture;
+
  private:
   std::vector<vertex<float>> vertices;
   std::vector<vertex<float>> vertexNormals;
@@ -54,9 +55,8 @@ class Model {
 
 
 struct ModelInstance {
-  ModelInstance (const Model& mod, const TGAImage* text, const shaderType shader, const float globalIllumination = 0.2) : _baseModel(mod), _texture(text), _shader(shader), _globalIllumination(globalIllumination) {}
+  ModelInstance (const Model& mod, const shaderType shader, const float globalIllumination = 0.2) : _baseModel(mod), _shader(shader), _globalIllumination(globalIllumination) {}
   const Model& _baseModel;
-  const TGAImage* _texture;
   matrix<4,4> _position;
   const shaderType _shader;
   const float _globalIllumination;
