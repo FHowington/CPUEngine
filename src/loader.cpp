@@ -112,6 +112,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
 void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile) {
   std::string line;
   std::ifstream infile(sceneFile);
+  unsigned planeCount = 0;
 
   while (std::getline(infile, line))
   {
@@ -222,6 +223,96 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       textures[textureName] = TGAImage();
       textures[textureName].read_tga_file(textureFile.c_str());
       textures[textureName].flip_vertically();
+
+    }  else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "PLANE", 5)) {
+      line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ','), line.end());
+      std::istringstream iss(line);
+
+      std::string junk;
+      std::string shader;
+      float x0;
+      float y0;
+      float z0;
+
+      float x1;
+      float y1;
+      float z1;
+
+      float x2;
+      float y2;
+      float z2;
+
+      float x3;
+      float y3;
+      float z3;
+
+      if (!(iss >> junk >> shader >> x0 >> y0 >> z0 >> x1 >> y1 >> z1 >> x2 >> y2 >> z2 >> x3 >> y3 >> z3)) {
+        std::cout << "Parsing failed for line " << line << std::endl;
+        break;
+      }
+      std::vector<vertex<float>> planeVertices;
+
+      planeVertices.emplace_back(x1, y1, z1);
+      planeVertices.emplace_back(x0, y0, z0);
+      planeVertices.emplace_back(x2, y2, z2);
+
+      planeVertices.emplace_back(x2, y2, z2);
+      planeVertices.emplace_back(x0, y0, z0);
+      planeVertices.emplace_back(x3, y3, z3);
+
+      planeVertices.emplace_back(x1, y1, z1);
+      planeVertices.emplace_back(x0, y0, z0);
+      planeVertices.emplace_back(x2, y2, z2);
+
+      planeVertices.emplace_back(x2, y2, z2);
+      planeVertices.emplace_back(x0, y0, z0);
+      planeVertices.emplace_back(x3, y3, z3);
+
+      std::vector<vertex<float>> planeNorms;
+
+      planeNorms.emplace_back(0,1,0);
+      planeNorms.emplace_back(0,1,0);
+      planeNorms.emplace_back(0,1,0);
+
+      planeNorms.emplace_back(0,1,0);
+      planeNorms.emplace_back(0,1,0);
+      planeNorms.emplace_back(0,1,0);
+
+      planeNorms.emplace_back(0,-1,0);
+      planeNorms.emplace_back(0,-1,0);
+      planeNorms.emplace_back(0,-1,0);
+
+      planeNorms.emplace_back(0,-1,0);
+      planeNorms.emplace_back(0,-1,0);
+      planeNorms.emplace_back(0,-1,0);
+
+      std::vector<face> planeFaces;
+      planeFaces.emplace_back(2, 1, 0, x2, y2, x0, y0, x1, y1);
+      planeFaces.emplace_back(5, 4, 3, x3, y3, x0, y0, x2, y2);
+
+      planeFaces.emplace_back(6, 7, 8, x1, y1, x0, y0, x2, y2);
+      planeFaces.emplace_back(9, 10, 11, x2, y2, x0, y0, x3, y3);
+
+
+      std::string planeName("plane");
+      planeName.append(std::to_string(planeCount));
+
+      models.emplace(std::piecewise_construct,
+                     std::forward_as_tuple(planeName),
+                     std::forward_as_tuple());
+
+      models[planeName].setVertices(std::move(planeVertices));
+      models[planeName].setNormals(std::move(planeNorms));
+      models[planeName].setFaces(std::move(planeFaces));
+
+      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], shaderType::PlaneShader);
+      planeInstance->_position = matrix<4,4>::identity();
+      modelInstances.push_back(planeInstance);
+
+      ++planeCount;
+
     } else {
         std::cout << "Parsing failed for line " << line << std::endl;
         break;

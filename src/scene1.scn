@@ -9,3 +9,6 @@ MODEL headModel    /Users/forbes/CLionProjects/CPUEngine/african_head.obj   head
 
 #TYPE    Model      Shader  X,Y,Z coords  X,Y,Z scale  X,Y,Z rotation
 INSTANCE headModel  Gourand  [4, 0, -5]   [1, 1, 1]   [0, 0, .5]
+
+#TYPE
+PLANE foo [-5 0 -5], [5 0 -5], [5 0 -25], [-5 0 -25]
