@@ -85,8 +85,18 @@ void Pool::job_wait() {
         break;
       }
 
-      case shaderType::PlaneShader: {
-        renderModel<PlaneShader>(job, cameraTransform);
+      case shaderType::PlaneXZShader: {
+        renderModel<PlaneXZShader>(job, cameraTransform);
+        break;
+      }
+
+      case shaderType::PlaneXYShader: {
+        renderModel<PlaneXYShader>(job, cameraTransform);
+        break;
+      }
+
+      case shaderType::PlaneYZShader: {
+        renderModel<PlaneYZShader>(job, cameraTransform);
         break;
       }
     }

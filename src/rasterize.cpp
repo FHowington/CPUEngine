@@ -508,6 +508,7 @@ void drawTri(const ModelInstance& m, const face& f,
     return;
   }
 
+
   // Bias to make sure only top or left edges fall on line
   const int bias0 = isTopLeft(v1i, v2i);
   const int bias1 = isTopLeft(v2i, v0i);
@@ -992,7 +993,17 @@ void drawTri<InterpGouraudShader>(const ModelInstance& m, const face& f,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template
-void drawTri<PlaneShader>(const ModelInstance& m, const face& f,
+void drawTri<PlaneXZShader>(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
+
+template
+void drawTri<PlaneXYShader>(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
+
+template
+void drawTri<PlaneYZShader>(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 

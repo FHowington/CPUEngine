@@ -11,4 +11,4 @@ MODEL headModel    /Users/forbes/CLionProjects/CPUEngine/african_head.obj   head
 INSTANCE headModel  Gourand  [4, 0, -5]   [1, 1, 1]   [0, 0, .5]
 
 #TYPE
-PLANE foo [-5 0 -7.5], [5 0 -7.5], [5 10 -7.5], [-5 10 -7.5]
+#PLANE foo [-5 0 -7.5], [5 0 -7.5], [5 10 -7.5], [-5 10 -7.5]

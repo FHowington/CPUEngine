@@ -389,7 +389,81 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+bool pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+  float __attribute__((aligned(16))) result[4]; // NOLINT
+  bool bounded = true;
+
+  // Model transform
+  __m128 res = _mm_set1_ps(0.0);
+  __m128 v1 = _mm_set_ps(1, v._z, v._y, v._x);
+  __m128 v2 = _mm_set_ps(model._m[15], model._m[10], model._m[5], model._m[0]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(model._m[3], model._m[14], model._m[9], model._m[4]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(model._m[7], model._m[2], model._m[13], model._m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(model._m[11], model._m[6], model._m[1], model._m[12]);
+
+  v1 = _mm_fmadd_ps(v1, v2, res);
+
+  _mm_stream_ps((float *)result, v1);
+  realResult = vertex<float>(result[0], result[1], result[2]);
+
+  // Camera transform (model space to camera space)
+  v2 = _mm_set_ps(cameraTransform._m[15], cameraTransform._m[10], cameraTransform._m[5], cameraTransform._m[0]);
+  res = _mm_set1_ps(0.0);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(cameraTransform._m[3], cameraTransform._m[14], cameraTransform._m[9], cameraTransform._m[4]);
+
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(cameraTransform._m[7], cameraTransform._m[2], cameraTransform._m[13], cameraTransform._m[8]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  v1 = _mm_permute_ps(v1, 0b00111001);
+  v2 = _mm_set_ps(cameraTransform._m[11], cameraTransform._m[6], cameraTransform._m[1], cameraTransform._m[12]);
+  res = _mm_fmadd_ps(v1, v2, res);
+
+  float zDist = _mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2)));
+  //Apply clip boundaries
+  if (zDist >= -1) {
+    bounded = false;
+    res = _mm_insert_ps(res, _mm_set1_ps(-1.0), 32);
+  } else if (zDist < -50) {
+    bounded = false;
+  }
+
+  // Perspective projection
+  v1 = _mm_permute_ps(res, 0b10111010);
+
+  v2 = _mm_set_ps(-focalLength, 1.0, -focalLength, -focalLength);
+  v1 = _mm_mul_ps(v1, v2);
+  v1 = _mm_div_ps(res, v1);
+
+  _mm_stream_ps((float *)result, v1);
+  result[0] *= W * xZoom;
+  result[0] += W * xFOV;
+  result[1] *= H * yZoom;
+  result[1] += H * yFOV;
+
+  result[2] *= depth;
+  retResult = vertex<int>(result[0], result[1], result[2]);
+  return bounded;
+}
+
+bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
   float __attribute__((aligned(16))) result[4]; // NOLINT
 
   // Model transform
@@ -436,7 +510,7 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
   res = _mm_fmadd_ps(v1, v2, res);
 
   float zDist = _mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2)));
-  // Apply clip boundaries
+  //Apply clip boundaries
   if (zDist >= -1 || zDist < -50) {
     return false;
   }
@@ -458,13 +532,49 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
   retResult = vertex<int>(result[0], result[1], result[2]);
   return true;
 }
+
 #else
-bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+bool pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
   matrix<4,1> imres(model * v2m(v));
+  bool bounded = true;
+
   realResult = vertex<float>(imres._m[0], imres._m[1], imres._m[2]);
 
   imres = (cameraTransform * imres);
-    // Apply clip boundaries
+  //printf("PRE: %f %f %f\n", imres._m[0], imres._m[1], imres._m[2]);
+
+  // Apply clip boundaries
+  if (imres._m[2] > -1) {
+    imres._m[2] = -1;
+    bounded = false;
+  } else if (imres._m[2] < -50) {
+    bounded = false;
+  }
+
+  imres._m[3] = 1 / (-focalLength * imres._m[2]);
+  //printf("3: %f\n", imres._m[3]);
+
+  imres._m[0] = imres._m[0] *= imres._m[3];
+  imres._m[1] = imres._m[1] *= imres._m[3];
+
+  imres._m[0] *= W * xZoom;
+  imres._m[0] += W * xFOV;
+  imres._m[1] *= H * yZoom;
+  imres._m[1] += H * yFOV;
+
+  imres._m[2] *= depth;
+
+  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
+  return bounded;;
+}
+
+bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+  matrix<4,1> imres(model * v2m(v));
+
+  realResult = vertex<float>(imres._m[0], imres._m[1], imres._m[2]);
+
+  imres = (cameraTransform * imres);
+  // Apply clip boundaries
   if (imres._m[2] >= -1 || imres._m[2] < -50) {
     return false;
   }
@@ -481,7 +591,7 @@ bool pipeline(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, cons
   imres._m[2] *= depth;
 
   retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
-  return true;
+  return true;;
 }
 #endif
 

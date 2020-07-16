@@ -272,21 +272,51 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
 
       std::vector<vertex<float>> planeNorms;
 
-      planeNorms.emplace_back(0,1,0);
-      planeNorms.emplace_back(0,1,0);
-      planeNorms.emplace_back(0,1,0);
+      float Ax = x0 - x1;
+      float Ay = y0 - y1;
+      float Az = z0 - z1;
 
-      planeNorms.emplace_back(0,1,0);
-      planeNorms.emplace_back(0,1,0);
-      planeNorms.emplace_back(0,1,0);
+      float Bx = x1 - x2;
+      float By = y1 - y2;
+      float Bz = z1 - z2;
 
-      planeNorms.emplace_back(0,-1,0);
-      planeNorms.emplace_back(0,-1,0);
-      planeNorms.emplace_back(0,-1,0);
+      float Nx = Ay * Bz - Az * By;
+      float Ny = Az * Bx - Ax * Bz;
+      float Nz = Ax * By - Ay * Bx;
 
-      planeNorms.emplace_back(0,-1,0);
-      planeNorms.emplace_back(0,-1,0);
-      planeNorms.emplace_back(0,-1,0);
+      float Ax2 = x0 - x2;
+      float Ay2 = y0 - y2;
+      float Az2 = z0 - z2;
+
+      float Bx2 = x2 - x3;
+      float By2 = y2 - y3;
+      float Bz2 = z2 - z3;
+
+      float Nx2 = Ay2 * Bz2 - Az2 * By2;
+      float Ny2 = Az2 * Bx2 - Ax2 * Bz2;
+      float Nz2 = Ax2 * By2 - Ay2 * Bx2;
+
+      vertex<float> norm(Nx, Ny, Nz);
+      norm.normalize();
+
+      vertex<float> norm2(Nx2, Ny2, Nz2);
+      norm2.normalize();
+
+      planeNorms.emplace_back(norm._x, norm._y, norm._z);
+      planeNorms.emplace_back(norm._x, norm._y, norm._z);
+      planeNorms.emplace_back(norm._x, norm._y, norm._z);
+
+      planeNorms.emplace_back(norm2._x, norm2._y, norm2._z);
+      planeNorms.emplace_back(norm2._x, norm2._y, norm2._z);
+      planeNorms.emplace_back(norm2._x, norm2._y, norm2._z);
+
+      planeNorms.emplace_back(-norm._x, -norm._y, -norm._z);
+      planeNorms.emplace_back(-norm._x, -norm._y, -norm._z);
+      planeNorms.emplace_back(-norm._x, -norm._y, -norm._z);
+
+      planeNorms.emplace_back(-norm2._x, -norm2._y, -norm2._z);
+      planeNorms.emplace_back(-norm2._x, -norm2._y, -norm2._z);
+      planeNorms.emplace_back(-norm2._x, -norm2._y, -norm2._z);
 
       std::vector<face> planeFaces;
       planeFaces.emplace_back(2, 1, 0, x2, y2, x0, y0, x1, y1);
@@ -307,7 +337,7 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       models[planeName].setNormals(std::move(planeNorms));
       models[planeName].setFaces(std::move(planeFaces));
 
-      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], shaderType::PlaneShader);
+      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], shaderType::PlaneXYShader);
       planeInstance->_position = matrix<4,4>::identity();
       modelInstances.push_back(planeInstance);
 

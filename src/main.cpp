@@ -43,9 +43,9 @@ int main() {
   planeVertices.emplace_back(-10, -5, -5);
   planeVertices.emplace_back(10, -5, -25);
 
-  planeVertices.emplace_back(10, -5, -25);
-  planeVertices.emplace_back(-10, -5, -5);
-  planeVertices.emplace_back(-10, -5, -25);
+  //planeVertices.emplace_back(10, -5, -25);
+  //planeVertices.emplace_back(-10, -5, -5);
+  //planeVertices.emplace_back(-10, -5, -25);
 
   std::vector<vertex<float>> planeNorms;
 
@@ -53,13 +53,13 @@ int main() {
   planeNorms.emplace_back(0,1,0);
   planeNorms.emplace_back(0,1,0);
 
-  planeNorms.emplace_back(0,1,0);
-  planeNorms.emplace_back(0,1,0);
-  planeNorms.emplace_back(0,1,0);
+  //planeNorms.emplace_back(0,1,0);
+  //planeNorms.emplace_back(0,1,0);
+  //planeNorms.emplace_back(0,1,0);
 
   std::vector<face> planeFaces;
   planeFaces.emplace_back(2, 1, 0, 10, -5, -10, -5, 10, -5);
-  planeFaces.emplace_back(5, 4, 3, -10, -5, -10, -5, 10, -5);
+  //planeFaces.emplace_back(5, 4, 3, -10, -5, -10, -5, 10, -5);
 
   plane.setVertices(std::move(planeVertices));
   plane.setNormals(std::move(planeNorms));
@@ -106,7 +106,7 @@ int main() {
   std::shared_ptr<ModelInstance> modInstance = std::make_shared<ModelInstance>(head, shaderType::GouraudShader);
   modelsInScene.push_back(modInstance);
 
-  std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, shaderType::PlaneShader);
+  std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, shaderType::PlaneXZShader);
   planeInstance->_position = matrix<4,4>::identity();
   modelsInScene.push_back(planeInstance);
 

@@ -78,7 +78,7 @@ void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
-template <typename T>
+template <typename T, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type* = nullptr>
 inline void renderModel(std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform) {
   for (auto t : model->_baseModel.getFaces()) {
     vertex<int> v0i;
@@ -88,15 +88,41 @@ inline void renderModel(std::shared_ptr<const ModelInstance> model, const matrix
     vertex<float> v1;
     vertex<float> v2;
 
-    if (pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), v0i, v0) &&
-        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), v1i, v1) &&
-        pipeline(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2i, v2)) {
+    if (pipelineFast(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), v0i, v0) &&
+        pipelineFast(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), v1i, v1) &&
+        pipelineFast(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2i, v2)) {
       // We get the normal vector for every triangle
       const vertex<float> v = cross(v0i, v1i, v2i);
 
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0) {
         drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
+      }
+    }
+  }
+}
+
+template <typename T, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type* = nullptr>
+inline void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform) {
+  for (auto t : model->_baseModel.getFaces()) {
+    vertex<int> v0i;
+    vertex<int> v1i;
+    vertex<int> v2i;
+    vertex<float> v0;
+    vertex<float> v1;
+    vertex<float> v2;
+
+    bool v0b = pipelineSlow(cameraTransform, model->_position, model->_baseModel.getVertex(t._v0), v0i, v0);
+    bool v1b = pipelineSlow(cameraTransform, model->_position, model->_baseModel.getVertex(t._v1), v1i, v1);
+    bool v2b = pipelineSlow(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2i, v2);
+
+    if (v0b || v1b || v2b) {
+      // We get the normal vector for every triangle
+      const vertex<float> v = cross(v0i, v1i, v2i);
+
+      // If it is backfacing, vector will be pointing in +z, so cull it
+      if (v._z < 0) {
+        drawTri<PlaneXZShader>(*model, t, v0i, v1i, v2i, v0, v1, v2);
       }
     }
   }
