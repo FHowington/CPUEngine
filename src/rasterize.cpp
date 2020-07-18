@@ -1043,7 +1043,6 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
     const int v2Res = pipelineSlow(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2, camV2);
 
     // TODO: Consider doing clipping for far plane as well
-    // TODO: Make this into a single function call instead of 3 identical cases..bad bad!
     if ((!v0Res || !v1Res || !v2Res) && v0Res < 1 && v1Res < 1 && v2Res < 1) {
       // Determine if one or two are past the near clip plane
       if ((v0Res && v1Res) || (v0Res && v2Res) || (v1Res && v2Res)) {

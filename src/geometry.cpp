@@ -389,9 +389,9 @@ vertex<int> m2v(const matrix<4,1> m) {
 }
 
 #if defined(__AVX__) && defined(__FMA__)
-bool pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<float>& realResult, vertex<float>& camResult) {
   float __attribute__((aligned(16))) result[4]; // NOLINT
-  bool bounded = true;
+  int distance = 0;
 
   // Model transform
   __m128 res = _mm_set1_ps(0.0);
@@ -436,31 +436,18 @@ bool pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
   v2 = _mm_set_ps(cameraTransform._m[11], cameraTransform._m[6], cameraTransform._m[1], cameraTransform._m[12]);
   res = _mm_fmadd_ps(v1, v2, res);
 
-  float zDist = _mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2)));
+  _mm_stream_ps((float *)result, res);
+
   //Apply clip boundaries
-  if (zDist >= -1) {
-    bounded = false;
-    res = _mm_insert_ps(res, _mm_set1_ps(-1.0), 32);
-  } else if (zDist < -50) {
-    bounded = false;
+  if (result[2] > -2) {
+    distance = -1;
+  } else if (result[2] < -50) {
+    distance = 1;
+
   }
 
-  // Perspective projection
-  v1 = _mm_permute_ps(res, 0b10111010);
-
-  v2 = _mm_set_ps(-focalLength, 1.0, -focalLength, -focalLength);
-  v1 = _mm_mul_ps(v1, v2);
-  v1 = _mm_div_ps(res, v1);
-
-  _mm_stream_ps((float *)result, v1);
-  result[0] *= W * xZoom;
-  result[0] += W * xFOV;
-  result[1] *= H * yZoom;
-  result[1] += H * yFOV;
-
-  result[2] *= depth;
-  retResult = vertex<int>(result[0], result[1], result[2]);
-  return bounded;
+  camResult = vertex<float>(result[0], result[1], result[2]);
+  return distance;
 }
 
 bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
@@ -553,22 +540,6 @@ int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, c
   return distance;
 }
 
-vertex<int> pipelineSlowPartTwo(vertex<float> cameraResult) {
-  float scale = 1 / (-focalLength * cameraResult._z);
-
-  cameraResult._x = cameraResult._x *= scale;
-  cameraResult._y = cameraResult._y *= scale;
-
-  cameraResult._x *= W * xZoom;
-  cameraResult._x += W * xFOV;
-  cameraResult._y *= H * yZoom;
-  cameraResult._y += H * yFOV;
-
-  cameraResult._z *= depth;
-
-  return vertex<int>(cameraResult._x, cameraResult._y, cameraResult._z);
-}
-
 bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
   matrix<4,1> imres(model * v2m(v));
 
@@ -595,6 +566,22 @@ bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
   return true;;
 }
 #endif
+
+vertex<int> pipelineSlowPartTwo(vertex<float> cameraResult) {
+  float scale = 1 / (-focalLength * cameraResult._z);
+
+  cameraResult._x = cameraResult._x *= scale;
+  cameraResult._y = cameraResult._y *= scale;
+
+  cameraResult._x *= W * xZoom;
+  cameraResult._x += W * xFOV;
+  cameraResult._y *= H * yZoom;
+  cameraResult._y += H * yFOV;
+
+  cameraResult._z *= depth;
+
+  return vertex<int>(cameraResult._x, cameraResult._y, cameraResult._z);
+}
 
 
 #ifdef __FMA__
