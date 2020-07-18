@@ -118,6 +118,7 @@ inline void renderModel (std::shared_ptr<const ModelInstance> model, const matri
     int v2Res = pipelineSlow(cameraTransform, model->_position, model->_baseModel.getVertex(t._v2), v2, camV2);
 
     // TODO: Consider doing clipping for far plane as well
+    // TODO: Make this into a single function call instead of 3 identical cases..bad bad!
     if ((!v0Res || !v1Res || !v2Res) && v0Res < 1 && v1Res < 1 && v2Res < 1) {
       // Determine if one or two are past the near clip plane
       if ((v0Res && v1Res) || (v0Res && v2Res) || (v1Res && v2Res)) {
@@ -156,11 +157,74 @@ inline void renderModel (std::shared_ptr<const ModelInstance> model, const matri
           v2._x = v0._x + xDiff4 * t2;
           v2._y = v0._y + yDiff4 * t2;
           v2._z = v0._z + zDiff4 * t2;
+        } else if (!v1Res) {
+          float xDiff1 = camV2._x - camV1._x;
+          float yDiff1 = camV2._y - camV1._y;
+          float zDiff1 = camV2._z - camV1._z;
+          const float t1 = (-camV1._z - 1)/zDiff1;
 
-        } else if (v1Res) {
+          camV2._x = camV1._x + xDiff1 * t1;
+          camV2._y = camV1._y + yDiff1 * t1;
+          camV2._z = -1.0;
 
+          float xDiff2 = camV0._x - camV1._x;
+          float yDiff2 = camV0._y - camV1._y;
+          float zDiff2 = camV0._z - camV1._z;
+          const float t2 = (-camV1._z - 1)/zDiff2;
+
+          camV0._x = camV1._x + xDiff2 * t2;
+          camV0._y = camV1._y + yDiff2 * t2;
+          camV0._z = -1.0;
+
+          float xDiff3 = v2._x - v1._x;
+          float yDiff3 = v2._y - v1._y;
+          float zDiff3 = v2._z - v1._z;
+
+          v2._x = v1._x + xDiff3 * t1;
+          v2._y = v1._y + yDiff3 * t1;
+          v2._z = v1._z + zDiff3 * t1;
+
+          float xDiff4 = v0._x - v1._x;
+          float yDiff4 = v0._y - v1._y;
+          float zDiff4 = v0._z - v1._z;
+
+          v0._x = v1._x + xDiff4 * t2;
+          v0._y = v1._y + yDiff4 * t2;
+          v0._z = v1._z + zDiff4 * t2;
         } else {
+          float xDiff1 = camV0._x - camV2._x;
+          float yDiff1 = camV0._y - camV2._y;
+          float zDiff1 = camV0._z - camV2._z;
+          const float t1 = (-camV2._z - 1)/zDiff1;
 
+          camV0._x = camV2._x + xDiff1 * t1;
+          camV0._y = camV2._y + yDiff1 * t1;
+          camV0._z = -1.0;
+
+          float xDiff2 = camV1._x - camV2._x;
+          float yDiff2 = camV1._y - camV2._y;
+          float zDiff2 = camV1._z - camV2._z;
+          const float t2 = (-camV2._z - 1)/zDiff2;
+
+          camV1._x = camV2._x + xDiff2 * t2;
+          camV1._y = camV2._y + yDiff2 * t2;
+          camV1._z = -1.0;
+
+          float xDiff3 = v0._x - v2._x;
+          float yDiff3 = v0._y - v2._y;
+          float zDiff3 = v0._z - v2._z;
+
+          v0._x = v2._x + xDiff3 * t1;
+          v0._y = v2._y + yDiff3 * t1;
+          v0._z = v2._z + zDiff3 * t1;
+
+          float xDiff4 = v1._x - v2._x;
+          float yDiff4 = v1._y - v2._y;
+          float zDiff4 = v1._z - v2._z;
+
+          v1._x = v2._x + xDiff4 * t2;
+          v1._y = v2._y + yDiff4 * t2;
+          v1._z = v2._z + zDiff4 * t2;
         }
       }
 
