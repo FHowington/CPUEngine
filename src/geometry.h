@@ -105,7 +105,7 @@ struct face {
        const int t1x, const int t1y, const int t2x, const int t2y) :
       _v0(v0), _v1(v1), _v2(v2), _t0x(t0x), _t0y(t0y), _t1x(t1x), _t1y(t1y), _t2x(t2x), _t2y(t2y) {}
 
-  face(unsigned v0, unsigned v1, unsigned v2) : face(v0, v1, v2, 0, 0, 0, 0, 0, 0) {}
+  face(unsigned v0, unsigned v1, unsigned v2) : _v0(v0), _v1(v1), _v2(v2) {}
 
   unsigned _v0;
   unsigned _v1;
@@ -143,6 +143,7 @@ vertex<float> multToVector(matrix<4,4> m, const vertex<float>& v);
 matrix<4,1> v2m(const vertex<float>& v);
 vertex<int> m2v(matrix<4,1> m);
 vertex<float> m2vf(matrix<4,1> m);
-bool pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult);
+int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<float>& realResult, vertex<float>& camResult);
+vertex<int> pipelineSlowPartTwo(vertex<float> cameraResult);
 bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult);
 vertex<float> rotateVector(matrix<4,4> m, const vertex<float>& v);

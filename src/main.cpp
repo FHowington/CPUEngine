@@ -58,7 +58,7 @@ int main() {
   //planeNorms.emplace_back(0,1,0);
 
   std::vector<face> planeFaces;
-  planeFaces.emplace_back(2, 1, 0, 10, -5, -10, -5, 10, -5);
+  planeFaces.emplace_back(2, 1, 0);
   //planeFaces.emplace_back(5, 4, 3, -10, -5, -10, -5, 10, -5);
 
   plane.setVertices(std::move(planeVertices));

@@ -534,38 +534,39 @@ bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
 }
 
 #else
-bool pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
+int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<float>& realResult, vertex<float>& camResult) {
   matrix<4,1> imres(model * v2m(v));
-  bool bounded = true;
+  int distance = 0;
 
   realResult = vertex<float>(imres._m[0], imres._m[1], imres._m[2]);
 
   imres = (cameraTransform * imres);
-  //printf("PRE: %f %f %f\n", imres._m[0], imres._m[1], imres._m[2]);
 
   // Apply clip boundaries
   if (imres._m[2] > -1) {
-    imres._m[2] = -1;
-    bounded = false;
+    distance = -1;
   } else if (imres._m[2] < -50) {
-    bounded = false;
+    distance = 1;
   }
 
-  imres._m[3] = 1 / (-focalLength * imres._m[2]);
-  //printf("3: %f\n", imres._m[3]);
+  camResult = vertex<float>(imres._m[0], imres._m[1], imres._m[2]);
+  return distance;
+}
 
-  imres._m[0] = imres._m[0] *= imres._m[3];
-  imres._m[1] = imres._m[1] *= imres._m[3];
+vertex<int> pipelineSlowPartTwo(vertex<float> cameraResult) {
+  float scale = 1 / (-focalLength * cameraResult._z);
 
-  imres._m[0] *= W * xZoom;
-  imres._m[0] += W * xFOV;
-  imres._m[1] *= H * yZoom;
-  imres._m[1] += H * yFOV;
+  cameraResult._x = cameraResult._x *= scale;
+  cameraResult._y = cameraResult._y *= scale;
 
-  imres._m[2] *= depth;
+  cameraResult._x *= W * xZoom;
+  cameraResult._x += W * xFOV;
+  cameraResult._y *= H * yZoom;
+  cameraResult._y += H * yFOV;
 
-  retResult = vertex<int>(imres._m[0], imres._m[1], imres._m[2]);
-  return bounded;;
+  cameraResult._z *= depth;
+
+  return vertex<int>(cameraResult._x, cameraResult._y, cameraResult._z);
 }
 
 bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult) {
