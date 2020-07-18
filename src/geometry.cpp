@@ -543,7 +543,7 @@ int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, c
   imres = (cameraTransform * imres);
 
   // Apply clip boundaries
-  if (imres._m[2] > -1) {
+  if (imres._m[2] > -2) {
     distance = -1;
   } else if (imres._m[2] < -50) {
     distance = 1;

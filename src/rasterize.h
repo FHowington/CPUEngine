@@ -78,7 +78,8 @@ void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
-
+// I don't really want to move the defn. of this into .cpp file because of having to declare it for every
+// type of shader that inherits from InFrontcamera
 template <typename T, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type* = nullptr>
 void renderModel(std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform) {
   for (auto t : model->_baseModel.getFaces()) {

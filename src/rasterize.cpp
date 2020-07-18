@@ -972,6 +972,44 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
   }
 }
 
+void camCorrection (vertex<float>& vOut1, vertex<float>& vOut2, vertex<float>& vIn, float& t1, float& t2) {
+  const float xDiff1 = vOut1._x - vIn._x;
+  const float yDiff1 = vOut1._y - vIn._y;
+  const float zDiff1 = vOut1._z - vIn._z;
+  t1 = (-vIn._z - 2)/zDiff1;
+
+  vOut1._x = vIn._x + xDiff1 * t1;
+  vOut1._y = vIn._y + yDiff1 * t1;
+  vOut1._z = -2.0;
+
+  const float xDiff2 = vOut2._x - vIn._x;
+  const float yDiff2 = vOut2._y - vIn._y;
+  const float zDiff2 = vOut2._z - vIn._z;
+  t2 = (-vIn._z - 2)/zDiff2;
+
+  vOut2._x = vIn._x + xDiff2 * t2;
+  vOut2._y = vIn._y + yDiff2 * t2;
+  vOut2._z = -2.0;
+}
+
+void realCorrection (vertex<float>& vOut1, vertex<float>& vOut2, vertex<float>& vIn, const float t1, const float t2) {
+  const float xDiff1 = vOut1._x - vIn._x;
+  const float yDiff1 = vOut1._y - vIn._y;
+  const float zDiff1 = vOut1._z - vIn._z;
+
+  vOut1._x = vIn._x + xDiff1 * t1;
+  vOut1._y = vIn._y + yDiff1 * t1;
+  vOut1._z = vIn._z + zDiff1 * t1;
+
+  const float xDiff2 = vOut2._x - vIn._x;
+  const float yDiff2 = vOut2._y - vIn._y;
+  const float zDiff2 = vOut2._z - vIn._z;
+
+  vOut2._x = vIn._x + xDiff2 * t2;
+  vOut2._y = vIn._y + yDiff2 * t2;
+  vOut2._z = vIn._z + zDiff2 * t2;
+}
+
 template <typename T, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type*>
 void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform) {
   for (auto t : model->_baseModel.getFaces()) {
@@ -994,23 +1032,9 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
       if ((v0Res && v1Res) || (v0Res && v2Res) || (v1Res && v2Res)) {
         // Two are over the clip plane. Simply need to determine which isn't then clip other two
         if (!v0Res) {
-          const float xDiff1 = camV1._x - camV0._x;
-          const float yDiff1 = camV1._y - camV0._y;
-          const float zDiff1 = camV1._z - camV0._z;
-          const float t1 = (-camV0._z - 1)/zDiff1;
-
-          camV1._x = camV0._x + xDiff1 * t1;
-          camV1._y = camV0._y + yDiff1 * t1;
-          camV1._z = -1.0;
-
-          const float xDiff2 = camV2._x - camV0._x;
-          const float yDiff2 = camV2._y - camV0._y;
-          const float zDiff2 = camV2._z - camV0._z;
-          const float t2 = (-camV0._z - 1)/zDiff2;
-
-          camV2._x = camV0._x + xDiff2 * t2;
-          camV2._y = camV0._y + yDiff2 * t2;
-          camV2._z = -1.0;
+          float t1;
+          float t2;
+          camCorrection(camV1, camV2, camV0, t1, t2);
 
           const vertex<int> v0i = pipelineSlowPartTwo(camV0);
           const vertex<int> v1i = pipelineSlowPartTwo(camV1);
@@ -1020,41 +1044,13 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
           const vertex<float> v = cross(v0i, v1i, v2i);
 
           if (v._z < 0) {
-            const float xDiff3 = v1._x - v0._x;
-            const float yDiff3 = v1._y - v0._y;
-            const float zDiff3 = v1._z - v0._z;
-
-            v1._x = v0._x + xDiff3 * t1;
-            v1._y = v0._y + yDiff3 * t1;
-            v1._z = v0._z + zDiff3 * t1;
-
-            const float xDiff4 = v2._x - v0._x;
-            const float yDiff4 = v2._y - v0._y;
-            const float zDiff4 = v2._z - v0._z;
-
-            v2._x = v0._x + xDiff4 * t2;
-            v2._y = v0._y + yDiff4 * t2;
-            v2._z = v0._z + zDiff4 * t2;
+            realCorrection(v1, v2, v0, t1, t2);
             drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
           }
         } else if (!v1Res) {
-          const float xDiff1 = camV2._x - camV1._x;
-          const float yDiff1 = camV2._y - camV1._y;
-          const float zDiff1 = camV2._z - camV1._z;
-          const float t1 = (-camV1._z - 1)/zDiff1;
-
-          camV2._x = camV1._x + xDiff1 * t1;
-          camV2._y = camV1._y + yDiff1 * t1;
-          camV2._z = -1.0;
-
-          const float xDiff2 = camV0._x - camV1._x;
-          const float yDiff2 = camV0._y - camV1._y;
-          const float zDiff2 = camV0._z - camV1._z;
-          const float t2 = (-camV1._z - 1)/zDiff2;
-
-          camV0._x = camV1._x + xDiff2 * t2;
-          camV0._y = camV1._y + yDiff2 * t2;
-          camV0._z = -1.0;
+          float t1;
+          float t2;
+          camCorrection(camV2, camV0, camV1, t1, t2);
 
           const vertex<int> v0i = pipelineSlowPartTwo(camV0);
           const vertex<int> v1i = pipelineSlowPartTwo(camV1);
@@ -1064,41 +1060,13 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
           const vertex<float> v = cross(v0i, v1i, v2i);
 
           if (v._z < 0) {
-            const float xDiff3 = v2._x - v1._x;
-            const float yDiff3 = v2._y - v1._y;
-            const float zDiff3 = v2._z - v1._z;
-
-            v2._x = v1._x + xDiff3 * t1;
-            v2._y = v1._y + yDiff3 * t1;
-            v2._z = v1._z + zDiff3 * t1;
-
-            const float xDiff4 = v0._x - v1._x;
-            const float yDiff4 = v0._y - v1._y;
-            const float zDiff4 = v0._z - v1._z;
-
-            v0._x = v1._x + xDiff4 * t2;
-            v0._y = v1._y + yDiff4 * t2;
-            v0._z = v1._z + zDiff4 * t2;
+            realCorrection(v2, v0, v1, t1, t2);
             drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
           }
         } else {
-          const float xDiff1 = camV0._x - camV2._x;
-          const float yDiff1 = camV0._y - camV2._y;
-          const float zDiff1 = camV0._z - camV2._z;
-          const float t1 = (-camV2._z - 1)/zDiff1;
-
-          camV0._x = camV2._x + xDiff1 * t1;
-          camV0._y = camV2._y + yDiff1 * t1;
-          camV0._z = -1.0;
-
-          const float xDiff2 = camV1._x - camV2._x;
-          const float yDiff2 = camV1._y - camV2._y;
-          const float zDiff2 = camV1._z - camV2._z;
-          const float t2 = (-camV2._z - 1)/zDiff2;
-
-          camV1._x = camV2._x + xDiff2 * t2;
-          camV1._y = camV2._y + yDiff2 * t2;
-          camV1._z = -1.0;
+          float t1;
+          float t2;
+          camCorrection(camV0, camV1, camV2, t1, t2);
 
           const vertex<int> v0i = pipelineSlowPartTwo(camV0);
           const vertex<int> v1i = pipelineSlowPartTwo(camV1);
@@ -1108,21 +1076,7 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
           const vertex<float> v = cross(v0i, v1i, v2i);
 
           if (v._z < 0) {
-            const float xDiff3 = v0._x - v2._x;
-            const float yDiff3 = v0._y - v2._y;
-            const float zDiff3 = v0._z - v2._z;
-
-            v0._x = v2._x + xDiff3 * t1;
-            v0._y = v2._y + yDiff3 * t1;
-            v0._z = v2._z + zDiff3 * t1;
-
-            const float xDiff4 = v1._x - v2._x;
-            const float yDiff4 = v1._y - v2._y;
-            const float zDiff4 = v1._z - v2._z;
-
-            v1._x = v2._x + xDiff4 * t2;
-            v1._y = v2._y + yDiff4 * t2;
-            v1._z = v2._z + zDiff4 * t2;
+            realCorrection(v0, v1, v2, t1, t2);
             drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
           }
         }
@@ -1133,13 +1087,13 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
         const float xDiff1 = camV0._x - camV2._x;
         const float yDiff1 = camV0._y - camV2._y;
         const float zDiff1 = camV0._z - camV2._z;
-        const float t1 = (-camV2._z - 1)/zDiff1;
+        const float t1 = (-camV2._z - 2)/zDiff1;
 
         vertex<float> camV0_1;
 
         camV0_1._x = camV2._x + xDiff1 * t1;
         camV0_1._y = camV2._y + yDiff1 * t1;
-        camV0_1._z = -1.0;
+        camV0_1._z = -2.0;
 
         // All vertexes are available
         const vertex<int> v0i_1 = pipelineSlowPartTwo(camV0_1);
@@ -1163,13 +1117,13 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
           const float xDiff3 = camV0._x - camV1._x;
           const float yDiff3 = camV0._y - camV1._y;
           const float zDiff3 = camV0._z - camV1._z;
-          const float t2 = (-camV1._z - 1)/zDiff3;
+          const float t2 = (-camV1._z - 2)/zDiff3;
 
           vertex<float> camV0_2;
 
           camV0_2._x = camV1._x + xDiff3 * t2;
           camV0_2._y = camV1._y + yDiff3 * t2;
-          camV0_2._z = -1.0;
+          camV0_2._z = -2.0;
 
           const float xDiff4 = v0._x - v1._x;
           const float yDiff4 = v0._y - v1._y;
@@ -1181,10 +1135,10 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
           v0_2._y = v1._y + yDiff4 * t2;
           v0_2._z = v1._z + zDiff4 * t2;
 
-          const vertex<int> v0i_2 = pipelineSlowPartTwo(camV0_2);
+          //const vertex<int> v0i_2 = pipelineSlowPartTwo(camV0_2);
 
-          drawTri<T>(*model, t, v0i_1, v1i, v2i, v0_1, v1, v2);
-          drawTri<T>(*model, t, v0i_1, v0i_2, v1i, v0_1, v0_2, v1);
+          //drawTri<T>(*model, t, v0i_1, v1i, v2i, v0_1, v1, v2);
+          //drawTri<T>(*model, t, v0i_1, v0i_2, v1i, v0_1, v0_2, v1);
         }
       } else {
         // All vertexes are available
@@ -1202,8 +1156,6 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
     }
   }
 }
-
-
 
 template
 void drawTri<FlatShader>(const ModelInstance& m, const face& f,
