@@ -1044,7 +1044,6 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
 
     // TODO: Consider doing clipping for far plane as well
     // TODO: Make this into a single function call instead of 3 identical cases..bad bad!
-
     if ((!v0Res || !v1Res || !v2Res) && v0Res < 1 && v1Res < 1 && v2Res < 1) {
       // Determine if one or two are past the near clip plane
       if ((v0Res && v1Res) || (v0Res && v2Res) || (v1Res && v2Res)) {
@@ -1114,6 +1113,52 @@ void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>&
 
           drawTri<T>(*model, t, v0i_1, v1i, v2i, v0_1, v1, v2);
           drawTri<T>(*model, t, v0i_1, v0i_2, v1i, v0_1, v0_2, v1);
+        }
+      } else if (v1Res) {
+        //  V0 is the only vertex outside, it must be recalculated
+        float t1;
+        const vertex<float> camV1_1 = camCorrectionSingle(camV1, camV2, t1);
+
+        // All vertexes are available
+        const vertex<int> v1i_1 = pipelineSlowPartTwo(camV1_1);
+        const vertex<int> v0i = pipelineSlowPartTwo(camV0);
+        const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+
+        // We get the normal vector for every triangle
+        const vertex<float> v = cross(v0i, v1i_1, v2i);
+
+        if (v._z < 0) {
+          float t2;
+          vertex<float> camV1_2 = camCorrectionSingle(camV1, camV0, t2);
+          const vertex<float> v1_1 = realCorrectionSingle(v1, v2, t1);
+          const vertex<float> v1_2 = realCorrectionSingle(v1, v0, t2);
+          const vertex<int> v1i_2 = pipelineSlowPartTwo(camV1_2);
+
+          drawTri<T>(*model, t, v0i, v1i_1, v2i, v0, v1_1, v2);
+          drawTri<T>(*model, t, v0i, v1i_2, v1i_1, v0, v1_2, v1_1);
+        }
+      } else if (v2Res) {
+        //  V0 is the only vertex outside, it must be recalculated
+        float t1;
+        const vertex<float> camV2_1 = camCorrectionSingle(camV2, camV0, t1);
+
+        // All vertexes are available
+        const vertex<int> v2i_1 = pipelineSlowPartTwo(camV2_1);
+        const vertex<int> v1i = pipelineSlowPartTwo(camV1);
+        const vertex<int> v0i = pipelineSlowPartTwo(camV0);
+
+        // We get the normal vector for every triangle
+        const vertex<float> v = cross(v0i, v1i, v2i_1);
+
+        if (v._z < 0) {
+          float t2;
+          vertex<float> camV2_2 = camCorrectionSingle(camV2, camV1, t2);
+          const vertex<float> v2_1 = realCorrectionSingle(v2, v0, t1);
+          const vertex<float> v2_2 = realCorrectionSingle(v2, v1, t2);
+          const vertex<int> v2i_2 = pipelineSlowPartTwo(camV2_2);
+
+          drawTri<T>(*model, t, v0i, v1i, v2i_1, v0, v1, v2_1);
+          drawTri<T>(*model, t, v1i, v2i_2, v0i, v1, v2_2, v0);
         }
       } else {
         // All vertexes are available
