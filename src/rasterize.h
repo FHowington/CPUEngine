@@ -68,12 +68,22 @@ void line(const vertex<int>& v0, const vertex<int>& v1, unsigned color);
 
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
-template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr>
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type* = nullptr>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
-template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr>
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type* = nullptr>
+void drawTri(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
+
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type* = nullptr>
+void drawTri(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
+
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type* = nullptr, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type* = nullptr>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);

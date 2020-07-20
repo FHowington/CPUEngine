@@ -37,14 +37,11 @@
   const short B12 = x2 - x1;                                            \
   const short B20 = x0 - x2;                                            \
                                                                         \
-  const int z0 = v0i._z;                                                \
-  const int z1 = v1i._z;                                                \
-  const int z2 = v2i._z;                                                \
-                                                                        \
-  const int z10 = z1 - z0;                                              \
-  const int z20 = z2 - z0;                                              \
 
 #define ORIENT_TRIANGLE                                         \
+  int w0;                                                       \
+  int w1;                                                       \
+  int w2;                                                       \
   /* Bias to make sure only top or left edges fall on line */   \
   const int bias0 = isTopLeft(v1i, v2i);                        \
   const int bias1 = isTopLeft(v2i, v0i);                        \
@@ -62,10 +59,14 @@
   pMaxY = fast_max(pMaxY, maxY);                                \
   pMinY = fast_min(pMinY, minY);                                \
 
+// This should only be used in affine calculations
 #define DEPTH_DELTAS                                                    \
-  int w0;                                                               \
-  int w1;                                                               \
-  int w2;                                                               \
+  const int z0 = v0i._z;                                                \
+  const int z1 = v1i._z;                                                \
+  const int z2 = v2i._z;                                                \
+                                                                        \
+  const int z10 = z1 - z0;                                              \
+  const int z20 = z2 - z0;                                              \
   int depth;                                                            \
                                                                         \
   const int div = -((long long)(-B20) * (-A01)) + ((long long)(B01) * (A20)); \
@@ -79,9 +80,52 @@
   /* Likewise from solving for z with equation of a plane */            \
   int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY); \
 
+#define PERSPECTIVE_DELTAS                                              \
+  /* Current real world coordinates */                                  \
+  const float z0Inv = 1.0/v0i._z;                                       \
+  const float z1Inv = 1.0/v1i._z;                                       \
+  const float z2Inv = 1.0/v2i._z;                                       \
+                                                                        \
+  const float x0Corr = v0._x * z0Inv;                                   \
+  const float x1Corr = v1._x * z1Inv;                                   \
+  const float x2Corr = v2._x * z2Inv;                                   \
+                                                                        \
+  const float y0Corr = v0._y * z0Inv;                                   \
+  const float y1Corr = v1._y * z1Inv;                                   \
+  const float y2Corr = v2._y * z2Inv;                                   \
+                                                                        \
+  const float z0Corr = v0._z * z0Inv;                                   \
+  const float z1Corr = v1._z * z1Inv;                                   \
+  const float z2Corr = v2._z * z2Inv;                                   \
+                                                                        \
+  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);   \
+  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);   \
+  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);   \
+                                                                        \
+  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;     \
+  const float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);       \
+  const float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);       \
+                                                                        \
+  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);       \
+  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);       \
+  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);       \
+                                                                        \
+  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);       \
+  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);       \
+  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);       \
+                                                                        \
+  float depthCorrRow = (w0Row + w1Row + w2Row);                         \
+  const float depthCorrDx = (A12 + A20 + A01);                          \
+  const float depthCorrDy = (B12 + B20 + B01);                          \
+  float xLoc;                                                           \
+  float yLoc;                                                           \
+  float zLoc;                                                           \
+  float wTotalR;                                                        \
+  float depthCorr;                                                      \
+
 
 #ifdef __AVX2__
-template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
@@ -287,7 +331,7 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 }
 #else
-template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
+template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
@@ -422,7 +466,7 @@ void drawTri(const ModelInstance& m, const face& f,
 #endif
 
 #ifdef __AVX2__
-template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
@@ -592,7 +636,7 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 }
 #else
-template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
@@ -706,6 +750,207 @@ void drawTri(const ModelInstance& m, const face& f,
   }
 }
 #endif
+
+#ifdef __AVX2__
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type*>
+void drawTri(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
+  // These are reused for every triangle in the model
+  static const __m256i min = _mm256_set1_epi32(-1);
+  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
+  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
+
+  AFFINE_SETUP;
+  ORIENT_TRIANGLE;
+  AFFINE_DELTAS;
+
+  unsigned y;
+  unsigned xVal;
+  unsigned numInner;
+  unsigned inner;
+
+  T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
+
+  __m256i w0Init;
+  __m256i w1Init;
+  __m256i w2Init;
+
+  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
+  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
+
+  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
+  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
+
+  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
+  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
+
+  PERSPECTIVE_DELTAS;
+
+  const __m256i xRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xDx));
+  const __m256i yRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yDx));
+  const __m256i zRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(zDx));
+  const __m256i wTotalRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(wDiffX));
+  const __m256i depthCorrDxAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(depthCorrDx));
+
+  // We will enter inner loop at least once, otherwise numInner is always 0
+  unsigned offset = minY * Wt;
+
+  numInner = (maxX - minX) / 8;
+
+  if ((maxX - minX) % 8) {
+    ++numInner;
+  }
+
+  for (y = minY; y <= maxY; ++y) {
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+    depthCorr = depthCorrRow;
+
+    xLoc = xLocRow;
+    yLoc = yLocRow;
+    zLoc = zLocRow;
+    wTotalR = wTotalRRow;
+
+    w0Init = _mm256_set1_epi32(w0);
+    w0Init = _mm256_add_epi32(w0Init, a12Add);
+
+    w1Init = _mm256_set1_epi32(w1);
+    w1Init = _mm256_add_epi32(w1Init, a20Add);
+
+    w2Init = _mm256_set1_epi32(w2);
+    w2Init = _mm256_add_epi32(w2Init, a01Add);
+
+    xVal = minX;
+
+    for (inner = 0; inner < numInner; ++inner) {
+      const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff.data() + xVal + offset)); // NOLINT
+
+      const __m256i zInit = _mm256_set1_ps(depthCorr);
+      __m256i zv = _mm256_add_ps(zInit, depthCorrDxAdd);
+      const __m256 wTotalRV = _mm256_add_ps(_mm256_set1_ps(wTotalR), wTotalRAdd);
+      zv = _mm256_div_ps(zv, wTotalRV);
+      zv = _mm256_cvtps_epi32(zv);
+
+      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min));
+
+      if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
+        const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
+        const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels.data() + offset + xVal)); // NOLINT
+
+        __m256 xV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(xLoc), xRAdd), wTotalRV);
+        __m256 yV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(yLoc), yRAdd), wTotalRV);
+        __m256 zV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(zLoc), zRAdd), wTotalRV);
+
+        __m256i colorsData;
+        shader.fragmentShader(colorsData, zUpdate, xV, yV, zV);
+        colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
+
+        _mm256_storeu_si256((__m256i*)(t_zbuff.data() + xVal + offset), zUpdate); // NOLINT
+        _mm256_storeu_si256((__m256i*)(t_pixels.data() + offset + xVal), colorsData); // NOLINT
+      } else {
+        shader.stepXForX(8);
+      }
+
+      xVal += 8;
+      // We must step 8 times.
+      depthCorr += depthCorrDx * 8;
+
+      xLoc += xDx * 8;
+      yLoc += yDx * 8;
+      zLoc += zDx * 8;
+      wTotalR += wDiffX * 8;
+
+      if (inner < numInner - 1) {
+        w0Init = _mm256_add_epi32(w0Init, a12Add8);
+        w1Init = _mm256_add_epi32(w1Init, a20Add8);
+        w2Init = _mm256_add_epi32(w2Init, a01Add8);
+      }
+    }
+
+    w0Row += B12;
+    w1Row += B20;
+    w2Row += B01;
+    depthCorrRow += depthCorrDy;
+    offset += Wt;
+
+    xLocRow += xDy;
+    yLocRow += yDy;
+    zLocRow += zDy;
+    wTotalRRow += wDiffY;
+
+    shader.stepYForX();
+  }
+}
+#else
+template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type*>
+void drawTri(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
+
+  AFFINE_SETUP;
+  ORIENT_TRIANGLE;
+  AFFINE_DELTAS;
+
+  unsigned x;
+  unsigned y;
+
+  PERSPECTIVE_DELTAS;
+
+  unsigned offset = minY * W;
+
+  T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
+
+  for (y = minY; y <= maxY; ++y) {
+    w0 = w0Row;
+    w1 = w1Row;
+    w2 = w2Row;
+
+    xLoc = xLocRow;
+    yLoc = yLocRow;
+    zLoc = zLocRow;
+    wTotalR = wTotalRRow;
+   depthCorr = depthCorrRow;
+
+    for (x = minX; x <= maxX; ++x) {
+      // If p is on or inside all edges, render pixel
+      float depth = (depthCorr/wTotalR);
+      if ((w0 | w1 | w2) >= 0) {
+        // Uncomment for exact z values
+        //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
+        if (t_zbuff[x + offset] < depth) {
+          t_pixels[x + offset] = shader.fragmentShader(xLoc/wTotalR, yLoc/wTotalR, zLoc/wTotalR);
+          t_zbuff[x + offset] = depth;
+        }
+      }
+      w0 += A12;
+      w1 += A20;
+      w2 += A01;
+      shader.stepXForX();
+
+      xLoc += xDx;
+      yLoc += yDx;
+      zLoc += zDx;
+      wTotalR += wDiffX;
+      depthCorr += depthCorrDx;
+    }
+
+    w0Row += B12;
+    w1Row += B20;
+    w2Row += B01;
+    offset += W;
+
+    xLocRow += xDy;
+    yLocRow += yDy;
+    zLocRow += zDy;
+    wTotalRRow += wDiffY;
+    shader.stepYForX();
+    depthCorrRow += depthCorrDy;
+  }
+}
+#endif
+
 
 void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
   // We must find whether x is longer, or y is longer
