@@ -68,15 +68,14 @@
   int w2;                                                               \
   int depth;                                                            \
                                                                         \
-  const int div = (((B20) * (-A01)) + (B01) * (A20));                   \
+  const int div = -((long long)(-B20) * (-A01)) + ((long long)(B01) * (A20)); \
                                                                         \
   /*Change in z for change in row/column                                \
     Obtained by taking partial derivative with respect to x or y from equation of a plane \
     See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane \
     Using these deltas, we interpolate over face of the whole triangle */ \
-  const int depthDx = (A20 * z10 + A01 * z20) / div;                    \
-  const int depthDy = (B20 * z10 + B01 * z20) / div;                    \
-                                                                        \
+  const int depthDx = (((long long)A20 * z10) + ((long long)A01 * z20)) / div; \
+  const int depthDy = (((long long)B20 * z10) + ((long long)B01 * z20)) / div; \
   /* Likewise from solving for z with equation of a plane */            \
   int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY); \
 
@@ -96,12 +95,13 @@ void drawTri(const ModelInstance& m, const face& f,
   AFFINE_SETUP;
   ORIENT_TRIANGLE;
   AFFINE_DELTAS;
-  DEPTH_DELTAS;
 
   unsigned y;
   unsigned xVal;
   unsigned numInner;
   unsigned inner;
+
+  DEPTH_DELTAS;
 
   // X and y values for the TEXTURE at the starting coordinates
   // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
@@ -295,6 +295,7 @@ void drawTri(const ModelInstance& m, const face& f,
   AFFINE_SETUP;
   ORIENT_TRIANGLE;
   AFFINE_DELTAS;
+
 
   unsigned x;
   unsigned y;
@@ -664,7 +665,7 @@ void drawTri(const ModelInstance& m, const face& f,
     zLoc = zLocRow;
     wTotalR = wTotalRRow;
     depth= depthOrig;
-    //depthCorr = depthCorrRow;
+    //epthCorr = depthCorrRow;
 
     for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
