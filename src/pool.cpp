@@ -54,7 +54,7 @@ void Pool::job_wait() {
       break;
     }
 
-    auto job = model_queue.front();
+    const auto job = model_queue.front();
     model_queue.pop_front();
 
     lock.unlock();

@@ -80,7 +80,7 @@
   /* Likewise from solving for z with equation of a plane */            \
   int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY); \
 
-#define PERSPECTIVE_DELTAS                                              \
+#define PERSPECTIVE_COORDINATES                                         \
   /* Current real world coordinates */                                  \
   const float z0Inv = 1.0/v0i._z;                                       \
   const float z1Inv = 1.0/v1i._z;                                       \
@@ -124,87 +124,86 @@
   float depthCorr;                                                      \
 
 
+#define AFFINE_COORDINATES                                              \
+  float xLocRow = (v0._x * w0Row + v1._x * w1Row + v2._x * w2Row) / wTotal; \
+  float yLocRow = (v0._y * w0Row + v1._y * w1Row + v2._y * w2Row) / wTotal; \
+  float zLocRow = (v0._z * w0Row + v1._z * w1Row + v2._z * w2Row) / wTotal; \
+                                                                        \
+  const float xDx = (v0._x * A12 + v1._x * A20 + v2._x * A01) / wTotal; \
+  const float yDx = (v0._y * A12 + v1._y * A20 + v2._y * A01) / wTotal; \
+  const float zDx = (v0._z * A12 + v1._z * A20 + v2._z * A01) / wTotal; \
+                                                                        \
+  const float xDy = (v0._x * B12 + v1._x * B20 + v2._x * B01) / wTotal; \
+  const float yDy = (v0._y * B12 + v1._y * B20 + v2._y * B01) / wTotal; \
+  const float zDy = (v0._z * B12 + v1._z * B20 + v2._z * B01) / wTotal; \
+                                                                        \
+  float xLoc;                                                           \
+  float yLoc;                                                           \
+  float zLoc;                                                           \
+
+#if defined(__AVX2__) && defined(__FMA__)
+#define SIMD_SETUP                                                      \
+  static const __m256i min = _mm256_set1_epi32(-1);                     \
+  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0); \
+  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0); \
+                                                                        \
+  unsigned y;                                                           \
+  unsigned xVal;                                                        \
+  unsigned numInner;                                                    \
+  unsigned inner;                                                       \
+                                                                        \
+  __m256i w0Init;                                                       \
+  __m256i w1Init;                                                       \
+  __m256i w2Init;                                                       \
+                                                                        \
+  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale); \
+  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);                     \
+                                                                        \
+  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale); \
+  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);                    \
+                                                                        \
+  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale); \
+  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
+#endif
+
+#define TEXTURE_DELTAS                                                  \
+  /* X and y values for the TEXTURE at the starting coordinates         \
+     w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So    \
+     weight their x and y values accordingly to get the coordinates. */ \
+  float xColRow = (f._t0x * w0Row + f._t1x * w1Row + f._t2x * w2Row) / wTotal; \
+  float yColRow = (f._t0y * w0Row + f._t1y * w1Row + f._t2y * w2Row) / wTotal; \
+                                                                        \
+  /* Change in the texture coordinated for x/y, used for interpolation */ \
+  const float xColDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal; \
+  const float yColDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal; \
+                                                                        \
+  const float xColDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal; \
+  const float yColDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal; \
+                                                                        \
+  /* Current texture coordinates */                                     \
+  float xCol;                                                           \
+  float yCol;                                                           \
+
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
 
-  // These are reused for every triangle in the model
-  static const __m256i min = _mm256_set1_epi32(-1);
-  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i ones = _mm256_set1_epi32(-1);
 
   AFFINE_SETUP;
   ORIENT_TRIANGLE;
   AFFINE_DELTAS;
 
-  unsigned y;
-  unsigned xVal;
-  unsigned numInner;
-  unsigned inner;
-
   DEPTH_DELTAS;
+  SIMD_SETUP;
 
-  // X and y values for the TEXTURE at the starting coordinates
-  // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
-  // weight their x and y values accordingly to get the coordinates.
-  float xColRow = (f._t0x * w0Row + f._t1x * w1Row + f._t2x * w2Row) / wTotal;
-  float yColRow = (f._t0y * w0Row + f._t1y * w1Row + f._t2y * w2Row) / wTotal;
-
-  // Change in the texture coordinated for x/y, used for interpolation
-  const float xColDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
-  const float yColDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
-
-  const float xColDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
-  const float yColDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
-
-  // Current texture coordinates
-  float xCol;
-  float yCol;
-
-  // Current real world coordinates
-  const float z0Inv = 1.0/v0i._z;
-  const float z1Inv = 1.0/v1i._z;
-  const float z2Inv = 1.0/v2i._z;
-
-  const float x0Corr = v0._x * z0Inv;
-  const float x1Corr = v1._x * z1Inv;
-  const float x2Corr = v2._x * z2Inv;
-
-  const float y0Corr = v0._y * z0Inv;
-  const float y1Corr = v1._y * z1Inv;
-  const float y2Corr = v2._y * z2Inv;
-
-  const float z0Corr = v0._z * z0Inv;
-  const float z1Corr = v1._z * z1Inv;
-  const float z2Corr = v2._z * z2Inv;
-
-  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);
-  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);
-  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);
-
-  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;
-  const float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
-  const float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
-
-  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
-  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
-  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
-
-  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);
-  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
-  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
-
-  float xLoc;
-  float yLoc;
-  float zLoc;
-  float wTotalR;
+  TEXTURE_DELTAS;
+  AFFINE_COORDINATES;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
   const TGAImage& img = *m._baseModel._texture;
-
 
   const __m256i depthDxAdd = _mm256_cvttps_epi32(_mm256_mul_ps(scaleFloat,  _mm256_set1_ps(depthDx)));
   const __m256i xColAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xColDx));
@@ -213,21 +212,6 @@ void drawTri(const ModelInstance& m, const face& f,
   const __m256i xRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xDx));
   const __m256i yRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yDx));
   const __m256i zRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(zDx));
-  const __m256i wTotalRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(wDiffX));
-
-  __m256i w0Init;
-  __m256i w1Init;
-  __m256i w2Init;
-
-  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
-  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
-
-  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
-  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
-
-  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
-  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
-
 
   // We will enter inner loop at least once, otherwise numInner is always 0
   unsigned offset = minY * Wt;
@@ -246,7 +230,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xLoc = xLocRow;
     yLoc = yLocRow;
     zLoc = zLocRow;
-    wTotalR = wTotalRRow;
 
     w0Init = _mm256_set1_epi32(w0);
     w0Init = _mm256_add_epi32(w0Init, a12Add);
@@ -283,10 +266,9 @@ void drawTri(const ModelInstance& m, const face& f,
 
         auto colorsData = _mm256_i32gather_epi32(img.data, xColv, 4); // NOLINT
 
-        __m256 wTotalRV = _mm256_add_ps(_mm256_set1_ps(wTotalR), wTotalRAdd);
-        __m256 xV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(xLoc), xRAdd), wTotalRV);
-        __m256 yV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(yLoc), yRAdd), wTotalRV);
-        __m256 zV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(zLoc), zRAdd), wTotalRV);
+        __m256 xV = _mm256_add_ps(_mm256_set1_ps(xLoc), xRAdd);
+        __m256 yV = _mm256_add_ps(_mm256_set1_ps(yLoc), yRAdd);
+        __m256 zV = _mm256_add_ps(_mm256_set1_ps(zLoc), zRAdd);
 
         shader.fragmentShader(colorsData, zUpdate, xV, yV, zV);
         colorsData = _mm256_blendv_epi8(colorV, colorsData, needsUpdate);
@@ -305,7 +287,6 @@ void drawTri(const ModelInstance& m, const face& f,
       xLoc += xDx * 8;
       yLoc += yDx * 8;
       zLoc += zDx * 8;
-      wTotalR += wDiffX * 8;
 
       if (inner < numInner - 1) {
         w0Init = _mm256_add_epi32(w0Init, a12Add8);
@@ -325,7 +306,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xLocRow += xDy;
     yLocRow += yDy;
     zLocRow += zDy;
-    wTotalRRow += wDiffY;
 
     shader.stepYForX();
   }
@@ -340,68 +320,13 @@ void drawTri(const ModelInstance& m, const face& f,
   ORIENT_TRIANGLE;
   AFFINE_DELTAS;
 
-
   unsigned x;
   unsigned y;
 
   DEPTH_DELTAS;
+  TEXTURE_DELTAS;
 
-  // X and y values for the TEXTURE at the starting coordinates
-  // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
-  // weight their x and y values accordingly to get the coordinates.
-  float xColRow = (f._t0x * w0Row + f._t1x * w1Row + f._t2x * w2Row) / wTotal;
-  float yColRow = (f._t0y * w0Row + f._t1y * w1Row + f._t2y * w2Row) / wTotal;
-
-  // Change in the texture coordinated for x/y, used for interpolation
-  const float xColDx = (f._t0x * A12 + f._t1x * A20 + f._t2x * A01) / wTotal;
-  const float yColDx = (f._t0y * A12 + f._t1y * A20 + f._t2y * A01) / wTotal;
-
-  const float xColDy = (f._t0x * B12 + f._t1x * B20 + f._t2x * B01) / wTotal;
-  const float yColDy = (f._t0y * B12 + f._t1y * B20 + f._t2y * B01) / wTotal;
-
-
-  // Current real world coordinates
-  const float z0Inv = 1.0/v0i._z;
-  const float z1Inv = 1.0/v1i._z;
-  const float z2Inv = 1.0/v2i._z;
-
-  const float x0Corr = v0._x * z0Inv;
-  const float x1Corr = v1._x * z1Inv;
-  const float x2Corr = v2._x * z2Inv;
-
-  const float y0Corr = v0._y * z0Inv;
-  const float y1Corr = v1._y * z1Inv;
-  const float y2Corr = v2._y * z2Inv;
-
-  const float z0Corr = v0._z * z0Inv;
-  const float z1Corr = v1._z * z1Inv;
-  const float z2Corr = v2._z * z2Inv;
-
-  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);
-  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);
-  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);
-
-  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;
-
-  const float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
-  const float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
-
-  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
-  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
-  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
-
-  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);
-  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
-  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
-
-  float xLoc;
-  float yLoc;
-  float zLoc;
-  float wTotalR;
-
-  // Current texture coordinates
-  float xCol;
-  float yCol;
+  AFFINE_COORDINATES;
 
   unsigned offset = minY * W;
   float textureOffset = yColRow;
@@ -421,7 +346,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xLoc = xLocRow;
     yLoc = yLocRow;
     zLoc = zLocRow;
-    wTotalR = wTotalRRow;
 
     for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
@@ -429,7 +353,7 @@ void drawTri(const ModelInstance& m, const face& f,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < depth) {
-          t_pixels[x + offset] = shader.fragmentShader(xLoc/wTotalR, yLoc/wTotalR, zLoc/wTotalR, img.fast_get(xCol, yCol));
+          t_pixels[x + offset] = shader.fragmentShader(xLoc, yLoc, zLoc, img.fast_get(xCol, yCol));
           t_zbuff[x + offset] = depth;
         }
       }
@@ -443,8 +367,6 @@ void drawTri(const ModelInstance& m, const face& f,
       xLoc += xDx;
       yLoc += yDx;
       zLoc += zDx;
-      wTotalR += wDiffX;
-
       shader.stepXForX();
     }
 
@@ -459,7 +381,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xLocRow += xDy;
     yLocRow += yDy;
     zLocRow += zDy;
-    wTotalRRow += wDiffY;
     shader.stepYForX();
   }
 }
@@ -470,83 +391,23 @@ template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
-  // These are reused for every triangle in the model
-  static const __m256i min = _mm256_set1_epi32(-1);
-  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
   AFFINE_SETUP;
   ORIENT_TRIANGLE;
   AFFINE_DELTAS;
-
-  unsigned y;
-  unsigned xVal;
-  unsigned numInner;
-  unsigned inner;
+  SIMD_SETUP;
 
   DEPTH_DELTAS;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
-  // If the traingle is wider than tall, we want to vectorize on x
-  // Otherwise, we vectorize on y
   const __m256i depthDxAdd = _mm256_cvttps_epi32(_mm256_mul_ps(scaleFloat,  _mm256_set1_ps(depthDx)));
 
-  __m256i w0Init;
-  __m256i w1Init;
-  __m256i w2Init;
-
-  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
-  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
-
-  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
-  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
-
-  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
-  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
-
-  // Current real world coordinates
-  const float z0Inv = 1.0/v0i._z;
-  const float z1Inv = 1.0/v1i._z;
-  const float z2Inv = 1.0/v2i._z;
-
-  const float x0Corr = v0._x * z0Inv;
-  const float x1Corr = v1._x * z1Inv;
-  const float x2Corr = v2._x * z2Inv;
-
-  const float y0Corr = v0._y * z0Inv;
-  const float y1Corr = v1._y * z1Inv;
-  const float y2Corr = v2._y * z2Inv;
-
-  const float z0Corr = v0._z * z0Inv;
-  const float z1Corr = v1._z * z1Inv;
-  const float z2Corr = v2._z * z2Inv;
-
-  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);
-  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);
-  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);
-
-  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;
-  const float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
-  const float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
-
-  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
-  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
-  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
-
-  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);
-  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
-  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
-
-  float xLoc;
-  float yLoc;
-  float zLoc;
-  float wTotalR;
+  AFFINE_COORDINATES;
 
   const __m256i xRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xDx));
   const __m256i yRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yDx));
   const __m256i zRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(zDx));
-  const __m256i wTotalRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(wDiffX));
 
   // We will enter inner loop at least once, otherwise numInner is always 0
   unsigned offset = minY * Wt;
@@ -566,7 +427,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xLoc = xLocRow;
     yLoc = yLocRow;
     zLoc = zLocRow;
-    wTotalR = wTotalRRow;
 
     w0Init = _mm256_set1_epi32(w0);
     w0Init = _mm256_add_epi32(w0Init, a12Add);
@@ -590,10 +450,9 @@ void drawTri(const ModelInstance& m, const face& f,
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
         const __m256i colorV = _mm256_loadu_si256((__m256i*)(t_pixels.data() + offset + xVal)); // NOLINT
 
-        __m256 wTotalRV = _mm256_add_ps(_mm256_set1_ps(wTotalR), wTotalRAdd);
-        __m256 xV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(xLoc), xRAdd), wTotalRV);
-        __m256 yV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(yLoc), yRAdd), wTotalRV);
-        __m256 zV = _mm256_div_ps(_mm256_add_ps(_mm256_set1_ps(zLoc), zRAdd), wTotalRV);
+        const __m256 xV = _mm256_add_ps(_mm256_set1_ps(xLoc), xRAdd);
+        const __m256 yV = _mm256_add_ps(_mm256_set1_ps(yLoc), yRAdd);
+        const __m256 zV = _mm256_add_ps(_mm256_set1_ps(zLoc), zRAdd);
 
         __m256i colorsData;
         shader.fragmentShader(colorsData, zUpdate, xV, yV, zV);
@@ -612,7 +471,6 @@ void drawTri(const ModelInstance& m, const face& f,
       xLoc += xDx * 8;
       yLoc += yDx * 8;
       zLoc += zDx * 8;
-      wTotalR += wDiffX * 8;
 
       if (inner < numInner - 1) {
         w0Init = _mm256_add_epi32(w0Init, a12Add8);
@@ -630,7 +488,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xLocRow += xDy;
     yLocRow += yDy;
     zLocRow += zDy;
-    wTotalRRow += wDiffY;
 
     shader.stepYForX();
   }
@@ -649,51 +506,7 @@ void drawTri(const ModelInstance& m, const face& f,
   unsigned y;
 
   DEPTH_DELTAS;
-
-  // Current real world coordinates
-  const float z0Inv = 1.0/v0i._z;
-  const float z1Inv = 1.0/v1i._z;
-  const float z2Inv = 1.0/v2i._z;
-
-  const float x0Corr = v0._x * z0Inv;
-  const float x1Corr = v1._x * z1Inv;
-  const float x2Corr = v2._x * z2Inv;
-
-  const float y0Corr = v0._y * z0Inv;
-  const float y1Corr = v1._y * z1Inv;
-  const float y2Corr = v2._y * z2Inv;
-
-  const float z0Corr = v0._z * z0Inv;
-  const float z1Corr = v1._z * z1Inv;
-  const float z2Corr = v2._z * z2Inv;
-
-
-  float xLocRow = (x0Corr * w0Row + x1Corr * w1Row + x2Corr * w2Row);
-  float yLocRow = (y0Corr * w0Row + y1Corr * w1Row + y2Corr * w2Row);
-  float zLocRow = (z0Corr * w0Row + z1Corr * w1Row + z2Corr * w2Row);
-
-  float wTotalRRow = w0Row * z0Inv + w1Row * z1Inv + w2Row * z2Inv;
-  const float wDiffX = (A12 * z0Inv + A20 * z1Inv + A01 * z2Inv);
-  const float wDiffY = (B12 * z0Inv + B20 * z1Inv + B01 * z2Inv);
-
-  const float xDx = (x0Corr * A12 + x1Corr * A20 + x2Corr * A01);
-  const float yDx = (y0Corr * A12 + y1Corr * A20 + y2Corr * A01);
-  const float zDx = (z0Corr * A12 + z1Corr * A20 + z2Corr * A01);
-
-  const float xDy = (x0Corr * B12 + x1Corr * B20 + x2Corr * B01);
-  const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
-  const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
-
-  //float depthCorrRow = (w0Row + w1Row + w2Row);
-  //const float depthCorrDx = (A12 + A20 + A01);
-  //const float depthCorrDy = (B12 + B20 + B01);
-
-
-  float xLoc;
-  float yLoc;
-  float zLoc;
-  float wTotalR;
-  //float depthCorr;
+  AFFINE_COORDINATES;
 
   unsigned offset = minY * W;
 
@@ -707,9 +520,7 @@ void drawTri(const ModelInstance& m, const face& f,
     xLoc = xLocRow;
     yLoc = yLocRow;
     zLoc = zLocRow;
-    wTotalR = wTotalRRow;
     depth= depthOrig;
-    //epthCorr = depthCorrRow;
 
     for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
@@ -717,9 +528,8 @@ void drawTri(const ModelInstance& m, const face& f,
         // Uncomment for exact z values
         //z = zPos(x0, x1, x2, y0, y1, y2, z0, z1, z2, xValInner, y);
         if (t_zbuff[x + offset] < depth) {
-          t_pixels[x + offset] = shader.fragmentShader(xLoc/wTotalR, yLoc/wTotalR, zLoc/wTotalR);
+          t_pixels[x + offset] = shader.fragmentShader(xLoc, yLoc, zLoc);
           t_zbuff[x + offset] = depth;
-          //t_zbuff[x + offset] = (depthCorr/wTotalR);
         }
       }
       w0 += A12;
@@ -731,8 +541,6 @@ void drawTri(const ModelInstance& m, const face& f,
       xLoc += xDx;
       yLoc += yDx;
       zLoc += zDx;
-      wTotalR += wDiffX;
-      //depthCorr += depthCorrDx;
     }
 
     w0Row += B12;
@@ -744,9 +552,7 @@ void drawTri(const ModelInstance& m, const face& f,
     xLocRow += xDy;
     yLocRow += yDy;
     zLocRow += zDy;
-    wTotalRRow += wDiffY;
     shader.stepYForX();
-    //depthCorrRow += depthCorrDy;
   }
 }
 #endif
@@ -756,36 +562,15 @@ template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
-  // These are reused for every triangle in the model
-  static const __m256i min = _mm256_set1_epi32(-1);
-  static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
-  static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
   AFFINE_SETUP;
   ORIENT_TRIANGLE;
   AFFINE_DELTAS;
 
-  unsigned y;
-  unsigned xVal;
-  unsigned numInner;
-  unsigned inner;
-
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
-  __m256i w0Init;
-  __m256i w1Init;
-  __m256i w2Init;
-
-  const __m256i a12Add = _mm256_mullo_epi32(_mm256_set1_epi32(A12), scale);
-  const __m256i a12Add8 = _mm256_set1_epi32(8*A12);
-
-  const __m256i a20Add = _mm256_mullo_epi32(_mm256_set1_epi32(A20), scale);
-  const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);
-
-  const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale);
-  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
-
-  PERSPECTIVE_DELTAS;
+  SIMD_SETUP;
+  PERSPECTIVE_COORDINATES;
 
   const __m256i xRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(xDx));
   const __m256i yRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yDx));
@@ -896,7 +681,7 @@ void drawTri(const ModelInstance& m, const face& f,
   unsigned x;
   unsigned y;
 
-  PERSPECTIVE_DELTAS;
+  PERSPECTIVE_COORDINATES;
 
   unsigned offset = minY * W;
 
@@ -1100,7 +885,7 @@ vertex<float> realCorrectionSingle (const vertex<float>& vOut,  const vertex<flo
 }
 
 template <typename T, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type*>
-void renderModel (std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform) {
+void renderModel (const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform) {
   for (auto t : model->_baseModel.getFaces()) {
     vertex<float> camV0;
     vertex<float> camV1;
@@ -1283,13 +1068,13 @@ void drawTri<PlaneYZShader>(const ModelInstance& m, const face& f,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
 
 template
-void renderModel<PlaneXZShader>(std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform);
+void renderModel<PlaneXZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
 
 template
-void renderModel<PlaneXYShader>(std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform);
+void renderModel<PlaneXYShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
 
 template
-void renderModel<PlaneYZShader>(std::shared_ptr<const ModelInstance> model, const matrix<4,4>& cameraTransform);
+void renderModel<PlaneYZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
 
 void plot(unsigned x, unsigned y, const unsigned color)
 {
