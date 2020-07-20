@@ -16,4 +16,4 @@ const float xFOV = .5;
 const float yFOV = .5;
 const float focalLength = 1.5;
 
-const unsigned depth = 0xFFFFF;
+const unsigned depth = 0xFFFF;

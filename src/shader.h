@@ -37,7 +37,15 @@ class Shader { // NOLINT
   virtual void stepYForX(unsigned step) = 0;
 };
 
+
+// Shaders that are only intended to appear "in front" of the camera inherit from this.
+// No clipping at view frustum boundaries occurs for these shaders, and interpolation of
+// real world coordinates and texture coordinates  passed to the shaders is affine
+// (no perspective correction applied to interpolated coordinates)
 class BehindCamera {};
+
+// Shaders for which part of the polygon may be behind the camera and therefore require clipping inherit from this.
+// These textures will also use perspective corrected interpolation for real world and texture coordinates
 class InFrontCamera {};
 
 class TexturedShader : public Shader {

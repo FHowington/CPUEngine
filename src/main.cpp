@@ -41,29 +41,26 @@ int main() {
 
   planeVertices.emplace_back(10, -5, -5);
   planeVertices.emplace_back(-10, -5, -5);
-  planeVertices.emplace_back(10, -5, -25);
+  planeVertices.emplace_back(10, -5, -20);
 
-  //planeVertices.emplace_back(10, -5, -25);
-  //planeVertices.emplace_back(-10, -5, -5);
-  //planeVertices.emplace_back(-10, -5, -25);
-
+  //planeVertices.emplace_back(10, -5, -10);
+  //planeVertices.emplace_back(-10, -5, 0);
+  //planeVertices.emplace_back(-10, -5, -10);
   std::vector<vertex<float>> planeNorms;
 
   planeNorms.emplace_back(0,1,0);
   planeNorms.emplace_back(0,1,0);
   planeNorms.emplace_back(0,1,0);
 
-  //planeNorms.emplace_back(0,1,0);
-  //planeNorms.emplace_back(0,1,0);
-  //planeNorms.emplace_back(0,1,0);
 
   std::vector<face> planeFaces;
   planeFaces.emplace_back(2, 1, 0);
-  //planeFaces.emplace_back(5, 4, 3, -10, -5, -10, -5, 10, -5);
 
   plane.setVertices(std::move(planeVertices));
   plane.setNormals(std::move(planeNorms));
   plane.setFaces(std::move(planeFaces));
+
+
 
   bool wireframe = false;
   bool fps = false;
@@ -71,8 +68,8 @@ int main() {
   unsigned frame = 0;
   float x = 1;
   float y = -3;
-  Light::sceneLights.emplace_back(LightType::Point, -5, -3, -10, 100, 1, 0, 0);
-  Light::sceneLights.emplace_back(LightType::Point, 5, -3, -10, 50, 0, 0, 1);
+  Light::sceneLights.emplace_back(LightType::Point, -5, 0, 7, 50, 1, 0, 0);
+  Light::sceneLights.emplace_back(LightType::Point, 5, 0, 7, 50, 0, 0, 1);
   Light::sceneLights.emplace_back(LightType::Directional, vertex<float>(5, y, -1.5), 1, 1, 1);
   auto start = std::chrono::high_resolution_clock::now();
   auto lastFrame = start;
@@ -108,7 +105,7 @@ int main() {
 
   std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, shaderType::PlaneXZShader);
   planeInstance->_position = matrix<4,4>::identity();
-  modelsInScene.push_back(planeInstance);
+  //modelsInScene.push_back(planeInstance);
 
   Pool pool(std::thread::hardware_concurrency());
 
@@ -295,13 +292,14 @@ int main() {
     matrix<4,4> newCameraTransform = invert(cameraRot);
     matrix<4,4> newPostion = matrix<4,4>::rotationY(rot);
     static matrix<4,4> scaler;
-    scaler.set(0, 0, .5);
-    scaler.set(1, 1, .5);
-    scaler.set(2, 2, .5);
+    scaler.set(0, 0, .8);
+    scaler.set(1, 1, .8);
+    scaler.set(2, 2, .8);
     scaler.set(3, 3, 1);
 
     newPostion = scaler * newPostion;
     newPostion.set(3, 2, -5);
+    newPostion.set(3, 0, -5);
 
     SDL_UpdateTexture(texture, nullptr, pixels.data(), 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);

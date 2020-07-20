@@ -2,6 +2,31 @@
 #include "rasterize.h"
 #include <immintrin.h>
 
+#define AFFINE_SETUP \
+  const int x0 = v0i._x; \
+  const int x1 = v1i._x; \
+  const int x2 = v2i._x; \
+                         \
+  const int y0 = v0i._y; \
+  const int y1 = v1i._y; \
+  const int y2 = v2i._y; \
+                         \
+  /* Prevent from wasting time on polygons that have no area */ \
+  if (colinear(x0, x1, x2, y0, y1, y2)) { \
+    return; \
+  } \
+    \
+  const int minX = min3(x0, x1, x2); \
+  const int minY = min3(y0, y1, y2); \
+                                     \
+  const int maxX = max3(x0, x1, x2, (int)W - 1); \
+  const int maxY = max3(y0, y1, y2, (int)H - 1); \
+                                                 \
+  /* Same idea. These have no area (happens when triangle is outside of viewing area) */  \
+  if (maxX < minX || maxY < minY) { \
+    return; \
+  } \
+
 
 #ifdef __AVX2__
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type*>
@@ -15,29 +40,7 @@ void drawTri(const ModelInstance& m, const face& f,
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i ones = _mm256_set1_epi32(-1);
 
-  const int x0 = v0i._x;
-  const int x1 = v1i._x;
-  const int x2 = v2i._x;
-
-  const int y0 = v0i._y;
-  const int y1 = v1i._y;
-  const int y2 = v2i._y;
-
-  // Prevent from wasting time on polygons that have no area
-  if (colinear(x0, x1, x2, y0, y1, y2)) {
-    return;
-  }
-
-  const int minX = min3(x0, x1, x2);
-  const int minY = min3(y0, y1, y2);
-
-  const int maxX = max3(x0, x1, x2, (int)W - 1);
-  const int maxY = max3(y0, y1, y2, (int)H - 1);
-
-  // Same idea. These have no area (happens when triangle is outside of viewing area)
-  if (maxX < minX || maxY < minY) {
-    return;
-  }
+  AFFINE_SETUP;
 
   // Bias to make sure only top or left edges fall on line
   const int bias0 = isTopLeft(v1i, v2i);
@@ -281,29 +284,7 @@ template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>:
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
-  const int x0 = v0i._x;
-  const int x1 = v1i._x;
-  const int x2 = v2i._x;
-
-  const int y0 = v0i._y;
-  const int y1 = v1i._y;
-  const int y2 = v2i._y;
-
-  // Prevent from wasting time on polygons that have no area
-  if (colinear(x0, x1, x2, y0, y1, y2)) {
-    return;
-  }
-
-  const int minX = min3(x0, x1, x2);
-  const int minY = min3(y0, y1, y2);
-
-  const int maxX = max3(x0, x1, x2, (int)W - 1);
-  const int maxY = max3(y0, y1, y2, (int)H - 1);
-
-  // Same idea. These have no area (happens when triangle is outside of viewing area)
-  if (maxX < minX || maxY < minY) {
-    return;
-  }
+  AFFINE_SETUP;
 
   // Bias to make sure only top or left edges fall on line
   const int bias0 = isTopLeft(v1i, v2i);
@@ -484,30 +465,7 @@ void drawTri(const ModelInstance& m, const face& f,
   static const __m256i scale = _mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0);
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
-  const int x0 = v0i._x;
-  const int x1 = v1i._x;
-  const int x2 = v2i._x;
-
-  const int y0 = v0i._y;
-  const int y1 = v1i._y;
-  const int y2 = v2i._y;
-
-  // Prevent from wasting time on polygons that have no area
-  if (colinear(x0, x1, x2, y0, y1, y2)) {
-    return;
-  }
-
-  const int minX = min3(x0, x1, x2);
-  const int minY = min3(y0, y1, y2);
-
-  const int maxX = max3(x0, x1, x2, (int)W - 1);
-  const int maxY = max3(y0, y1, y2, (int)H - 1);
-
-  // Same idea. These have no area (happens when triangle is outside of viewing area)
-  if (maxX < minX || maxY < minY) {
-    return;
-  }
-
+  AFFINE_SETUP;
 
   // Bias to make sure only top or left edges fall on line
   const int bias0 = isTopLeft(v1i, v2i);
@@ -711,35 +669,14 @@ void drawTri(const ModelInstance& m, const face& f,
 
     shader.stepYForX();
   }
-}
+bz}
 #else
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
-  const int x0 = v0i._x;
-  const int x1 = v1i._x;
-  const int x2 = v2i._x;
 
-  const int y0 = v0i._y;
-  const int y1 = v1i._y;
-  const int y2 = v2i._y;
-
-  // Prevent from wasting time on polygons that have no area
-  if (colinear(x0, x1, x2, y0, y1, y2)) {
-    return;
-  }
-
-  const int minX = min3(x0, x1, x2);
-  const int minY = min3(y0, y1, y2);
-
-  const int maxX = max3(x0, x1, x2, (int)W - 1);
-  const int maxY = max3(y0, y1, y2, (int)H - 1);
-
-  // Same idea. These have no area (happens when triangle is outside of viewing area)
-  if (maxX < minX || maxY < minY) {
-    return;
-  }
+  AFFINE_SETUP;
 
   // Bias to make sure only top or left edges fall on line
   const int bias0 = isTopLeft(v1i, v2i);
@@ -815,10 +752,16 @@ void drawTri(const ModelInstance& m, const face& f,
   const float yDy = (y0Corr * B12 + y1Corr * B20 + y2Corr * B01);
   const float zDy = (z0Corr * B12 + z1Corr * B20 + z2Corr * B01);
 
+  //float depthCorrRow = (w0Row + w1Row + w2Row);
+  //const float depthCorrDx = (A12 + A20 + A01);
+  //const float depthCorrDy = (B12 + B20 + B01);
+
+
   float xLoc;
   float yLoc;
   float zLoc;
   float wTotalR;
+  //float depthCorr;
 
   // Change in z for change in row/column
   // Obtained by taking partial derivative with respect to x or y from equation of a plane
@@ -843,6 +786,7 @@ void drawTri(const ModelInstance& m, const face& f,
     zLoc = zLocRow;
     wTotalR = wTotalRRow;
     depth= depthOrig;
+    //depthCorr = depthCorrRow;
 
     for (x = minX; x <= maxX; ++x) {
       // If p is on or inside all edges, render pixel
@@ -852,6 +796,7 @@ void drawTri(const ModelInstance& m, const face& f,
         if (t_zbuff[x + offset] < depth) {
           t_pixels[x + offset] = shader.fragmentShader(xLoc/wTotalR, yLoc/wTotalR, zLoc/wTotalR);
           t_zbuff[x + offset] = depth;
+          //t_zbuff[x + offset] = (depthCorr/wTotalR);
         }
       }
       w0 += A12;
@@ -864,6 +809,7 @@ void drawTri(const ModelInstance& m, const face& f,
       yLoc += yDx;
       zLoc += zDx;
       wTotalR += wDiffX;
+      //depthCorr += depthCorrDx;
     }
 
     w0Row += B12;
@@ -877,6 +823,7 @@ void drawTri(const ModelInstance& m, const face& f,
     zLocRow += zDy;
     wTotalRRow += wDiffY;
     shader.stepYForX();
+    //depthCorrRow += depthCorrDy;
   }
 }
 #endif

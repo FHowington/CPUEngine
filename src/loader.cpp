@@ -121,7 +121,11 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       continue;
     }
 
-    if (line.size() > 8 && !(bool)strncmp(line.c_str(), "INSTANCE", 8)) {
+    std::for_each(line.begin(), line.end(), [](char & c){
+                                                c = ::tolower(c);
+                                              });
+
+    if (line.size() > 8 && !(bool)strncmp(line.c_str(), "instance", 8)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
       line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
       line.erase(std::remove(line.begin(), line.end(), ','), line.end());
@@ -145,17 +149,15 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       }
 
       shaderType st;
-      std::for_each(shader.begin(), shader.end(), [](char & c){
-                                                c = ::tolower(c);
-                                              });
+
 
       if (shader == "gourand") {
         st = shaderType::GouraudShader;
       } else if (shader == "flat") {
         st = shaderType::FlatShader;
-      } else if (shader == "InterpolateFlat") {
+      } else if (shader == "interpolateflat") {
         st = shaderType::InterpFlatShader;
-      } else if (shader == "InterpolateGourand") {
+      } else if (shader == "interpolategourand") {
         st = shaderType::InterpGouraudShader;
       } else {
         std::cout << "Unknown shader type " << shader << " for instance " << line << std::endl;
@@ -183,7 +185,7 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       modelInstance->_position.set(3, 2, z);
       modelInstances.push_back(modelInstance);
 
-    } else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "MODEL", 5)) {
+    } else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "model", 5)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
       line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
       line.erase(std::remove(line.begin(), line.end(), ','), line.end());
@@ -206,7 +208,7 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
                      std::forward_as_tuple(modelName),
                      std::forward_as_tuple(modelFile, &textures[textureName]));
 
-    } else if (line.size() > 7 && !(bool)strncmp(line.c_str(), "TEXTURE", 7)) {
+    } else if (line.size() > 7 && !(bool)strncmp(line.c_str(), "texture", 7)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
       line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
       line.erase(std::remove(line.begin(), line.end(), ','), line.end());
@@ -224,7 +226,7 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       textures[textureName].read_tga_file(textureFile.c_str());
       textures[textureName].flip_vertically();
 
-    }  else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "PLANE", 5)) {
+    }  else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "plane", 5)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
       line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
       line.erase(std::remove(line.begin(), line.end(), ','), line.end());
@@ -337,7 +339,20 @@ void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances
       models[planeName].setNormals(std::move(planeNorms));
       models[planeName].setFaces(std::move(planeFaces));
 
-      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], shaderType::PlaneXYShader);
+      shaderType st;
+
+      if (shader == "planexy") {
+        st = shaderType::PlaneXYShader;
+      } else if (shader == "planexz") {
+        st = shaderType::PlaneXZShader;
+      } else if (shader == "planeyz") {
+        st = shaderType::PlaneYZShader;
+      } else {
+        std::cout << "Unknown shader type " << shader << std::endl;
+      }
+
+      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st);
+
       planeInstance->_position = matrix<4,4>::identity();
       modelInstances.push_back(planeInstance);
 
