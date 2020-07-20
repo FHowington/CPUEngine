@@ -2,30 +2,83 @@
 #include "rasterize.h"
 #include <immintrin.h>
 
-#define AFFINE_SETUP \
-  const int x0 = v0i._x; \
-  const int x1 = v1i._x; \
-  const int x2 = v2i._x; \
-                         \
-  const int y0 = v0i._y; \
-  const int y1 = v1i._y; \
-  const int y2 = v2i._y; \
-                         \
-  /* Prevent from wasting time on polygons that have no area */ \
-  if (colinear(x0, x1, x2, y0, y1, y2)) { \
-    return; \
-  } \
-    \
-  const int minX = min3(x0, x1, x2); \
-  const int minY = min3(y0, y1, y2); \
-                                     \
-  const int maxX = max3(x0, x1, x2, (int)W - 1); \
-  const int maxY = max3(y0, y1, y2, (int)H - 1); \
-                                                 \
-  /* Same idea. These have no area (happens when triangle is outside of viewing area) */  \
-  if (maxX < minX || maxY < minY) { \
-    return; \
-  } \
+#define AFFINE_SETUP                                                    \
+  const int x0 = v0i._x;                                                \
+  const int x1 = v1i._x;                                                \
+  const int x2 = v2i._x;                                                \
+                                                                        \
+  const int y0 = v0i._y;                                                \
+  const int y1 = v1i._y;                                                \
+  const int y2 = v2i._y;                                                \
+                                                                        \
+  /* Prevent from wasting time on polygons that have no area */         \
+  if (colinear(x0, x1, x2, y0, y1, y2)) {                               \
+    return;                                                             \
+  }                                                                     \
+                                                                        \
+  const int minX = min3(x0, x1, x2);                                    \
+  const int minY = min3(y0, y1, y2);                                    \
+                                                                        \
+  const int maxX = max3(x0, x1, x2, (int)W - 1);                        \
+  const int maxY = max3(y0, y1, y2, (int)H - 1);                        \
+                                                                        \
+  /* Same idea. These have no area (happens when triangle is outside of viewing area) */ \
+  if (maxX < minX || maxY < minY) {                                     \
+    return;                                                             \
+  }                                                                     \
+
+#define AFFINE_DELTAS                                                   \
+  /* Deltas for change in x or y for the 3 sides of a triangle */       \
+  const short A01 = y0 - y1;                                            \
+  const short A12 = y1 - y2;                                            \
+  const short A20 = y2 - y0;                                            \
+                                                                        \
+  const short B01 = x1 - x0;                                            \
+  const short B12 = x2 - x1;                                            \
+  const short B20 = x0 - x2;                                            \
+                                                                        \
+  const int z0 = v0i._z;                                                \
+  const int z1 = v1i._z;                                                \
+  const int z2 = v2i._z;                                                \
+                                                                        \
+  const int z10 = z1 - z0;                                              \
+  const int z20 = z2 - z0;                                              \
+
+#define ORIENT_TRIANGLE                                         \
+  /* Bias to make sure only top or left edges fall on line */   \
+  const int bias0 = isTopLeft(v1i, v2i);                        \
+  const int bias1 = isTopLeft(v2i, v0i);                        \
+  const int bias2 = isTopLeft(v0i, v1i);                        \
+                                                                \
+  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;     \
+  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;     \
+  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;     \
+                                                                \
+  /* If this number is 0, triangle has no area! */              \
+  float wTotal = w0Row + w1Row + w2Row;                         \
+                                                                \
+  pMaxX = fast_max(pMaxX, maxX);                                \
+  pMinX = fast_min(pMinX, minX);                                \
+  pMaxY = fast_max(pMaxY, maxY);                                \
+  pMinY = fast_min(pMinY, minY);                                \
+
+#define DEPTH_DELTAS                                                    \
+  int w0;                                                               \
+  int w1;                                                               \
+  int w2;                                                               \
+  int depth;                                                            \
+                                                                        \
+  const int div = (((B20) * (-A01)) + (B01) * (A20));                   \
+                                                                        \
+  /*Change in z for change in row/column                                \
+    Obtained by taking partial derivative with respect to x or y from equation of a plane \
+    See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane \
+    Using these deltas, we interpolate over face of the whole triangle */ \
+  const int depthDx = (A20 * z10 + A01 * z20) / div;                    \
+  const int depthDy = (B20 * z10 + B01 * z20) / div;                    \
+                                                                        \
+  /* Likewise from solving for z with equation of a plane */            \
+  int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY); \
 
 
 #ifdef __AVX2__
@@ -41,60 +94,14 @@ void drawTri(const ModelInstance& m, const face& f,
   static const __m256i ones = _mm256_set1_epi32(-1);
 
   AFFINE_SETUP;
-
-  // Bias to make sure only top or left edges fall on line
-  const int bias0 = isTopLeft(v1i, v2i);
-  const int bias1 = isTopLeft(v2i, v0i);
-  const int bias2 = isTopLeft(v0i, v1i);
-
-  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
-  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
-  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
-
-  // If this number is 0, triangle has no area!
-  float wTotal = w0Row + w1Row + w2Row;
-
-  pMaxX = fast_max(pMaxX, maxX);
-  pMinX = fast_min(pMinX, minX);
-  pMaxY = fast_max(pMaxY, maxY);
-  pMinY = fast_min(pMinY, minY);
-
-  // Deltas for change in x or y for the 3 sides of a triangle
-  const short A01 = y0 - y1;
-  const short A12 = y1 - y2;
-  const short A20 = y2 - y0;
-
-  const short B01 = x1 - x0;
-  const short B12 = x2 - x1;
-  const short B20 = x0 - x2;
-
-  const int z0 = v0i._z;
-  const int z1 = v1i._z;
-  const int z2 = v2i._z;
+  ORIENT_TRIANGLE;
+  AFFINE_DELTAS;
+  DEPTH_DELTAS;
 
   unsigned y;
   unsigned xVal;
   unsigned numInner;
   unsigned inner;
-
-  int w0;
-  int w1;
-  int w2;
-  int depth;
-
-  const int div = (((B20) * (-A01)) + (B01) * (A20));
-  const int z10 = z1 - z0;
-  const int z20 = z2 - z0;
-
-  // Change in z for change in row/column
-  // Obtained by taking partial derivative with respect to x or y from equation of a plane
-  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
-  // Using these deltas, we interpolate over face of the whole triangle
-  const int depthDx = (A20 * z10 + A01 * z20) / div;
-  const int depthDy = (B20 * z10 + B01 * z20) / div;
-
-  // Likewise from solving for z with equation of a plane
-  int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
 
   // X and y values for the TEXTURE at the starting coordinates
   // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
@@ -284,57 +291,15 @@ template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>:
 void drawTri(const ModelInstance& m, const face& f,
              const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
+
   AFFINE_SETUP;
-
-  // Bias to make sure only top or left edges fall on line
-  const int bias0 = isTopLeft(v1i, v2i);
-  const int bias1 = isTopLeft(v2i, v0i);
-  const int bias2 = isTopLeft(v0i, v1i);
-  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
-  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
-  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
-
-  float wTotal = w0Row + w1Row + w2Row;
-
-  // Deltas for change in x or y for the 3 sides of a triangle
-  const short A01 = y0 - y1;
-  const short A12 = y1 - y2;
-  const short A20 = y2 - y0;
-
-  const short B01 = x1 - x0;
-  const short B12 = x2 - x1;
-  const short B20 = x0 - x2;
-
-  const int z0 = v0i._z;
-  const int z1 = v1i._z;
-  const int z2 = v2i._z;
-
-  pMaxX = fast_max(pMaxX, maxX);
-  pMinX = fast_min(pMinX, minX);
-  pMaxY = fast_max(pMaxY, maxY);
-  pMinY = fast_min(pMinY, minY);
+  ORIENT_TRIANGLE;
+  AFFINE_DELTAS;
 
   unsigned x;
   unsigned y;
 
-  int w0;
-  int w1;
-  int w2;
-  int depth;
-
-  const int div = (((B20) * (-A01)) + (B01) * (A20));
-  const int z10 = z1 - z0;
-  const int z20 = z2 - z0;
-
-  // Change in z for change in row/column
-  // Obtained by taking partial derivative with respect to x or y from equation of a plane
-  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
-  // Using these deltas, we interpolate over face of the whole triangle
-  const int depthDx = (A20 * z10 + A01 * z20) / div;
-  const int depthDy = (B20 * z10 + B01 * z20) / div;
-
-  // Likewise from solving for z with equation of a plane
-  int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
+  DEPTH_DELTAS;
 
   // X and y values for the TEXTURE at the starting coordinates
   // w0row, w1row, w2row are weights of v0,v1,v2 at starting pos. So
@@ -466,55 +431,15 @@ void drawTri(const ModelInstance& m, const face& f,
   static const __m256i scaleFloat = _mm256_set_ps(7, 6, 5, 4, 3, 2, 1, 0);
 
   AFFINE_SETUP;
-
-  // Bias to make sure only top or left edges fall on line
-  const int bias0 = isTopLeft(v1i, v2i);
-  const int bias1 = isTopLeft(v2i, v0i);
-  const int bias2 = isTopLeft(v0i, v1i);
-
-  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
-  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
-  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
-
-  // If this number is 0, triangle has no area!
-  float wTotal = w0Row + w1Row + w2Row;
-
-  // Deltas for change in x or y for the 3 sides of a triangle
-  const int A01 = y0 - y1;
-  const int A12 = y1 - y2;
-  const int A20 = y2 - y0;
-
-  const int B01 = x1 - x0;
-  const int B12 = x2 - x1;
-  const int B20 = x0 - x2;
-
-  const int z0 = v0i._z;
-  const int z1 = v1i._z;
-  const int z2 = v2i._z;
+  ORIENT_TRIANGLE;
+  AFFINE_DELTAS;
 
   unsigned y;
   unsigned xVal;
   unsigned numInner;
   unsigned inner;
 
-  int w0;
-  int w1;
-  int w2;
-  int depth;
-
-  const int div = (((long long)(B20) * (-A01)) + (long long)(B01) * (A20));
-  const int z10 = z1 - z0;
-  const int z20 = z2 - z0;
-
-  // Change in z for change in row/column
-  // Obtained by taking partial derivative with respect to x or y from equation of a plane
-  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
-  // Using these deltas, we interpolate over face of the whole triangle
-  const int depthDx = ((long long)A20 * z10 + (long long)A01 * z20) / div;
-  const int depthDy = ((long long)B20 * z10 + (long long)B01 * z20) / div;
-
-  // Likewise from solving for z with equation of a plane
-  int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
+  DEPTH_DELTAS;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
 
@@ -577,11 +502,6 @@ void drawTri(const ModelInstance& m, const face& f,
   const __m256i yRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(yDx));
   const __m256i zRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(zDx));
   const __m256i wTotalRAdd = _mm256_mul_ps(scaleFloat,  _mm256_set1_ps(wDiffX));
-
-  pMaxX = fast_max(pMaxX, maxX);
-  pMinX = fast_min(pMinX, minX);
-  pMaxY = fast_max(pMaxY, maxY);
-  pMinY = fast_min(pMinY, minY);
 
   // We will enter inner loop at least once, otherwise numInner is always 0
   unsigned offset = minY * Wt;
@@ -669,7 +589,7 @@ void drawTri(const ModelInstance& m, const face& f,
 
     shader.stepYForX();
   }
-bz}
+}
 #else
 template<typename T, typename std::enable_if<std::is_base_of<UntexturedShader, T>::value, int>::type*>
 void drawTri(const ModelInstance& m, const face& f,
@@ -677,46 +597,13 @@ void drawTri(const ModelInstance& m, const face& f,
              const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2) {
 
   AFFINE_SETUP;
-
-  // Bias to make sure only top or left edges fall on line
-  const int bias0 = isTopLeft(v1i, v2i);
-  const int bias1 = isTopLeft(v2i, v0i);
-  const int bias2 = isTopLeft(v0i, v1i);
-  int w0Row = orient2d(x1, x2, minX, y1, y2, minY) + bias0;
-  int w1Row = orient2d(x2, x0, minX, y2, y0, minY) + bias1;
-  int w2Row = orient2d(x0, x1, minX, y0, y1, minY) + bias2;
-
-  float wTotal = w0Row + w1Row + w2Row;
-
-  // Deltas for change in x or y for the 3 sides of a triangle
-  const short A01 = y0 - y1;
-  const short A12 = y1 - y2;
-  const short A20 = y2 - y0;
-
-  const short B01 = x1 - x0;
-  const short B12 = x2 - x1;
-  const short B20 = x0 - x2;
-
-  const int z0 = v0i._z;
-  const int z1 = v1i._z;
-  const int z2 = v2i._z;
-
-  pMaxX = fast_max(pMaxX, maxX);
-  pMinX = fast_min(pMinX, minX);
-  pMaxY = fast_max(pMaxY, maxY);
-  pMinY = fast_min(pMinY, minY);
+  ORIENT_TRIANGLE;
+  AFFINE_DELTAS;
 
   unsigned x;
   unsigned y;
 
-  int w0;
-  int w1;
-  int w2;
-  int depth;
-
-  const int div = -((long long)(-B20) * (-A01)) + ((long long)(B01) * (A20));
-  const int z10 = z1 - z0;
-  const int z20 = z2 - z0;
+  DEPTH_DELTAS;
 
   // Current real world coordinates
   const float z0Inv = 1.0/v0i._z;
@@ -763,15 +650,6 @@ void drawTri(const ModelInstance& m, const face& f,
   float wTotalR;
   //float depthCorr;
 
-  // Change in z for change in row/column
-  // Obtained by taking partial derivative with respect to x or y from equation of a plane
-  // See equation of a plane here: https://math.stackexchange.com/questions/851742/calculate-coordinate-of-any-point-on-triangle-in-3d-plane
-  // Using these deltas, we interpolate over face of the whole triangle
-  const int depthDx = (((long long)A20 * z10) + ((long long)A01 * z20)) / div;
-  const int depthDy = (((long long)B20 * z10) + ((long long)B01 * z20)) / div;
-
-  // Likewise from solving for z with equation of a plane
-  int depthOrig = zPos(x2, x1, x0, y2, y1, y0, z2, z1, z0, minX, minY);
   unsigned offset = minY * W;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
