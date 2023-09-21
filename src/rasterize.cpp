@@ -1,6 +1,8 @@
 #include "geometry.h"
 #include "rasterize.h"
+#ifdef __AVX__
 #include <immintrin.h>
+#endif
 
 #define AFFINE_SETUP                                                    \
   const int x0 = v0i._x;                                                \

@@ -7,7 +7,7 @@
 #include "pool.h"
 #include "rasterize.h"
 #include "tgaimage.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <array>
 #include <chrono>
 #include <iostream>
@@ -15,7 +15,6 @@
 #include <vector>
 
 constexpr float SPEED = 80000000.0;
-
 std::array<unsigned, W * H> pixels;
 std::array<int, W*H> zbuff;
 

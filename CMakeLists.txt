@@ -8,16 +8,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 # includes cmake/FindSDL2.cmake
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=cppcoreguidelines*,clang-analyzer*,boost*,llvm*,llvmlibc*,modernize*,performance*,readability*,-readability-magic-numbers,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-pro-type-union-access,-llvm-header-guard,-cppcoreguidelines-pro-type-member-init,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-type-cstyle-cast,-cppcoreguidelines-macro-usage -fix)
+#set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=cppcoreguidelines*,clang-analyzer*,boost*,llvm*,llvmlibc*,modernize*,performance*,readability*,-readability-magic-numbers,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-pro-type-union-access,-llvm-header-guard,-cppcoreguidelines-pro-type-member-init,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-type-cstyle-cast,-cppcoreguidelines-macro-usage -fix)
 
 
 
-option(SIMD "Use AVX2/FMA instructions" ON)
+option(SIMD "Use AVX2/FMA instructions" OFF)
 option(DEBUG "Build debug variant with no optimizations" OFF)
 if(SIMD)
   SET(CLANG_INSTRUCTIONS "-mavx2 -mfma -Rpass=loop-vectorize")
 else()
-  SET(CLANG_INSTRUCTIONS "-mno-avx")
+#  SET(CLANG_INSTRUCTIONS "-mno-avx")
 endif()
 
 if(DEBUG)

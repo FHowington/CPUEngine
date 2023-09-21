@@ -10,7 +10,7 @@
 #include "pool.h"
 #include "shader.h"
 #include "tgaimage.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <algorithm>
 #include <array>
 #include <utility>

@@ -1,7 +1,9 @@
 // Created by Forbes Howington 5/19/20
 #pragma once
 #include "geometry.h"
-#include "immintrin.h"
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
 #include <list>
 
 enum class LightType { Directional, Point };

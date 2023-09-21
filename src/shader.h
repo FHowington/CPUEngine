@@ -8,7 +8,9 @@
 #include "light.h"
 #include "loader.h"
 #include "tgaimage.h"
+#ifdef __AVX__
 #include <immintrin.h>
+#endif
 
 // We do this instead of the typical inheritance route because dynamic binding of function calls
 // incurs a perf. hit for shaders. They are simply called too many time.
@@ -501,7 +503,7 @@ class PlaneXZShader : public UntexturedShader, public BehindCamera {
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    unsigned res = ((((unsigned)floor(x)) & 0x1) ^ (((unsigned)floor(z)) & 0x1)) != 0U ? 8405024 : 8421504;
+    unsigned res = ((((int)floor(x)) & 0x1) ^ (((int)floor(z)) & 0x1)) != 0U ? 8405024 : 8421504;
     illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
@@ -569,7 +571,7 @@ class PlaneXYShader : public UntexturedShader, public BehindCamera {
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    unsigned res = ((((unsigned)floor(x)) & 0x1) ^ (((unsigned)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
+    unsigned res = ((((int)floor(x)) & 0x1) ^ (((int)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
     illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
@@ -637,7 +639,7 @@ class PlaneYZShader : public UntexturedShader, public BehindCamera {
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    unsigned res = ((((unsigned)floor(z)) & 0x1) ^ (((unsigned)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
+    unsigned res = ((((int)floor(z)) & 0x1) ^ (((int)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
     illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
