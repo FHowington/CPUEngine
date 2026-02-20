@@ -34,6 +34,5 @@ class DemoGame : public Game {
   std::chrono::high_resolution_clock::time_point _fpsStart;
 
   // Camera options
-  float _cameraSpeed = 1.0f;      // Movement speed multiplier (default 1.0)
-  float _cameraSensitivity = 1.0f; // Look sensitivity multiplier (default 1.0)
+  float _cameraSpeed = 1.0f;  // Movement speed & look sensitivity multiplier
 };
