@@ -27,33 +27,34 @@ void Camera::handleEvent(const SDL_Event& event) {
 }
 
 void Camera::update(float deltaTime) {
-  if (_lUp)    _rotX -= 0.03f;
-  if (_lDown)  _rotX += 0.03f;
-  if (_lRight) _rotY -= 0.03f;
-  if (_lLeft)  _rotY += 0.03f;
+  if (_lUp)    _rotX -= 0.03f * _sensitivity;
+  if (_lDown)  _rotX += 0.03f * _sensitivity;
+  if (_lRight) _rotY -= 0.03f * _sensitivity;
+  if (_lLeft)  _rotY += 0.03f * _sensitivity;
 
   matrix<4,4> rotXM = matrix<4,4>::rotationX(_rotX);
   matrix<4,4> rotYM = matrix<4,4>::rotationY(_rotY);
   matrix<4,4> rot(rotXM * rotYM);
 
+  float moveScale = deltaTime * 10.0f * _sensitivity;  // Base speed = 10.0
   if (_mForward) {
-    _x -= deltaTime * rot._m[8];
-    _y -= deltaTime * rot._m[9];
-    _z -= deltaTime * rot._m[10];
+    _x -= moveScale * rot._m[8];
+    _y -= moveScale * rot._m[9];
+    _z -= moveScale * rot._m[10];
   } else if (_mBackward) {
-    _x += deltaTime * rot._m[8];
-    _y += deltaTime * rot._m[9];
-    _z += deltaTime * rot._m[10];
+    _x += moveScale * rot._m[8];
+    _y += moveScale * rot._m[9];
+    _z += moveScale * rot._m[10];
   }
 
   if (_mLeft) {
-    _x -= deltaTime * rot._m[0];
-    _y -= deltaTime * rot._m[1];
-    _z -= deltaTime * rot._m[2];
+    _x -= moveScale * rot._m[0];
+    _y -= moveScale * rot._m[1];
+    _z -= moveScale * rot._m[2];
   } else if (_mRight) {
-    _x += deltaTime * rot._m[0];
-    _y += deltaTime * rot._m[1];
-    _z += deltaTime * rot._m[2];
+    _x += moveScale * rot._m[0];
+    _y += moveScale * rot._m[1];
+    _z += moveScale * rot._m[2];
   }
 
   rot.set(3, 0, _x);

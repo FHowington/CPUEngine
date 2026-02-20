@@ -15,6 +15,9 @@ class Camera {
   float getPitch() const { return _rotX; }
   float getYaw()   const { return _rotY; }
 
+  void setSensitivity(float s) { _sensitivity = s; }
+  float getSensitivity() const { return _sensitivity; }
+
  private:
   float _rotX = 0;
   float _rotY = 0;
@@ -32,5 +35,6 @@ class Camera {
   bool _mLeft = false;
   bool _mRight = false;
 
+  float _sensitivity = 1.0f;
   matrix<4,4> _transform;
 };

@@ -10,6 +10,7 @@ void DemoGame::init(Engine& engine) {
   _scene.lights.emplace_back(LightType::Directional, vertex<float>(5, _lightY, -1.5), 1, 1, 1);
   Light::sceneLights = _scene.lights;
 
+  _camera.setSensitivity(_cameraSpeed);
   _fpsStart = std::chrono::high_resolution_clock::now();
 }
 
@@ -26,6 +27,24 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
       case SDLK_k: _lightY -= 0.2f;          break;
       case SDLK_l: _lightX += 0.2f;          break;
       case SDLK_j: _lightX -= 0.2f;          break;
+      // Camera speed controls (- and =)
+      case SDLK_MINUS:
+      case SDLK_UNDERSCORE:
+        _cameraSpeed *= 0.8f;
+        if (_cameraSpeed < 0.1f) _cameraSpeed = 0.1f;
+        _camera.setSensitivity(_cameraSpeed);
+        break;
+      case SDLK_EQUALS:
+      case SDLK_PLUS:
+        _cameraSpeed *= 1.25f;
+        if (_cameraSpeed > 4.0f) _cameraSpeed = 4.0f;
+        _camera.setSensitivity(_cameraSpeed);
+        break;
+      // Camera sensitivity controls (Ctrl+- and Ctrl+=)
+      case SDLK_LCTRL:
+      case SDLK_RCTRL:
+        // Modifier only, handle in other cases
+        break;
     }
   }
 }
@@ -79,8 +98,8 @@ void DemoGame::drawOverlay() {
   constexpr int PAD     = 4;   // inner padding
   constexpr int CHAR_W  = 8;
   constexpr int LINE_H  = 10;  // 8px glyph + 2px gap
-  constexpr int COLS    = 18;  // max characters per line
-  constexpr int ROWS    = 16;  // number of text rows
+  constexpr int COLS    = 28;  // max characters per line (increased from 18)
+  constexpr int ROWS    = 24;  // number of text rows (increased from 16)
   constexpr int PW      = COLS * CHAR_W + PAD * 2;
   constexpr int PH      = ROWS * LINE_H + PAD * 2;
 
@@ -94,7 +113,7 @@ void DemoGame::drawOverlay() {
   // Text origin (inside padding)
   const int tx = px + PAD;
   int ty = py + PAD;
-  char buf[32];
+  char buf[64];
 
   // ── Camera ──────────────────────────────────────────────────────────────
   Overlay::drawText(tx, ty, "-- Camera --", 0xAAAAFF); ty += LINE_H;
@@ -114,6 +133,9 @@ void DemoGame::drawOverlay() {
   snprintf(buf, sizeof(buf), "Yaw:  %6.2f", _camera.getYaw());
   Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
 
+  snprintf(buf, sizeof(buf), "Speed: %5.2fx", _cameraSpeed);
+  Overlay::drawText(tx, ty, buf, 0x88FFFF); ty += LINE_H;
+
   ty += LINE_H;  // blank separator
 
   // ── Toggles ─────────────────────────────────────────────────────────────
@@ -130,8 +152,9 @@ void DemoGame::drawOverlay() {
 
   // ── Controls ────────────────────────────────────────────────────────────
   Overlay::drawText(tx, ty, "-- Controls --", 0xAAAAFF); ty += LINE_H;
-  Overlay::drawText(tx, ty, "WASD  Move",    0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "Arrs  Look",    0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "Q/E   Spin",    0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "IJKL  Light",   0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "WASD  Move",       0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "Arrs  Look",       0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "Q/E   Spin",       0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "IJKL  Light",      0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "-/=   Speed",      0xFFAAAA); ty += LINE_H;
 }
