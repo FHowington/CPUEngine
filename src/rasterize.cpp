@@ -333,7 +333,6 @@ void drawTri(const ModelInstance& m, const face& f,
   AFFINE_COORDINATES;
 
   unsigned offset = minY * W;
-  float textureOffset = yColRow;
   const float yColDy4 = 4 * yColDy;
 
   T shader(m, f, A12, A20, A01, B12, B20, B01, wTotal, w0Row, w1Row, w2Row, v0i, v1i, v2i);
@@ -381,7 +380,6 @@ void drawTri(const ModelInstance& m, const face& f,
     xColRow += xColDy;
     yColRow += yColDy;
     offset += W;
-    textureOffset += yColDy4;
     xLocRow += xDy;
     yLocRow += yDy;
     zLocRow += zDy;
