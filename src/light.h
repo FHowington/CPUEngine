@@ -4,6 +4,7 @@
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
+#include <cassert>
 #include <list>
 
 enum class LightType { Directional, Point };
