@@ -148,18 +148,23 @@ void Overlay::drawRect(int x, int y, int w, int h, unsigned color) {
   }
 }
 
-void Overlay::drawGlyph(int px, int py, unsigned char c, unsigned color) {
+void Overlay::drawGlyph(int px, int py, unsigned char c, unsigned color, int scale) {
   if (c < 0x20 || c > 0x7E) return;
   const unsigned char* glyph = font[c - 0x20];
   for (int row = 0; row < 8; ++row) {
-    const int screenY = py + row;
-    if (screenY < 0 || screenY >= (int)H) continue;
     unsigned char bits = glyph[row];
     for (int col = 0; col < 8; ++col) {
       if (bits & 1) {
-        const int screenX = px + col;
-        if (screenX >= 0 && screenX < (int)W) {
-          pixels[screenY * W + screenX] = color;
+        // Fill a scale x scale block for each lit pixel
+        for (int sy = 0; sy < scale; ++sy) {
+          const int screenY = py + row * scale + sy;
+          if (screenY < 0 || screenY >= (int)H) continue;
+          for (int sx = 0; sx < scale; ++sx) {
+            const int screenX = px + col * scale + sx;
+            if (screenX >= 0 && screenX < (int)W) {
+              pixels[screenY * W + screenX] = color;
+            }
+          }
         }
       }
       bits >>= 1;
@@ -167,10 +172,10 @@ void Overlay::drawGlyph(int px, int py, unsigned char c, unsigned color) {
   }
 }
 
-void Overlay::drawText(int x, int y, const std::string& text, unsigned color) {
+void Overlay::drawText(int x, int y, const std::string& text, unsigned color, int scale) {
   int cx = x;
   for (char c : text) {
-    drawGlyph(cx, y, static_cast<unsigned char>(c), color);
-    cx += 8;
+    drawGlyph(cx, y, static_cast<unsigned char>(c), color, scale);
+    cx += 8 * scale;
   }
 }

@@ -23,10 +23,10 @@ class Overlay {
   // Draw a 1-pixel border rectangle (outline only).
   static void drawRect(int x, int y, int w, int h, unsigned color);
 
-  // Draw a string of ASCII text. Each glyph is 8x8. No newline handling.
-  static void drawText(int x, int y, const std::string& text, unsigned color = 0xFFFFFF);
+  // Draw a string of ASCII text. Each glyph is 8*scale x 8*scale. No newline handling.
+  static void drawText(int x, int y, const std::string& text, unsigned color = 0xFFFFFF, int scale = 1);
 
  private:
-  static void drawGlyph(int px, int py, unsigned char c, unsigned color);
+  static void drawGlyph(int px, int py, unsigned char c, unsigned color, int scale = 1);
   static const unsigned char font[96][8];  // ASCII 0x20-0x7E
 };

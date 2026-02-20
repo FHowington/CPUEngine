@@ -22,6 +22,7 @@ const unsigned halfH = H/2;
 
 extern std::array<unsigned, W * H> pixels;
 extern std::array<int, W * H> zbuff;
+extern bool renderWireframe;
 
 inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, unsigned color);
 
@@ -66,6 +67,13 @@ inline bool colinear(const int x0, const int x1, const int x2, const int y0, con
 // This code is rather long to remove as many conditions, mults, divs, and floats as possible
 void line(const vertex<int>& v0, const vertex<int>& v1, unsigned color);
 
+// Draw wireframe edges for a single triangle (green lines)
+inline void drawWireframeTri(const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i) {
+  line(v0i, v1i, 0x00FF00);
+  line(v1i, v2i, 0x00FF00);
+  line(v2i, v0i, 0x00FF00);
+}
+
 matrix<4,4> GetInverse(const matrix<4,4>& inM);
 
 template<typename T, typename std::enable_if<std::is_base_of<TexturedShader, T>::value, int>::type* = nullptr, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type* = nullptr>
@@ -108,7 +116,13 @@ void renderModel(const std::shared_ptr<const ModelInstance>& model, const matrix
 
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0) {
-        drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
+        if (renderWireframe) {
+          line(v0i, v1i, 0x00FF00);
+          line(v1i, v2i, 0x00FF00);
+          line(v2i, v0i, 0x00FF00);
+        } else {
+          drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2);
+        }
       }
     }
   }

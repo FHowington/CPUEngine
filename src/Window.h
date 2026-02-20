@@ -14,6 +14,6 @@ const unsigned xZoom = 2;
 const unsigned yZoom = 2;
 const float xFOV = .5;
 const float yFOV = .5;
-const float focalLength = 1.5;
+extern float focalLength;  // Mutable: updated by Engine::setFOV()
 
 const unsigned depth = 0xFFFF;

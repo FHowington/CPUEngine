@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <thread>
 
@@ -14,7 +15,8 @@ std::array<unsigned, W * H> pixels;
 std::array<int, W * H> zbuff;
 matrix<4,4> cameraTransform;
 std::atomic<unsigned> remaining_models;
-bool renderWireframe = false;  // Global wireframe mode flag
+bool renderWireframe = false;
+float focalLength = 1.5f;  // Default projection focal length (updated by setFOV)
 
 Engine::Engine() {
   remaining_models = 0;
@@ -40,6 +42,13 @@ void Engine::setCameraTransform(const matrix<4,4>& transform) {
 
 void Engine::setWireframeMode(bool enabled) {
   renderWireframe = enabled;
+}
+
+void Engine::setFOV(float degrees) {
+  // Relationship: tan(hfov/2) = (1-xFOV) * focalLength / xZoom
+  // Solving: focalLength = tan(hfov/2) * xZoom / (1-xFOV)
+  float radians = degrees * (float)M_PI / 180.0f;
+  focalLength = tanf(radians * 0.5f) * (float)xZoom / (1.0f - xFOV);
 }
 
 void Engine::run(Game& game) {

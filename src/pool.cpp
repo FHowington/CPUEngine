@@ -7,7 +7,6 @@
 
 extern matrix<4,4> cameraTransform;
 extern std::atomic<unsigned> remaining_models;
-extern bool renderWireframe;
 
 
 

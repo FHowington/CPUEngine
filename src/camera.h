@@ -39,6 +39,6 @@ class Camera {
   bool _mRight = false;
 
   float _sensitivity = 1.0f;
-  float _fov = 60.0f;  // Field of view in degrees
+  float _fov = 41.0f;  // Horizontal FOV in degrees (41 matches original focalLength=1.5)
   matrix<4,4> _transform;
 };
