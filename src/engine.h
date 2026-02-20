@@ -20,6 +20,10 @@ class Game {
   virtual void handleEvent(const SDL_Event& event, bool& quit) = 0;
   virtual void update(float deltaTime, Engine& engine) = 0;
   virtual const std::vector<std::shared_ptr<ModelInstance>>& getModels() const = 0;
+
+  // Optional: draw 2D overlay into the pixel framebuffer after 3D rendering.
+  // Called after all models are rendered, before the frame is presented.
+  virtual void drawOverlay() {}
 };
 
 class Engine {

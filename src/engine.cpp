@@ -75,6 +75,9 @@ void Engine::run(Game& game) {
     // Let the game update state for the next frame
     game.update(deltaTime, *this);
 
+    // Draw any 2D overlay on top of the finished 3D frame
+    game.drawOverlay();
+
     // Present the rendered frame
     SDL_UpdateTexture(_texture, nullptr, pixels.data(), 4 * W);
     SDL_RenderCopy(_renderer, _texture, nullptr, nullptr);

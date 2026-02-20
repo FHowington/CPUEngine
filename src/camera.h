@@ -9,6 +9,12 @@ class Camera {
   void update(float deltaTime);
   const matrix<4,4>& getTransform() const { return _transform; }
 
+  float getX()     const { return _x; }
+  float getY()     const { return _y; }
+  float getZ()     const { return _z; }
+  float getPitch() const { return _rotX; }
+  float getYaw()   const { return _rotY; }
+
  private:
   float _rotX = 0;
   float _rotY = 0;

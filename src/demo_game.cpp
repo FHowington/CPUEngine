@@ -1,4 +1,5 @@
 #include "demo_game.h"
+#include <cstdio>
 #include <iostream>
 
 void DemoGame::init(Engine& engine) {
@@ -50,20 +51,87 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   newPosition.set(3, 0, -5);
   _scene.models.front()->_position = newPosition;
 
-  // FPS counter
-  if (_fps) {
-    ++_frame;
-    if (_frame == 100) {
-      _frame = 0;
-      auto stop = std::chrono::high_resolution_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - _fpsStart);
-      float fpsVal = (100.0F / duration.count()) * 1000000;
-      std::cout << fpsVal << " FPS" << std::endl;
-      _fpsStart = std::chrono::high_resolution_clock::now();
+  // FPS counter — always running so the overlay can show it
+  ++_frame;
+  if (_frame == 100) {
+    _frame = 0;
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - _fpsStart);
+    _lastFPS = (100.0F / duration.count()) * 1000000;
+    if (_fps) {
+      std::cout << _lastFPS << " FPS" << std::endl;
     }
+    _fpsStart = std::chrono::high_resolution_clock::now();
   }
 }
 
 const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
   return _scene.models;
+}
+
+// ─── Overlay ─────────────────────────────────────────────────────────────────
+// Panel sits in the top-left corner.
+// Layout: 8px outer margin, 4px inner padding, 8×8 font, 10px line pitch.
+
+void DemoGame::drawOverlay() {
+  // Panel geometry
+  constexpr int MARGIN  = 8;   // distance from window edge
+  constexpr int PAD     = 4;   // inner padding
+  constexpr int CHAR_W  = 8;
+  constexpr int LINE_H  = 10;  // 8px glyph + 2px gap
+  constexpr int COLS    = 18;  // max characters per line
+  constexpr int ROWS    = 16;  // number of text rows
+  constexpr int PW      = COLS * CHAR_W + PAD * 2;
+  constexpr int PH      = ROWS * LINE_H + PAD * 2;
+
+  const int px = MARGIN;
+  const int py = MARGIN;
+
+  // Semi-transparent dark background + border
+  Overlay::fillRect(px, py, PW, PH, 0x1A1A2E, 210);
+  Overlay::drawRect(px, py, PW, PH, 0x4A4A6A);
+
+  // Text origin (inside padding)
+  const int tx = px + PAD;
+  int ty = py + PAD;
+  char buf[32];
+
+  // ── Camera ──────────────────────────────────────────────────────────────
+  Overlay::drawText(tx, ty, "-- Camera --", 0xAAAAFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "X:   %7.2f", _camera.getX());
+  Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "Y:   %7.2f", _camera.getY());
+  Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "Z:   %7.2f", _camera.getZ());
+  Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "Pitch:%6.2f", _camera.getPitch());
+  Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "Yaw:  %6.2f", _camera.getYaw());
+  Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
+
+  ty += LINE_H;  // blank separator
+
+  // ── Toggles ─────────────────────────────────────────────────────────────
+  Overlay::drawText(tx, ty, "-- Toggles --", 0xAAAAFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "[F] FPS:  %5.1f", _lastFPS);
+  Overlay::drawText(tx, ty, buf, _fps ? 0x55FF55 : 0x888888); ty += LINE_H;
+
+  Overlay::drawText(tx, ty,
+      _wireframe ? "[P] Wire:  ON " : "[P] Wire: OFF",
+      _wireframe ? 0x55FF55 : 0x888888); ty += LINE_H;
+
+  ty += LINE_H;  // blank separator
+
+  // ── Controls ────────────────────────────────────────────────────────────
+  Overlay::drawText(tx, ty, "-- Controls --", 0xAAAAFF); ty += LINE_H;
+  Overlay::drawText(tx, ty, "WASD  Move",    0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "Arrs  Look",    0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "Q/E   Spin",    0xCCCCCC); ty += LINE_H;
+  Overlay::drawText(tx, ty, "IJKL  Light",   0xCCCCCC); ty += LINE_H;
 }
