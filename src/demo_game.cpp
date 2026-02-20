@@ -60,6 +60,7 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
 void DemoGame::update(float deltaTime, Engine& engine) {
   _camera.update(deltaTime);
   engine.setCameraTransform(_camera.getTransform());
+  engine.setWireframeMode(_wireframe);
 
   // Update directional light and sync to the rendering global
   _scene.lights.back()._direction = vertex<float>(_lightX, _lightY, -1.5);

@@ -14,6 +14,7 @@ std::array<unsigned, W * H> pixels;
 std::array<int, W * H> zbuff;
 matrix<4,4> cameraTransform;
 std::atomic<unsigned> remaining_models;
+bool renderWireframe = false;  // Global wireframe mode flag
 
 Engine::Engine() {
   remaining_models = 0;
@@ -35,6 +36,10 @@ Engine::~Engine() {
 
 void Engine::setCameraTransform(const matrix<4,4>& transform) {
   cameraTransform = transform;
+}
+
+void Engine::setWireframeMode(bool enabled) {
+  renderWireframe = enabled;
 }
 
 void Engine::run(Game& game) {
