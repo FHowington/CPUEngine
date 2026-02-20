@@ -9,8 +9,10 @@
 #include "tgaimage.h"
 #include <SDL.h>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <vector>
 

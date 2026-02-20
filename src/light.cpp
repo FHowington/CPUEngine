@@ -1,5 +1,7 @@
 #include "geometry.h"
 #include "light.h"
+#include <algorithm>
+#include <cmath>
 
 std::list<Light> Light::sceneLights;
 

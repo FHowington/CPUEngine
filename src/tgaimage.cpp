@@ -7,6 +7,7 @@
 #include <immintrin.h>
 #endif
 #include <iostream>
+#include <memory>
 
 TGAImage::TGAImage() : data(nullptr), width(0), height(0), bytespp(0) {
 }

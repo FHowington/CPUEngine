@@ -1,6 +1,8 @@
 #include "pool.h"
 #include "rasterize.h"
 #include "shader.h"
+#include <atomic>
+#include <limits>
 
 
 extern matrix<4,4> cameraTransform;

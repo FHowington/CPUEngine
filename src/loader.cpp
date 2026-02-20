@@ -6,6 +6,7 @@
 #include "loader.h"
 #include "shader.h"
 #include "tgaimage.h"
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>

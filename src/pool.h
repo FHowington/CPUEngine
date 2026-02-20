@@ -3,9 +3,12 @@
 
 #include "Window.h"
 #include "loader.h"
+#include <condition_variable>
 #include <list>
 #include <map>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 
 extern thread_local std::array<unsigned, Wt * H + H> t_pixels;

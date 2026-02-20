@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "geometry.h"
 #include <array>
+#include <cmath>
 #ifdef __AVX__
 #include <immintrin.h>
 #endif

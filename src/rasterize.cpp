@@ -1,5 +1,7 @@
 #include "geometry.h"
 #include "rasterize.h"
+#include <algorithm>
+#include <cmath>
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
