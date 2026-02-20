@@ -67,6 +67,7 @@ int main() {
   bool fps = false;
 
   unsigned frame = 0;
+  float x = 1;
   float y = -3;
   Light::sceneLights.emplace_back(LightType::Point, -5, 0, 7, 50, 1, 0, 0);
   Light::sceneLights.emplace_back(LightType::Point, 5, 0, 7, 50, 0, 0, 1);
@@ -190,9 +191,11 @@ int main() {
               break;
 
             case SDLK_l:
+              x += 0.2;
               break;
 
             case SDLK_j:
+              x -= 0.2;
               break;
           }
           break;
@@ -302,6 +305,10 @@ int main() {
     SDL_UpdateTexture(texture, nullptr, pixels.data(), 4*W);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
+
+    auto& dirLight = Light::sceneLights.back();
+    dirLight._direction = vertex<float>(x, y, -1.5);
+    dirLight._direction.normalize();
 
     modInstance->_position = newPostion;
     cameraTransform = newCameraTransform;
