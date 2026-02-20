@@ -27,6 +27,10 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
       case SDLK_k: _lightY -= 0.2f;          break;
       case SDLK_l: _lightX += 0.2f;          break;
       case SDLK_j: _lightX -= 0.2f;          break;
+      // Settings panel toggle
+      case SDLK_TAB:
+        _showSettings = !_showSettings;
+        break;
       // Camera speed controls (- and =)
       case SDLK_MINUS:
       case SDLK_UNDERSCORE:
@@ -40,10 +44,14 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
         if (_cameraSpeed > 4.0f) _cameraSpeed = 4.0f;
         _camera.setSensitivity(_cameraSpeed);
         break;
-      // Camera sensitivity controls (Ctrl+- and Ctrl+=)
-      case SDLK_LCTRL:
-      case SDLK_RCTRL:
-        // Modifier only, handle in other cases
+      // FOV controls ([ and ])
+      case SDLK_LEFTBRACKET:
+        _camera.setFOV(_camera.getFOV() - 5.0f);
+        if (_camera.getFOV() < 30.0f) _camera.setFOV(30.0f);
+        break;
+      case SDLK_RIGHTBRACKET:
+        _camera.setFOV(_camera.getFOV() + 5.0f);
+        if (_camera.getFOV() > 120.0f) _camera.setFOV(120.0f);
         break;
     }
   }
@@ -89,17 +97,16 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 }
 
 // ─── Overlay ─────────────────────────────────────────────────────────────────
-// Panel sits in the top-left corner.
+// Main stats panel on the left, optional settings panel below or alongside.
 // Layout: 8px outer margin, 4px inner padding, 8×8 font, 10px line pitch.
 
 void DemoGame::drawOverlay() {
-  // Panel geometry
   constexpr int MARGIN  = 8;   // distance from window edge
   constexpr int PAD     = 4;   // inner padding
   constexpr int CHAR_W  = 8;
   constexpr int LINE_H  = 10;  // 8px glyph + 2px gap
-  constexpr int COLS    = 28;  // max characters per line (increased from 18)
-  constexpr int ROWS    = 24;  // number of text rows (increased from 16)
+  constexpr int COLS    = 32;  // max characters per line (expanded)
+  constexpr int ROWS    = 30;  // number of text rows (expanded)
   constexpr int PW      = COLS * CHAR_W + PAD * 2;
   constexpr int PH      = ROWS * LINE_H + PAD * 2;
 
@@ -113,48 +120,61 @@ void DemoGame::drawOverlay() {
   // Text origin (inside padding)
   const int tx = px + PAD;
   int ty = py + PAD;
-  char buf[64];
+  char buf[96];
 
-  // ── Camera ──────────────────────────────────────────────────────────────
-  Overlay::drawText(tx, ty, "-- Camera --", 0xAAAAFF); ty += LINE_H;
+  // ── Title & Instructions ────────────────────────────────────────────────
+  snprintf(buf, sizeof(buf), "CPU Engine Demo [TAB: Settings]");
+  Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
+  ty += LINE_H / 2;  // small gap
 
-  snprintf(buf, sizeof(buf), "X:   %7.2f", _camera.getX());
+  // ── Camera Position ─────────────────────────────────────────────────────
+  Overlay::drawText(tx, ty, "-- Camera Position --", 0xAAAAFF); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "  X: %8.2f", _camera.getX());
   Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
 
-  snprintf(buf, sizeof(buf), "Y:   %7.2f", _camera.getY());
+  snprintf(buf, sizeof(buf), "  Y: %8.2f", _camera.getY());
   Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
 
-  snprintf(buf, sizeof(buf), "Z:   %7.2f", _camera.getZ());
+  snprintf(buf, sizeof(buf), "  Z: %8.2f", _camera.getZ());
   Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
 
-  snprintf(buf, sizeof(buf), "Pitch:%6.2f", _camera.getPitch());
+  snprintf(buf, sizeof(buf), "  Pitch: %6.2f rad", _camera.getPitch());
   Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
 
-  snprintf(buf, sizeof(buf), "Yaw:  %6.2f", _camera.getYaw());
+  snprintf(buf, sizeof(buf), "  Yaw:   %6.2f rad", _camera.getYaw());
   Overlay::drawText(tx, ty, buf, 0xFFFFFF); ty += LINE_H;
 
-  snprintf(buf, sizeof(buf), "Speed: %5.2fx", _cameraSpeed);
-  Overlay::drawText(tx, ty, buf, 0x88FFFF); ty += LINE_H;
+  ty += LINE_H;
 
-  ty += LINE_H;  // blank separator
+  // ── Render Settings ─────────────────────────────────────────────────────
+  Overlay::drawText(tx, ty, "-- Render --", 0xAAAAFF); ty += LINE_H;
 
-  // ── Toggles ─────────────────────────────────────────────────────────────
-  Overlay::drawText(tx, ty, "-- Toggles --", 0xAAAAFF); ty += LINE_H;
-
-  snprintf(buf, sizeof(buf), "[F] FPS:  %5.1f", _lastFPS);
+  snprintf(buf, sizeof(buf), "  FPS: %6.1f %s", _lastFPS, _fps ? "[F]ON" : "");
   Overlay::drawText(tx, ty, buf, _fps ? 0x55FF55 : 0x888888); ty += LINE_H;
 
-  Overlay::drawText(tx, ty,
-      _wireframe ? "[P] Wire:  ON " : "[P] Wire: OFF",
-      _wireframe ? 0x55FF55 : 0x888888); ty += LINE_H;
+  snprintf(buf, sizeof(buf), "  Wireframe: %s [P]", _wireframe ? "ON " : "OFF");
+  Overlay::drawText(tx, ty, buf, _wireframe ? 0x55FF55 : 0x888888); ty += LINE_H;
 
-  ty += LINE_H;  // blank separator
+  ty += LINE_H;
 
-  // ── Controls ────────────────────────────────────────────────────────────
-  Overlay::drawText(tx, ty, "-- Controls --", 0xAAAAFF); ty += LINE_H;
-  Overlay::drawText(tx, ty, "WASD  Move",       0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "Arrs  Look",       0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "Q/E   Spin",       0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "IJKL  Light",      0xCCCCCC); ty += LINE_H;
-  Overlay::drawText(tx, ty, "-/=   Speed",      0xFFAAAA); ty += LINE_H;
+  // ── Camera Controls (shown if settings are visible) ──────────────────────
+  if (_showSettings) {
+    Overlay::drawText(tx, ty, "-- Camera Settings [TAB] --", 0xFFDD00); ty += LINE_H;
+
+    snprintf(buf, sizeof(buf), "  Speed: %.2fx  [-/=]", _cameraSpeed);
+    Overlay::drawText(tx, ty, buf, 0x88FFFF); ty += LINE_H;
+
+    snprintf(buf, sizeof(buf), "  FOV: %.1f  [/\\]", _camera.getFOV());
+    Overlay::drawText(tx, ty, buf, 0x88FFFF); ty += LINE_H;
+
+    ty += LINE_H;
+    Overlay::drawText(tx, ty, "-- Control Help --", 0xAAAAFF); ty += LINE_H;
+    Overlay::drawText(tx, ty, "  WASD - Move  |  Arrows - Look", 0xCCCCCC); ty += LINE_H;
+    Overlay::drawText(tx, ty, "  Q/E - Spin model  |  IJKL - Light", 0xCCCCCC); ty += LINE_H;
+    Overlay::drawText(tx, ty, "  -/= - Speed  |  [/] - FOV", 0xCCCCCC); ty += LINE_H;
+    Overlay::drawText(tx, ty, "  P - Wireframe  |  F - FPS", 0xCCCCCC); ty += LINE_H;
+  } else {
+    Overlay::drawText(tx, ty, "Camera Settings: HIDDEN [TAB]", 0x666666); ty += LINE_H;
+  }
 }

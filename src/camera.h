@@ -18,6 +18,9 @@ class Camera {
   void setSensitivity(float s) { _sensitivity = s; }
   float getSensitivity() const { return _sensitivity; }
 
+  void setFOV(float fov) { _fov = fov; }
+  float getFOV() const { return _fov; }
+
  private:
   float _rotX = 0;
   float _rotY = 0;
@@ -36,5 +39,6 @@ class Camera {
   bool _mRight = false;
 
   float _sensitivity = 1.0f;
+  float _fov = 60.0f;  // Field of view in degrees
   matrix<4,4> _transform;
 };
