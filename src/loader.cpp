@@ -110,7 +110,7 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
   }
 }
 
-void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile) {
+void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile) {
   std::string line;
   std::ifstream infile(sceneFile);
   unsigned planeCount = 0;

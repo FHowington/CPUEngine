@@ -32,11 +32,6 @@ int main() {
   SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
   SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, W,H);
 
-  TGAImage headtext;
-  headtext.read_tga_file("../diablo3_pose_diffuse.tga");
-  headtext.flip_vertically();
-  Model head("../diablo3_pose.obj", &headtext);
-
   Model plane;
   std::vector<vertex<float>> planeVertices;
 
@@ -94,15 +89,13 @@ int main() {
   float cameraZ = 0;
 
   // This is where the per model will be done.
-  std::vector<std::shared_ptr<const ModelInstance>> modelsInScene;
+  std::vector<std::shared_ptr<ModelInstance>> modelsInScene;
   std::map<const std::string, Model> models;
   std::map<const std::string, TGAImage> textures;
 
-
   loadScene(modelsInScene, models, textures, "../src/scene1.scn");
 
-  std::shared_ptr<ModelInstance> modInstance = std::make_shared<ModelInstance>(head, shaderType::GouraudShader);
-  modelsInScene.push_back(modInstance);
+  std::shared_ptr<ModelInstance> modInstance = modelsInScene.front();
 
   std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(plane, shaderType::PlaneXZShader);
   planeInstance->_position = matrix<4,4>::identity();

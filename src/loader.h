@@ -62,4 +62,4 @@ struct ModelInstance {
   const float _globalIllumination;
 };
 
-void loadScene(std::vector<std::shared_ptr<const ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile);
+void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile);
