@@ -224,7 +224,7 @@ PLANE stonexy [-12 -5 -2], [-8 -5 -2], [-8 6 -2], [-12 6 -2]
 
 # === GATE ARCH DETAIL ===
 PLANE stoneyz [-3 -5 15], [-3 -5 14], [-3 4 14], [-3 4 15]
-PLANE stoneyz [3 -5 15], [3 -5 14], [3 4 14], [3 4 15]
+PLANE stoneyz [3 -5 14], [3 -5 15], [3 4 15], [3 4 14]
 PLANE stonexz [-3 4 15], [3 4 15], [3 4 14], [-3 4 14]
 
 # === LANTERNS ===
