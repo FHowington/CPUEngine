@@ -1120,4 +1120,8 @@ void plot(unsigned x, unsigned y, const unsigned color)
 {
     t_pixels[y*W+x] = color;
     t_zbuff[y*W+x] = std::numeric_limits<int>::max();
+    if (x < pMinX) pMinX = x;
+    if (x >= pMaxX) pMaxX = x + 1;
+    if (y < pMinY) pMinY = y;
+    if (y >= pMaxY) pMaxY = y + 1;
 }
