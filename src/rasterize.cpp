@@ -893,6 +893,7 @@ template <typename T, typename std::enable_if<std::is_base_of<BehindCamera, T>::
 void renderModel (const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform) {
   const bool ds = model->_doubleSided;
   for (auto t : model->_baseModel.getFaces()) {
+    backFaceFlip = false;
     vertex<float> camV0;
     vertex<float> camV1;
     vertex<float> camV2;

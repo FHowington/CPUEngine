@@ -103,6 +103,7 @@ template <typename T, typename std::enable_if<std::is_base_of<InFrontCamera, T>:
 void renderModel(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform) {
   const bool ds = model->_doubleSided;
   for (auto t : model->_baseModel.getFaces()) {
+    backFaceFlip = false;
     vertex<int> v0i;
     vertex<int> v1i;
     vertex<int> v2i;
