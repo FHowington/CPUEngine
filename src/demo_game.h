@@ -47,6 +47,8 @@ class DemoGame : public Game {
   bool _aa = true;
   float _aaThreshold = 24.0f;
   bool _showNormals = false;
+  bool _frustumCull = true;
+  bool _dynamicLights = true;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system

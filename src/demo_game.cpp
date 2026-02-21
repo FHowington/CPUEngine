@@ -30,6 +30,8 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("AA", &_aa));
   _renderMenu.addItem(MenuItem::slider("AA Thresh", &_aaThreshold, 4.0f, 64.0f, 4.0f));
   _renderMenu.addItem(MenuItem::toggle("Normals", &_showNormals));
+  _renderMenu.addItem(MenuItem::toggle("Frustum Cull", &_frustumCull));
+  _renderMenu.addItem(MenuItem::toggle("Dynamic Lights", &_dynamicLights));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -112,13 +114,17 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   _camera.update(deltaTime);
   engine.setCameraTransform(_camera.getTransform());
   engine.setWireframeMode(_wireframe);
+  engine.setFrustumCulling(_frustumCull);
   engine.setFOV(_camera.getFOV());
   engine.setClipDistances(_camera.getNearClip(), _camera.getFarClip());
 
   // Update directional light and sync to the rendering global
   _scene.lights.back()._direction = vertex<float>(_lightX, _lightY, -1.5);
   _scene.lights.back()._direction.normalize();
-  Light::sceneLights = _scene.lights;
+  if (_dynamicLights)
+    Light::sceneLights = _scene.lights;
+  else
+    Light::sceneLights.clear();
 
   // Spin the first model via e/q keys
   matrix<4,4> newPosition = matrix<4,4>::rotationY(_rot);

@@ -2,6 +2,7 @@
 #include "rasterize.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 extern float nearClipDist;
 #include "simd_compat.h"
@@ -1118,4 +1119,5 @@ void renderModel<WoodYZShader>(const std::shared_ptr<const ModelInstance>& model
 void plot(unsigned x, unsigned y, const unsigned color)
 {
     t_pixels[y*W+x] = color;
+    t_zbuff[y*W+x] = std::numeric_limits<int>::max();
 }

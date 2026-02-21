@@ -34,6 +34,7 @@ class Engine {
   void run(Game& game);
   void setCameraTransform(const matrix<4,4>& transform);
   void setWireframeMode(bool enabled);
+  void setFrustumCulling(bool enabled);
   void setFOV(float degrees);  // Sets projection focalLength from FOV angle
   void setClipDistances(float near, float far);
   const matrix<4,4>& getRenderCameraTransform() const { return _renderCameraTransform; }

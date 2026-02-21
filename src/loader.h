@@ -64,17 +64,21 @@ struct ModelInstance {
     float cx = 0, cy = 0, cz = 0;
     unsigned n = 0;
     for (const auto& f : faces) {
-      const auto& v = _baseModel.getVertex(f._v0);
-      cx += v._x; cy += v._y; cz += v._z; ++n;
+      for (unsigned idx : {f._v0, f._v1, f._v2}) {
+        const auto& v = _baseModel.getVertex(idx);
+        cx += v._x; cy += v._y; cz += v._z; ++n;
+      }
     }
     cx /= n; cy /= n; cz /= n;
     _bCenter = vertex<float>(cx, cy, cz);
     _bRadius = 0;
     for (const auto& f : faces) {
-      const auto& v = _baseModel.getVertex(f._v0);
-      float dx = v._x - cx, dy = v._y - cy, dz = v._z - cz;
-      float d2 = dx*dx + dy*dy + dz*dz;
-      if (d2 > _bRadius) _bRadius = d2;
+      for (unsigned idx : {f._v0, f._v1, f._v2}) {
+        const auto& v = _baseModel.getVertex(idx);
+        float dx = v._x - cx, dy = v._y - cy, dz = v._z - cz;
+        float d2 = dx*dx + dy*dy + dz*dz;
+        if (d2 > _bRadius) _bRadius = d2;
+      }
     }
     _bRadius = sqrtf(_bRadius);
   }

@@ -17,6 +17,7 @@ std::array<int, W * H> zbuff;
 matrix<4,4> cameraTransform;
 std::atomic<unsigned> remaining_models;
 bool renderWireframe = false;
+bool frustumCulling = true;
 float focalLength = 1.5f;  // Default projection focal length (updated by setFOV)
 
 Engine::Engine() {
@@ -43,6 +44,10 @@ void Engine::setCameraTransform(const matrix<4,4>& transform) {
 
 void Engine::setWireframeMode(bool enabled) {
   renderWireframe = enabled;
+}
+
+void Engine::setFrustumCulling(bool enabled) {
+  frustumCulling = enabled;
 }
 
 void Engine::setFOV(float degrees) {
@@ -73,23 +78,25 @@ void Engine::run(Game& game) {
     // Submit all models in the scene for rendering
     const auto& models = game.getModels();
     for (const auto& m : models) {
-      // Frustum cull: transform bounding sphere center to camera space
-      matrix<4,1> wc(m->_position * v2m(m->_bCenter));
-      matrix<4,1> cc(cameraTransform * wc);
-      float cz = cc._m[2];
-      float r = m->_bRadius;
+      if (frustumCulling) {
+        // Frustum cull: transform bounding sphere center to camera space
+        matrix<4,1> wc(m->_position * v2m(m->_bCenter));
+        matrix<4,1> cc(cameraTransform * wc);
+        float cz = cc._m[2];
+        float r = m->_bRadius;
 
-      // Behind camera or beyond far plane
-      if (cz + r > -nearClipDist || cz - r < -farClipDist) continue;
+        // Behind camera or beyond far plane
+        if (cz - r > -nearClipDist || cz + r < -farClipDist) continue;
 
-      // Side frustum planes: visible range at depth -cz is ±halfW*(-cz), ±halfH*(-cz)
-      float halfW = xFOV * focalLength / xZoom;
-      float halfH = yFOV * focalLength / yZoom;
-      float extent = -cz; // positive
-      float xLimit = halfW * extent + r;
-      float yLimit = halfH * extent + r;
-      if (cc._m[0] > xLimit || cc._m[0] < -xLimit) continue;
-      if (cc._m[1] > yLimit || cc._m[1] < -yLimit) continue;
+        // Side frustum planes: visible range at depth -cz is ±halfW*(-cz), ±halfH*(-cz)
+        float halfW = xFOV * focalLength / xZoom;
+        float halfH = yFOV * focalLength / yZoom;
+        float extent = -cz; // positive
+        float xLimit = halfW * extent + r;
+        float yLimit = halfH * extent + r;
+        if (cc._m[0] > xLimit || cc._m[0] < -xLimit) continue;
+        if (cc._m[1] > yLimit || cc._m[1] < -yLimit) continue;
+      }
 
       ++remaining_models;
       Pool::enqueue_model(m);
