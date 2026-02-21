@@ -33,4 +33,5 @@
 *.app
 
 engine
-build/
+build/.DS_Store
+.idea/
