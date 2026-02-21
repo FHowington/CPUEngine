@@ -148,6 +148,20 @@ void Overlay::drawRect(int x, int y, int w, int h, unsigned color) {
   }
 }
 
+void Overlay::drawLine(int x0, int y0, int x1, int y1, unsigned color) {
+  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx + dy;
+  for (;;) {
+    if (x0 >= 0 && x0 < W && y0 >= 0 && y0 < H)
+      pixels[(H - y0) * W + x0] = color;
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
 void Overlay::drawGlyph(int px, int py, unsigned char c, unsigned color, int scale) {
   if (c < 0x20 || c > 0x7E) return;
   const unsigned char* glyph = font[c - 0x20];

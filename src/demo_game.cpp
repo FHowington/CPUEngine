@@ -1,7 +1,10 @@
 #include "antialias.h"
 #include "demo_game.h"
 #include "depth_fog.h"
+#include "geometry.h"
 #include "light_fog.h"
+#include "loader.h"
+#include "shader.h"
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
@@ -26,6 +29,7 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
   _renderMenu.addItem(MenuItem::toggle("AA", &_aa));
   _renderMenu.addItem(MenuItem::slider("AA Thresh", &_aaThreshold, 4.0f, 64.0f, 4.0f));
+  _renderMenu.addItem(MenuItem::toggle("Normals", &_showNormals));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -152,6 +156,58 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 // 4x SDL window. Line pitch = 18px (16px glyph + 2px gap).
 
 void DemoGame::drawOverlay() {
+  // Draw normal arrows before post-processing so they're clearly visible
+  if (_showNormals) {
+    const auto identity = matrix<4,4>::identity();
+    for (const auto& m : _scene.models) {
+      // Skip loaded mesh models (only show normals for planes)
+      if (m->_shader == shaderType::FlatShader || m->_shader == shaderType::GouraudShader ||
+          m->_shader == shaderType::InterpFlatShader || m->_shader == shaderType::InterpGouraudShader)
+        continue;
+
+      const auto& faces = m->_baseModel.getFaces();
+      if (faces.empty()) continue;
+
+      // Compute centroid from all unique vertices of first face
+      const auto& v0 = m->_baseModel.getVertex(faces[0]._v0);
+      const auto& v1 = m->_baseModel.getVertex(faces[0]._v1);
+      const auto& v2 = m->_baseModel.getVertex(faces[0]._v2);
+      // Use last face's third vertex to get the opposite corner of the quad
+      const auto& v3 = m->_baseModel.getVertex(faces.back()._v2);
+      vertex<float> center((v0._x + v1._x + v2._x + v3._x) * 0.25f,
+                           (v0._y + v1._y + v2._y + v3._y) * 0.25f,
+                           (v0._z + v1._z + v2._z + v3._z) * 0.25f);
+
+      const auto& norm = m->_baseModel.getVertexNormal(faces[0]._v2);
+      vertex<float> tip(center._x + norm._x * 0.5f,
+                        center._y + norm._y * 0.5f,
+                        center._z + norm._z * 0.5f);
+
+      vertex<int> sBase, sTip;
+      vertex<float> rDummy;
+      if (!pipelineFast(_renderCameraTransform, identity, center, sBase, rDummy)) continue;
+      if (!pipelineFast(_renderCameraTransform, identity, tip, sTip, rDummy)) continue;
+
+      // Arrow shaft
+      Overlay::drawLine(sBase._x, sBase._y, sTip._x, sTip._y, 0x00FF00);
+
+      // Arrowhead — two short lines at ±45° from the tip
+      int dx = sTip._x - sBase._x, dy = sTip._y - sBase._y;
+      float len = sqrtf((float)(dx * dx + dy * dy));
+      if (len > 4) {
+        float ux = dx / len, uy = dy / len;
+        float headLen = len * 0.3f;
+        if (headLen > 8) headLen = 8;
+        int hx1 = (int)(sTip._x - headLen * (ux + uy));
+        int hy1 = (int)(sTip._y - headLen * (uy - ux));
+        int hx2 = (int)(sTip._x - headLen * (ux - uy));
+        int hy2 = (int)(sTip._y - headLen * (uy + ux));
+        Overlay::drawLine(sTip._x, sTip._y, hx1, hy1, 0x00FF00);
+        Overlay::drawLine(sTip._x, sTip._y, hx2, hy2, 0x00FF00);
+      }
+    }
+  }
+
   if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
   if (_aa) applyAA(_aaThreshold);
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
