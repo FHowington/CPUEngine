@@ -1,5 +1,4 @@
 #include "engine.h"
-#include "light_fog.h"
 #include "pool.h"
 #include "Window.h"
 #include <array>
@@ -79,9 +78,6 @@ void Engine::run(Game& game) {
 
     // TODO(forbes): Change this to something..better. A conditional perhaps.
     while (remaining_models != 0U) { ; }
-
-    // Snapshot camera transform for post-process effects before update() changes it
-    captureFogCamera();
 
     // Process SDL events
     SDL_Event ev;
