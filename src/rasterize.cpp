@@ -1097,6 +1097,15 @@ void renderModel<PlaneXYShader>(const std::shared_ptr<const ModelInstance>& mode
 template
 void renderModel<PlaneYZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
 
+template
+void renderModel<StoneXZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
+template
+void renderModel<StoneXYShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
+template
+void renderModel<StoneYZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
 void plot(unsigned x, unsigned y, const unsigned color)
 {
     t_pixels[y*W+x] = color;

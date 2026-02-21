@@ -324,6 +324,12 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         st = shaderType::PlaneXZShader;
       } else if (shader == "planeyz") {
         st = shaderType::PlaneYZShader;
+      } else if (shader == "stonexy") {
+        st = shaderType::StoneXYShader;
+      } else if (shader == "stonexz") {
+        st = shaderType::StoneXZShader;
+      } else if (shader == "stoneyz") {
+        st = shaderType::StoneYZShader;
       } else {
         std::cout << "Unknown shader type " << shader << std::endl;
       }

@@ -101,6 +101,21 @@ void Pool::job_wait() {
         renderModel<PlaneYZShader>(job, cameraTransform);
         break;
       }
+
+      case shaderType::StoneXZShader: {
+        renderModel<StoneXZShader>(job, cameraTransform);
+        break;
+      }
+
+      case shaderType::StoneXYShader: {
+        renderModel<StoneXYShader>(job, cameraTransform);
+        break;
+      }
+
+      case shaderType::StoneYZShader: {
+        renderModel<StoneYZShader>(job, cameraTransform);
+        break;
+      }
     }
 
     Pool::copy_to_main_buffer();
