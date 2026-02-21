@@ -44,6 +44,8 @@ class DemoGame : public Game {
   bool _depthFog = true;
   float _depthFogNear = 0.15f;
   float _depthFogFar = 0.85f;
+  bool _aa = true;
+  float _aaThreshold = 24.0f;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system

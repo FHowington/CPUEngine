@@ -1,3 +1,4 @@
+#include "antialias.h"
 #include "demo_game.h"
 #include "depth_fog.h"
 #include "light_fog.h"
@@ -23,6 +24,8 @@ void DemoGame::init(Engine& engine) {
 void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Wireframe", &_wireframe));
   _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
+  _renderMenu.addItem(MenuItem::toggle("AA", &_aa));
+  _renderMenu.addItem(MenuItem::slider("AA Thresh", &_aaThreshold, 4.0f, 64.0f, 4.0f));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -150,6 +153,7 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 
 void DemoGame::drawOverlay() {
   if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
+  if (_aa) applyAA(_aaThreshold);
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
 
   constexpr int S       = 2;           // font scale factor
