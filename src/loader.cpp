@@ -256,7 +256,7 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         break;
       }
       std::string extra;
-      bool doubleSided = !(iss >> extra && extra == "1SIDED");
+      bool doubleSided = !(iss >> extra && extra == "1sided");
       // Compute normal for the plane
       float Ax = x0 - x1;
       float Ay = y0 - y1;
