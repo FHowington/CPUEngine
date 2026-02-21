@@ -1,7 +1,5 @@
 #include "engine.h"
-#include "light.h"
 #include "pool.h"
-#include "shadow.h"
 #include "Window.h"
 #include <array>
 #include <atomic>
@@ -52,10 +50,6 @@ void Engine::setFrustumCulling(bool enabled) {
   frustumCulling = enabled;
 }
 
-void Engine::setShadows(bool enabled) {
-  shadowsEnabled = enabled;
-}
-
 void Engine::setFOV(float degrees) {
   // Relationship: tan(hfov/2) = (1-xFOV) * focalLength / xZoom
   // Solving: focalLength = tan(hfov/2) * xZoom / (1-xFOV)
@@ -83,18 +77,6 @@ void Engine::run(Game& game) {
 
     // Submit all models in the scene for rendering
     const auto& models = game.getModels();
-
-    // Shadow map pass: render depth from directional light's perspective
-    if (shadowsEnabled) {
-      for (const Light& l : Light::sceneLights) {
-        if (l._type == LightType::Directional) {
-          shadowMap.buildFromDirection(l._direction, vertex<float>(0, 0, -5));
-          shadowMap.render(models);
-          break;  // Only one directional light shadow for now
-        }
-      }
-    }
-
     for (const auto& m : models) {
       if (frustumCulling) {
         // Frustum cull: transform bounding sphere center to camera space

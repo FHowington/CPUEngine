@@ -49,8 +49,6 @@ class DemoGame : public Game {
   bool _showNormals = false;
   bool _frustumCull = true;
   bool _dynamicLights = true;
-  bool _shadows = false;
-  float _shadowBias = 0.05f;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system
