@@ -13,7 +13,7 @@ class PlaneXZShader : public UntexturedShader, public BehindCamera {
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     unsigned res = ((((int)floor(x)) & 0x1) ^ (((int)floor(z)) & 0x1)) != 0U ? 8405024 : 8421504;
-    illumination il = getLight(litNormal(_norm), _luminance, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -48,8 +48,8 @@ class PlaneXZShader : public UntexturedShader, public BehindCamera {
     __m256 gV;
     __m256 bV;
 
-    vertex<float> _ln = litNormal(_norm); getLight(_mm256_set1_ps(_ln._x), _mm256_set1_ps(_ln._y),
-             _mm256_set1_ps(_ln._z), _luminance,
+    getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
+             _mm256_set1_ps(_norm._z), _luminance,
              xV, yV, zV, rV, gV, bV);
 
 
@@ -81,7 +81,7 @@ class PlaneXYShader : public UntexturedShader, public BehindCamera {
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     unsigned res = ((((int)floor(x)) & 0x1) ^ (((int)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
-    illumination il = getLight(litNormal(_norm), _luminance, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -116,8 +116,8 @@ class PlaneXYShader : public UntexturedShader, public BehindCamera {
     __m256 gV;
     __m256 bV;
 
-    vertex<float> _ln = litNormal(_norm); getLight(_mm256_set1_ps(_ln._x), _mm256_set1_ps(_ln._y),
-             _mm256_set1_ps(_ln._z), _luminance,
+    getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
+             _mm256_set1_ps(_norm._z), _luminance,
              xV, yV, zV, rV, gV, bV);
 
 
@@ -149,7 +149,7 @@ class PlaneYZShader : public UntexturedShader, public BehindCamera {
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     unsigned res = ((((int)floor(z)) & 0x1) ^ (((int)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
-    illumination il = getLight(litNormal(_norm), _luminance, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -184,8 +184,8 @@ class PlaneYZShader : public UntexturedShader, public BehindCamera {
     __m256 gV;
     __m256 bV;
 
-    vertex<float> _ln = litNormal(_norm); getLight(_mm256_set1_ps(_ln._x), _mm256_set1_ps(_ln._y),
-             _mm256_set1_ps(_ln._z), _luminance,
+    getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
+             _mm256_set1_ps(_norm._z), _luminance,
              xV, yV, zV, rV, gV, bV);
 
 

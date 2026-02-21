@@ -212,11 +212,11 @@ class StoneXZShader : public UntexturedShader, public BehindCamera {
               const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return stoneColor(x, z, litNormal(_norm), vertex<float>(1,0,0), vertex<float>(0,0,1), _luminance, x, y, z);
+    return stoneColor(x, z, _norm, vertex<float>(1,0,0), vertex<float>(0,0,1), _luminance, x, y, z);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = stoneColorV(xV, zV, litNormal(_norm), vertex<float>(1,0,0), vertex<float>(0,0,1), _luminance, xV, yV, zV);
+    colorsData = stoneColorV(xV, zV, _norm, vertex<float>(1,0,0), vertex<float>(0,0,1), _luminance, xV, yV, zV);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -235,11 +235,11 @@ class StoneXYShader : public UntexturedShader, public BehindCamera {
               const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return stoneColor(x, y, litNormal(_norm), vertex<float>(1,0,0), vertex<float>(0,1,0), _luminance, x, y, z);
+    return stoneColor(x, y, _norm, vertex<float>(1,0,0), vertex<float>(0,1,0), _luminance, x, y, z);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = stoneColorV(xV, yV, litNormal(_norm), vertex<float>(1,0,0), vertex<float>(0,1,0), _luminance, xV, yV, zV);
+    colorsData = stoneColorV(xV, yV, _norm, vertex<float>(1,0,0), vertex<float>(0,1,0), _luminance, xV, yV, zV);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -258,11 +258,11 @@ class StoneYZShader : public UntexturedShader, public BehindCamera {
               const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return stoneColor(z, y, litNormal(_norm), vertex<float>(0,0,1), vertex<float>(0,1,0), _luminance, x, y, z);
+    return stoneColor(z, y, _norm, vertex<float>(0,0,1), vertex<float>(0,1,0), _luminance, x, y, z);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = stoneColorV(zV, yV, litNormal(_norm), vertex<float>(0,0,1), vertex<float>(0,1,0), _luminance, xV, yV, zV);
+    colorsData = stoneColorV(zV, yV, _norm, vertex<float>(0,0,1), vertex<float>(0,1,0), _luminance, xV, yV, zV);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}

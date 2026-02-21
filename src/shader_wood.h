@@ -151,11 +151,11 @@ class WoodXZShader : public UntexturedShader, public BehindCamera {
               const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return woodColor(x, z, litNormal(_norm), _luminance, x, y, z);
+    return woodColor(x, z, _norm, _luminance, x, y, z);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = woodColorV(xV, zV, litNormal(_norm), _luminance, xV, yV, zV);
+    colorsData = woodColorV(xV, zV, _norm, _luminance, xV, yV, zV);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -174,11 +174,11 @@ class WoodXYShader : public UntexturedShader, public BehindCamera {
               const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return woodColor(x, y, litNormal(_norm), _luminance, x, y, z);
+    return woodColor(x, y, _norm, _luminance, x, y, z);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = woodColorV(xV, yV, litNormal(_norm), _luminance, xV, yV, zV);
+    colorsData = woodColorV(xV, yV, _norm, _luminance, xV, yV, zV);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -197,11 +197,11 @@ class WoodYZShader : public UntexturedShader, public BehindCamera {
               const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return woodColor(z, y, litNormal(_norm), _luminance, x, y, z);
+    return woodColor(z, y, _norm, _luminance, x, y, z);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = woodColorV(zV, yV, litNormal(_norm), _luminance, xV, yV, zV);
+    colorsData = woodColorV(zV, yV, _norm, _luminance, xV, yV, zV);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}

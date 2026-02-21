@@ -44,12 +44,6 @@ class Shader { // NOLINT
 // (no perspective correction applied to interpolated coordinates)
 class BehindCamera {};
 
-// Returns the lighting normal, negated if the face is being rendered back-face (double-sided).
-inline vertex<float> litNormal(const vertex<float>& n) {
-  extern thread_local bool backFaceFlip;
-  return backFaceFlip ? vertex<float>(-n._x, -n._y, -n._z) : n;
-}
-
 // Shaders for which part of the polygon may be behind the camera and therefore require clipping inherit from this.
 // These textures will also use perspective corrected interpolation for real world and texture coordinates
 class InFrontCamera {};

@@ -3,10 +3,6 @@
 #include <algorithm>
 #include <cmath>
 
-// Set by renderModel before drawTri when a back-face is being rendered double-sided.
-// Shaders can read this to flip their lighting normal.
-thread_local bool backFaceFlip = false;
-
 extern float nearClipDist;
 #include "simd_compat.h"
 
@@ -893,7 +889,6 @@ template <typename T, typename std::enable_if<std::is_base_of<BehindCamera, T>::
 void renderModel (const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform) {
   const bool ds = model->_doubleSided;
   for (auto t : model->_baseModel.getFaces()) {
-    backFaceFlip = false;
     vertex<float> camV0;
     vertex<float> camV1;
     vertex<float> camV2;
@@ -920,7 +915,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
           vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
           const vertex<float> v = cross(v0i, v1i, v2i);
-          bool flip = v._z >= 0; backFaceFlip = flip;
+          bool flip = v._z >= 0;
 
           if (v._z < 0 || ds) {
             if (flip) { std::swap(v1i, v2i); std::swap(v1, v2); std::swap(t1, t2); }
@@ -934,7 +929,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
           vertex<int> v1i = pipelineSlowPartTwo(camV1);
           vertex<int> v2i = pipelineSlowPartTwo(camV2);
           const vertex<float> v = cross(v0i, v1i, v2i);
-          bool flip = v._z >= 0; backFaceFlip = flip;
+          bool flip = v._z >= 0;
 
           if (v._z < 0 || ds) {
             if (flip) { std::swap(v0i, v2i); std::swap(v0, v2); std::swap(t1, t2); }
@@ -948,7 +943,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
           vertex<int> v1i = pipelineSlowPartTwo(camV1);
           vertex<int> v2i = pipelineSlowPartTwo(camV2);
           const vertex<float> v = cross(v0i, v1i, v2i);
-          bool flip = v._z >= 0; backFaceFlip = flip;
+          bool flip = v._z >= 0;
 
           if (v._z < 0 || ds) {
             if (flip) { std::swap(v0i, v1i); std::swap(v0, v1); std::swap(t1, t2); }
@@ -967,7 +962,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
         vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
         const vertex<float> v = cross(v0i_1, v1i, v2i);
-        bool flip = v._z >= 0; backFaceFlip = flip;
+        bool flip = v._z >= 0;
 
         if (v._z < 0 || ds) {
           float t2;
@@ -994,7 +989,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
         vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
         const vertex<float> v = cross(v0i, v1i_1, v2i);
-        bool flip = v._z >= 0; backFaceFlip = flip;
+        bool flip = v._z >= 0;
 
         if (v._z < 0 || ds) {
           float t2;
@@ -1021,7 +1016,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
         vertex<int> v0i = pipelineSlowPartTwo(camV0);
 
         const vertex<float> v = cross(v0i, v1i, v2i_1);
-        bool flip = v._z >= 0; backFaceFlip = flip;
+        bool flip = v._z >= 0;
 
         if (v._z < 0 || ds) {
           float t2;
@@ -1046,7 +1041,7 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
         vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
         const vertex<float> v = cross(v0i, v1i, v2i);
-        bool flip = v._z >= 0; backFaceFlip = flip;
+        bool flip = v._z >= 0;
 
         if (v._z < 0 || ds) {
           if (flip) { std::swap(v1i, v2i); std::swap(v1, v2); }
