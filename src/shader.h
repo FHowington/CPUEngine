@@ -21,7 +21,7 @@
 // so instead, we will guarantee that stepX and stepY are called for respective
 // steps, and depend on implementation to update their values appropriately
 
-enum class shaderType { FlatShader, GouraudShader, InterpFlatShader, InterpGouraudShader, PlaneXZShader, PlaneXYShader, PlaneYZShader, StoneXZShader, StoneXYShader, StoneYZShader };
+enum class shaderType { FlatShader, GouraudShader, InterpFlatShader, InterpGouraudShader, PlaneXZShader, PlaneXYShader, PlaneYZShader, StoneXZShader, StoneXYShader, StoneYZShader, WoodXZShader, WoodXYShader, WoodYZShader };
 
 class Shader { // NOLINT
  public:
@@ -58,3 +58,4 @@ class UntexturedShader : public Shader {
 #include "shader_gouraud.h"
 #include "shader_plane.h"
 #include "shader_stone.h"
+#include "shader_wood.h"

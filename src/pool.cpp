@@ -116,6 +116,21 @@ void Pool::job_wait() {
         renderModel<StoneYZShader>(job, cameraTransform);
         break;
       }
+
+      case shaderType::WoodXZShader: {
+        renderModel<WoodXZShader>(job, cameraTransform);
+        break;
+      }
+
+      case shaderType::WoodXYShader: {
+        renderModel<WoodXYShader>(job, cameraTransform);
+        break;
+      }
+
+      case shaderType::WoodYZShader: {
+        renderModel<WoodYZShader>(job, cameraTransform);
+        break;
+      }
     }
 
     Pool::copy_to_main_buffer();

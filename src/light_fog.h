@@ -94,9 +94,9 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
 
         if (_mm256_testz_ps(activeMask, activeMask)) continue;
 
-        // fog = (1 - dSq/rSq)^2
+        // fog = (1 - dSq/rSq)^3 — cubic for softer translucent falloff
         __m256 t = _mm256_sub_ps(oneV, _mm256_div_ps(dSqV, rSqV));
-        __m256 fog = _mm256_mul_ps(t, t);
+        __m256 fog = _mm256_mul_ps(_mm256_mul_ps(t, t), t);
         fog = _mm256_and_ps(fog, activeMask);
 
         // Load existing pixels
@@ -138,7 +138,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
         if (dSq >= rSq) continue;
 
         float t = 1.0f - dSq / rSq;
-        float fog = t * t;
+        float fog = t * t * t;
 
         int idx = rowOff + x;
         int pz = zbuff[zRowOff + x];

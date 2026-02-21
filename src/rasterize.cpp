@@ -1106,6 +1106,15 @@ void renderModel<StoneXYShader>(const std::shared_ptr<const ModelInstance>& mode
 template
 void renderModel<StoneYZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
 
+template
+void renderModel<WoodXZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
+template
+void renderModel<WoodXYShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
+template
+void renderModel<WoodYZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
 void plot(unsigned x, unsigned y, const unsigned color)
 {
     t_pixels[y*W+x] = color;
