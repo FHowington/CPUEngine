@@ -255,6 +255,8 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         std::cout << "Parsing failed for line " << line << std::endl;
         break;
       }
+      std::string extra;
+      bool doubleSided = !(iss >> extra && extra == "1SIDED");
       // Compute normal for the plane
       float Ax = x0 - x1;
       float Ay = y0 - y1;
@@ -340,7 +342,7 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         std::cout << "Unknown shader type " << shader << std::endl;
       }
 
-      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st, 0.2, true);
+      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st, 0.2, doubleSided);
 
       planeInstance->_position = matrix<4,4>::identity();
       modelInstances.push_back(planeInstance);
