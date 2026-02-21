@@ -3,6 +3,7 @@
 #include "light.h"
 #include "Window.h"
 #include "geometry.h"
+#include "simd_compat.h"
 #include <array>
 #include <cmath>
 
@@ -13,9 +14,6 @@ extern float focalLength;
 
 bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, const vertex<float>& v, vertex<int>& retResult, vertex<float>& realResult);
 
-// Render a volumetric glow/fog around each point light in screen space.
-// Projects lights to screen using the same pipeline as the renderer.
-// intensity: overall glow strength (0.0-1.0), radius: screen-space glow radius in pixels
 inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.35f, float radius = 200.0f) {
   static const matrix<4,4> identity = matrix<4,4>::identity();
 
@@ -26,16 +24,13 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
     vertex<int> screenPos;
     vertex<float> worldPos;
 
-    // Use the exact same projection pipeline as the renderer
     if (!pipelineFast(camTransform, identity, lp, screenPos, worldPos))
       continue;
 
     float sx = (float)screenPos._x;
-    float sy = (float)(H - screenPos._y);  // Renderer flips Y when writing pixels
+    float sy = (float)(H - screenPos._y);
     int lightZ = screenPos._z;
 
-    // Scale radius by depth — closer lights have bigger, more diffuse glow
-    // screenPos._z is depth*zCam, larger = closer. Use inverse relationship.
     float camZ = (float)lightZ / (float)depth;
     float distScale = 5.0f / fmaxf(1.0f, -camZ);
     float r = radius * distScale;
@@ -47,10 +42,89 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
     int y0 = fast_max(0, (int)(sy - r));
     int y1 = fast_min((int)H - 1, (int)(sy + r));
 
-    float lR = light._R * light._strength * intensity;
-    float lG = light._G * light._strength * intensity;
-    float lB = light._B * light._strength * intensity;
+    float lR = light._R * light._strength * intensity * 255.0f;
+    float lG = light._G * light._strength * intensity * 255.0f;
+    float lB = light._B * light._strength * intensity * 255.0f;
 
+#ifdef __AVX2__
+    const __m256 sxV = _mm256_set1_ps(sx);
+    const __m256 rSqV = _mm256_set1_ps(rSq);
+    const __m256i lightZV = _mm256_set1_epi32(lightZ + 2000);
+    const __m256 lRV = _mm256_set1_ps(lR);
+    const __m256 lGV = _mm256_set1_ps(lG);
+    const __m256 lBV = _mm256_set1_ps(lB);
+    const __m256 oneV = _mm256_set1_ps(1.0f);
+    const __m256i maxChar = _mm256_set1_epi32(255);
+
+    // Align x0 to 8-pixel boundary for cleaner SIMD
+    int x0a = x0 & ~7;
+
+    for (int y = y0; y <= y1; ++y) {
+      float dy = y - sy;
+      __m256 dySqV = _mm256_set1_ps(dy * dy);
+      int rowOff = y * W;
+
+      for (int x = x0a; x <= x1; x += 8) {
+        __m256 dxV = _mm256_sub_ps(
+          _mm256_add_ps(_mm256_set1_ps((float)x), _mm256_set_ps(7,6,5,4,3,2,1,0)),
+          sxV);
+        __m256 dSqV = _mm256_add_ps(_mm256_mul_ps(dxV, dxV), dySqV);
+
+        // Mask: dSq < rSq
+        __m256 inRadius = _mm256_cmp_ps(dSqV, rSqV, _CMP_LT_OQ);
+
+        // Mask: x in [x0, x1]
+        __m256i xIdxV = _mm256_add_epi32(_mm256_set1_epi32(x), _mm256_set_epi32(7,6,5,4,3,2,1,0));
+        __m256 xInRange = _mm256_and_ps(
+          _mm256_cmp_ps(_mm256_cvtepi32_ps(xIdxV), _mm256_set1_ps((float)x0), _CMP_GE_OQ),
+          _mm256_cmp_ps(_mm256_cvtepi32_ps(xIdxV), _mm256_set1_ps((float)x1), _CMP_LE_OQ));
+        inRadius = _mm256_and_ps(inRadius, xInRange);
+
+        if (_mm256_testz_ps(inRadius, inRadius)) continue;
+
+        // Depth occlusion: zbuff[idx] <= lightZ + 2000
+        int base = rowOff + x;
+        __m256i pzV = _mm256_loadu_si256((__m256i*)(zbuff.data() + base));
+        __m256i depthOk = _mm256_or_si256(
+          _mm256_cmpgt_epi32(lightZV, pzV),
+          _mm256_cmpeq_epi32(lightZV, pzV));
+        __m256 activeMask = _mm256_and_ps(inRadius, _mm256_castsi256_ps(depthOk));
+
+        if (_mm256_testz_ps(activeMask, activeMask)) continue;
+
+        // fog = (1 - dSq/rSq)^2
+        __m256 t = _mm256_sub_ps(oneV, _mm256_div_ps(dSqV, rSqV));
+        __m256 fog = _mm256_mul_ps(t, t);
+        fog = _mm256_and_ps(fog, activeMask);
+
+        // Load existing pixels
+        __m256i pxV = _mm256_loadu_si256((__m256i*)(pixels.data() + base));
+
+        // Extract R, G, B
+        __m256 prF = _mm256_cvtepi32_ps(_mm256_srli_epi32(_mm256_and_si256(pxV, _mm256_set1_epi32(0xFF0000)), 16));
+        __m256 pgF = _mm256_cvtepi32_ps(_mm256_srli_epi32(_mm256_and_si256(pxV, _mm256_set1_epi32(0x00FF00)), 8));
+        __m256 pbF = _mm256_cvtepi32_ps(_mm256_and_si256(pxV, _mm256_set1_epi32(0x0000FF)));
+
+        // Add fog contribution
+        prF = _mm256_add_ps(prF, _mm256_mul_ps(fog, lRV));
+        pgF = _mm256_add_ps(pgF, _mm256_mul_ps(fog, lGV));
+        pbF = _mm256_add_ps(pbF, _mm256_mul_ps(fog, lBV));
+
+        // Clamp to 255
+        __m256i prI = _mm256_min_epi32(_mm256_cvttps_epi32(prF), maxChar);
+        __m256i pgI = _mm256_min_epi32(_mm256_cvttps_epi32(pgF), maxChar);
+        __m256i pbI = _mm256_min_epi32(_mm256_cvttps_epi32(pbF), maxChar);
+
+        // Pack back
+        __m256i result = _mm256_or_si256(_mm256_slli_epi32(prI, 16),
+                           _mm256_or_si256(_mm256_slli_epi32(pgI, 8), pbI));
+
+        // Blend: only write active pixels
+        result = _mm256_blendv_epi8(pxV, result, _mm256_castps_si256(activeMask));
+        _mm256_storeu_si256((__m256i*)(pixels.data() + base), result);
+      }
+    }
+#else
     for (int y = y0; y <= y1; ++y) {
       float dy = y - sy;
       float dySq = dy * dy;
@@ -63,7 +137,6 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
         float t = 1.0f - dSq / rSq;
         float fog = t * t;
 
-        // Block glow if geometry is closer than the light
         int idx = rowOff + x;
         int pz = zbuff[idx];
         if (pz > lightZ + 2000) continue;
@@ -73,12 +146,13 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
         unsigned pg = (px >> 8) & 0xFF;
         unsigned pb = px & 0xFF;
 
-        pr = fast_min(255, (int)(pr + fog * lR * 255));
-        pg = fast_min(255, (int)(pg + fog * lG * 255));
-        pb = fast_min(255, (int)(pb + fog * lB * 255));
+        pr = fast_min(255, (int)(pr + fog * lR));
+        pg = fast_min(255, (int)(pg + fog * lG));
+        pb = fast_min(255, (int)(pb + fog * lB));
 
         pixels[idx] = (pr << 16) | (pg << 8) | pb;
       }
     }
+#endif
   }
 }
