@@ -14,9 +14,37 @@ void DemoGame::init(Engine& engine) {
 
   _camera.setSensitivity(_cameraSpeed);
   _fpsStart = std::chrono::high_resolution_clock::now();
+
+  buildMenus();
+}
+
+void DemoGame::buildMenus() {
+  _renderMenu.addItem(MenuItem::toggle("Wireframe", &_wireframe));
+  _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
+  _renderMenu.addItem(MenuItem::toggle("Light Fog", &_lightFog));
+  _renderMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
+
+  _mainMenu.addItem(MenuItem::sub("Render", &_renderMenu));
+
+  _menuStack.setRoot(&_mainMenu);
 }
 
 void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
+  if (event.type == SDL_KEYDOWN) {
+    // Menu toggle
+    if (event.key.keysym.sym == SDLK_ESCAPE) {
+      if (_menuStack.isOpen()) _menuStack.close();
+      else _menuStack.open();
+      return;
+    }
+    // If menu is open, it consumes arrow/enter/backspace keys
+    if (_menuStack.handleKey(event.key.keysym.sym)) {
+      // Sync camera speed when slider changes
+      _camera.setSensitivity(_cameraSpeed);
+      return;
+    }
+  }
+
   _camera.handleEvent(event);
 
   if (event.type == SDL_KEYDOWN) {
@@ -183,4 +211,7 @@ void DemoGame::drawOverlay() {
   } else {
     Overlay::drawText(tx, ty, "[TAB] Show controls", 0x666666, S); ty += LINE_H;
   }
+
+  // Menu overlay (Escape to toggle)
+  _menuStack.draw(W - 400, MARGIN);
 }

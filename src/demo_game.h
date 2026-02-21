@@ -7,6 +7,7 @@
 
 #include "camera.h"
 #include "engine.h"
+#include "menu.h"
 #include "overlay.h"
 #include "scene.h"
 #include <chrono>
@@ -38,4 +39,11 @@ class DemoGame : public Game {
   bool _showSettings = true;  // Show/hide settings panel (Tab key)
   bool _lightFog = true;      // Volumetric light glow (G key)
   matrix<4,4> _renderCameraTransform;  // Camera transform used for the rendered frame
+
+  // Menu system
+  Menu _mainMenu{"Settings"};
+  Menu _renderMenu{"Render"};
+  Menu _controlsMenu{"Controls"};
+  MenuStack _menuStack;
+  void buildMenus();
 };
