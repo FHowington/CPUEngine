@@ -2,12 +2,15 @@
 
 #TYPE Texture Name      Texture file
 TEXTURE diabloTexture ../diablo3_pose_diffuse.tga
+TEXTURE chromeTexture ../chrome.tga
 
 #TYPE Model Name      Model file                  Texture
 MODEL diabloModel ../diablo3_pose.obj diabloTexture
+MODEL sphereModel ../sphere.obj chromeTexture
 
 #TYPE    Model       Shader   X,Y,Z coords      X,Y,Z scale     X,Y,Z rotation
 INSTANCE diabloModel Gourand [0, 0, -5] [0.8, 0.8, 0.8] [0, 0, 0]
+INSTANCE sphereModel Gourand [5, 0, -5] [2, 2, 2] [0, 0, 0]
 
 # === OUTER WALLS ===
 # Floor
