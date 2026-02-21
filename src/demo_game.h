@@ -39,7 +39,6 @@ class DemoGame : public Game {
   float _fov = 41.0f;
   float _nearClip = 2.0f;
   float _farClip = 100.0f;
-  bool _showSettings = true;
   bool _lightFog = true;
   bool _depthFog = true;
   float _depthFogNear = 0.15f;
