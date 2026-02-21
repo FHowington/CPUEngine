@@ -191,7 +191,7 @@ void DemoGame::drawOverlay() {
       if (!pipelineFast(_renderCameraTransform, identity, tip, sTip, rDummy)) continue;
 
       // Arrow shaft
-      Overlay::drawLine(sBase._x, sBase._y, sTip._x, sTip._y, 0x00FF00);
+      Overlay::drawLine(sBase._x, sBase._y, sTip._x, sTip._y, 0x00FF00, 3);
 
       // Arrowhead — two short lines at ±45° from the tip
       int dx = sTip._x - sBase._x, dy = sTip._y - sBase._y;
@@ -204,8 +204,8 @@ void DemoGame::drawOverlay() {
         int hy1 = (int)(sTip._y - headLen * (uy - ux));
         int hx2 = (int)(sTip._x - headLen * (ux - uy));
         int hy2 = (int)(sTip._y - headLen * (uy + ux));
-        Overlay::drawLine(sTip._x, sTip._y, hx1, hy1, 0x00FF00);
-        Overlay::drawLine(sTip._x, sTip._y, hx2, hy2, 0x00FF00);
+        Overlay::drawLine(sTip._x, sTip._y, hx1, hy1, 0x00FF00, 3);
+        Overlay::drawLine(sTip._x, sTip._y, hx2, hy2, 0x00FF00, 3);
       }
     }
   }

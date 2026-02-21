@@ -24,7 +24,7 @@ class Overlay {
   static void drawRect(int x, int y, int w, int h, unsigned color);
 
   // Draw a line between two screen-space points (Bresenham).
-  static void drawLine(int x0, int y0, int x1, int y1, unsigned color);
+  static void drawLine(int x0, int y0, int x1, int y1, unsigned color, int thickness = 1);
 
   // Draw a string of ASCII text. Each glyph is 8*scale x 8*scale. No newline handling.
   static void drawText(int x, int y, const std::string& text, unsigned color = 0xFFFFFF, int scale = 1);

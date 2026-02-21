@@ -148,13 +148,18 @@ void Overlay::drawRect(int x, int y, int w, int h, unsigned color) {
   }
 }
 
-void Overlay::drawLine(int x0, int y0, int x1, int y1, unsigned color) {
+void Overlay::drawLine(int x0, int y0, int x1, int y1, unsigned color, int thickness) {
   int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
   int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
   int err = dx + dy;
+  int r = thickness / 2;
   for (;;) {
-    if (x0 >= 0 && x0 < W && y0 >= 0 && y0 < H)
-      pixels[(H - y0) * W + x0] = color;
+    for (int oy = -r; oy <= r; ++oy)
+      for (int ox = -r; ox <= r; ++ox) {
+        int px = x0 + ox, py = y0 + oy;
+        if (px >= 0 && px < (int)W && py >= 0 && py < (int)H)
+          pixels[(H - py) * W + px] = color;
+      }
     if (x0 == x1 && y0 == y1) break;
     int e2 = 2 * err;
     if (e2 >= dy) { err += dy; x0 += sx; }
