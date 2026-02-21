@@ -21,6 +21,11 @@ class Camera {
   void setFOV(float fov) { _fov = fov; }
   float getFOV() const { return _fov; }
 
+  void setNearClip(float d) { _nearClip = d; }
+  void setFarClip(float d) { _farClip = d; }
+  float getNearClip() const { return _nearClip; }
+  float getFarClip() const { return _farClip; }
+
  private:
   float _rotX = 0;
   float _rotY = 0;
@@ -39,6 +44,8 @@ class Camera {
   bool _mRight = false;
 
   float _sensitivity = 1.0f;
-  float _fov = 41.0f;  // Horizontal FOV in degrees (41 matches original focalLength=1.5)
+  float _fov = 41.0f;
+  float _nearClip = 2.0f;
+  float _farClip = 100.0f;
   matrix<4,4> _transform;
 };

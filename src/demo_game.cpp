@@ -63,6 +63,7 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   engine.setCameraTransform(_camera.getTransform());
   engine.setWireframeMode(_wireframe);
   engine.setFOV(_camera.getFOV());
+  engine.setClipDistances(_camera.getNearClip(), _camera.getFarClip());
 
   // Update directional light and sync to the rendering global
   _scene.lights.back()._direction = vertex<float>(_lightX, _lightY, -1.5);

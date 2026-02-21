@@ -35,6 +35,7 @@ class Engine {
   void setCameraTransform(const matrix<4,4>& transform);
   void setWireframeMode(bool enabled);
   void setFOV(float degrees);  // Sets projection focalLength from FOV angle
+  void setClipDistances(float near, float far);
 
  private:
   SDL_Window* _window;

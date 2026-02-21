@@ -51,6 +51,14 @@ void Engine::setFOV(float degrees) {
   focalLength = tanf(radians * 0.5f) * (float)xZoom / (1.0f - xFOV);
 }
 
+extern float nearClipDist;
+extern float farClipDist;
+
+void Engine::setClipDistances(float near, float far) {
+  nearClipDist = near;
+  farClipDist = far;
+}
+
 void Engine::run(Game& game) {
   game.init(*this);
 
