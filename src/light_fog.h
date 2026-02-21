@@ -11,6 +11,13 @@ extern std::array<int, W * H> zbuff;
 extern matrix<4,4> cameraTransform;
 extern float focalLength;
 
+// Camera transform snapshot from the frame that was actually rendered.
+// Must be captured before game.update() overwrites cameraTransform.
+inline matrix<4,4> fogCameraTransform;
+
+// Call once per frame after rendering but before game.update() overwrites cameraTransform.
+inline void captureFogCamera() { fogCameraTransform = cameraTransform; }
+
 // Render a volumetric glow/fog around each point light in screen space.
 // Projects lights to screen, then applies radial color falloff.
 // intensity: overall glow strength (0.0-1.0), radius: screen-space glow radius in pixels
@@ -20,7 +27,7 @@ inline void applyLightFog(float intensity = 0.35f, float radius = 120.0f) {
 
     // Transform light world position into camera space
     vertex<float> lp(light._x, light._y, light._z);
-    matrix<4,1> cam = cameraTransform * v2m(lp);
+    matrix<4,1> cam = fogCameraTransform * v2m(lp);
     float cz = cam._m[2];
     if (cz >= -0.5f) continue;  // behind camera
 
