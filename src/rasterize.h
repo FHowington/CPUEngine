@@ -23,6 +23,7 @@ const unsigned halfH = H/2;
 extern std::array<unsigned, W * H> pixels;
 extern std::array<int, W * H> zbuff;
 extern bool renderWireframe;
+extern thread_local bool backFaceFlip;
 
 inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, unsigned color);
 
@@ -117,6 +118,7 @@ void renderModel(const std::shared_ptr<const ModelInstance>& model, const matrix
 
       // If it is backfacing, vector will be pointing in +z, so cull it
       if (v._z < 0 || ds) {
+        backFaceFlip = v._z >= 0;
         if (v._z >= 0) { std::swap(v1i, v2i); std::swap(v1, v2); }
         if (renderWireframe) {
           line(v0i, v1i, 0x00FF00);
