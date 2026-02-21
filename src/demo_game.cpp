@@ -1,5 +1,6 @@
 #include "demo_game.h"
 #include "light_fog.h"
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
 
@@ -22,11 +23,18 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Wireframe", &_wireframe));
   _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
   _renderMenu.addItem(MenuItem::toggle("Light Fog", &_lightFog));
-  _renderMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
+
+  _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
+  _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
+  _cameraMenu.addItem(MenuItem::separator());
+  _cameraMenu.addItem(MenuItem::slider("Near Clip", &_nearClip, 0.5f, 10.0f, 0.5f));
+  _cameraMenu.addItem(MenuItem::slider("Far Clip", &_farClip, 20.0f, 500.0f, 10.0f));
 
   _mainMenu.addItem(MenuItem::sub("Render", &_renderMenu));
+  _mainMenu.addItem(MenuItem::sub("Camera", &_cameraMenu));
 
   _menuStack.setRoot(&_mainMenu);
+  _menuStack.setPosition(W - 420, 12);
 }
 
 void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
@@ -38,11 +46,8 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
       return;
     }
     // If menu is open, it consumes arrow/enter/backspace keys
-    if (_menuStack.handleKey(event.key.keysym.sym)) {
-      // Sync camera speed when slider changes
-      _camera.setSensitivity(_cameraSpeed);
+    if (_menuStack.handleKey(event.key.keysym.sym))
       return;
-    }
   }
 
   _camera.handleEvent(event);
@@ -65,24 +70,17 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
       // Camera speed controls (- and =)
       case SDLK_MINUS:
       case SDLK_UNDERSCORE:
-        _cameraSpeed *= 0.8f;
-        if (_cameraSpeed < 0.1f) _cameraSpeed = 0.1f;
-        _camera.setSensitivity(_cameraSpeed);
+        _cameraSpeed = std::max(0.1f, _cameraSpeed * 0.8f);
         break;
       case SDLK_EQUALS:
       case SDLK_PLUS:
-        _cameraSpeed *= 1.25f;
-        if (_cameraSpeed > 4.0f) _cameraSpeed = 4.0f;
-        _camera.setSensitivity(_cameraSpeed);
+        _cameraSpeed = std::min(4.0f, _cameraSpeed * 1.25f);
         break;
-      // FOV controls ([ and ])
       case SDLK_LEFTBRACKET:
-        _camera.setFOV(_camera.getFOV() - 5.0f);
-        if (_camera.getFOV() < 30.0f) _camera.setFOV(30.0f);
+        _fov = std::max(30.0f, _fov - 5.0f);
         break;
       case SDLK_RIGHTBRACKET:
-        _camera.setFOV(_camera.getFOV() + 5.0f);
-        if (_camera.getFOV() > 120.0f) _camera.setFOV(120.0f);
+        _fov = std::min(120.0f, _fov + 5.0f);
         break;
     }
   }
@@ -90,6 +88,12 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
 
 void DemoGame::update(float deltaTime, Engine& engine) {
   _renderCameraTransform = engine.getRenderCameraTransform();
+
+  // Sync menu-controlled camera params
+  _camera.setSensitivity(_cameraSpeed);
+  _camera.setFOV(_fov);
+  _camera.setNearClip(_nearClip);
+  _camera.setFarClip(_farClip);
 
   _camera.update(deltaTime);
   engine.setCameraTransform(_camera.getTransform());
@@ -146,7 +150,7 @@ void DemoGame::drawOverlay() {
   constexpr int CHAR_W  = 8 * S;      // 16px per glyph
   constexpr int LINE_H  = 8 * S + 2;  // 18px per line
   constexpr int COLS    = 30;          // characters per line
-  constexpr int ROWS    = 22;          // max text rows (with settings open)
+  constexpr int ROWS    = 23;          // max text rows (with settings open)
   constexpr int PW      = COLS * CHAR_W + PAD * 2;   // 496px
   constexpr int PH      = ROWS * LINE_H + PAD * 2;   // 412px
 
@@ -191,7 +195,7 @@ void DemoGame::drawOverlay() {
   snprintf(buf, sizeof(buf), "Fog:  %s  [G]", _lightFog ? "ON " : "OFF");
   Overlay::drawText(tx, ty, buf, _lightFog ? 0x55FF55 : 0xCCCCCC, S); ty += LINE_H;
 
-  snprintf(buf, sizeof(buf), "FOV:  %.0f     [/]", _camera.getFOV());
+  snprintf(buf, sizeof(buf), "FOV:  %.0f     [/]", _fov);
   Overlay::drawText(tx, ty, buf, 0x88FFFF, S); ty += LINE_H;
 
   snprintf(buf, sizeof(buf), "Speed:%.1fx  [-/=]", _cameraSpeed);
@@ -208,10 +212,11 @@ void DemoGame::drawOverlay() {
     Overlay::drawText(tx, ty, "IJKL Move light", 0xCCCCCC, S); ty += LINE_H;
     Overlay::drawText(tx, ty, "[/]  FOV  -/= Speed", 0xCCCCCC, S); ty += LINE_H;
     Overlay::drawText(tx, ty, "P Wire  F FPS  G Fog", 0xCCCCCC, S); ty += LINE_H;
+    Overlay::drawText(tx, ty, "ESC  Open menu", 0xCCCCCC, S); ty += LINE_H;
   } else {
     Overlay::drawText(tx, ty, "[TAB] Show controls", 0x666666, S); ty += LINE_H;
   }
 
   // Menu overlay (Escape to toggle)
-  _menuStack.draw(W - 400, MARGIN);
+  _menuStack.draw();
 }

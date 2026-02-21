@@ -7,56 +7,39 @@
 
 // ─── Menu item types ─────────────────────────────────────────────────────────
 
-enum class MenuItemType { Label, Toggle, Slider, Action, Submenu };
+enum class MenuItemType { Label, Separator, Toggle, Slider, Action, Submenu };
 
 struct MenuItem {
   std::string text;
   MenuItemType type = MenuItemType::Label;
-
-  // Toggle
   bool* toggleVal = nullptr;
-
-  // Slider
   float* sliderVal = nullptr;
-  float sliderMin = 0;
-  float sliderMax = 1;
-  float sliderStep = 0.1f;
-
-  // Action
+  float sliderMin = 0, sliderMax = 1, sliderStep = 0.1f;
   std::function<void()> action;
-
-  // Submenu
   struct Menu* submenu = nullptr;
 
-  // Helpers to build items
-  static MenuItem label(const std::string& t) {
-    return {t, MenuItemType::Label};
+  bool selectable() const {
+    return type != MenuItemType::Label && type != MenuItemType::Separator;
   }
+
+  // ── Builders ──
+  static MenuItem label(const std::string& t) { return {t, MenuItemType::Label}; }
+  static MenuItem separator() { return {"", MenuItemType::Separator}; }
+
   static MenuItem toggle(const std::string& t, bool* val) {
-    MenuItem m{t, MenuItemType::Toggle};
-    m.toggleVal = val;
-    return m;
+    MenuItem m{t, MenuItemType::Toggle}; m.toggleVal = val; return m;
   }
   static MenuItem slider(const std::string& t, float* val, float lo, float hi, float step = 0.1f) {
     MenuItem m{t, MenuItemType::Slider};
-    m.sliderVal = val;
-    m.sliderMin = lo;
-    m.sliderMax = hi;
-    m.sliderStep = step;
+    m.sliderVal = val; m.sliderMin = lo; m.sliderMax = hi; m.sliderStep = step;
     return m;
   }
   static MenuItem actionItem(const std::string& t, std::function<void()> fn) {
-    MenuItem m{t, MenuItemType::Action};
-    m.action = std::move(fn);
-    return m;
+    MenuItem m{t, MenuItemType::Action}; m.action = std::move(fn); return m;
   }
   static MenuItem sub(const std::string& t, Menu* child) {
-    MenuItem m{t, MenuItemType::Submenu};
-    m.submenu = child;
-    return m;
+    MenuItem m{t, MenuItemType::Submenu}; m.submenu = child; return m;
   }
-
-  bool selectable() const { return type != MenuItemType::Label; }
 };
 
 // ─── Menu ────────────────────────────────────────────────────────────────────
@@ -64,9 +47,8 @@ struct MenuItem {
 struct Menu {
   std::string title;
   std::vector<MenuItem> items;
-  int cursor = 0;       // index of highlighted item
+  int cursor = 0;
   Menu* parent = nullptr;
-  bool visible = false;
 
   Menu() = default;
   Menu(const std::string& t) : title(t) {}
@@ -77,7 +59,6 @@ struct Menu {
     items.push_back(std::move(item));
   }
 
-  // Move cursor to next/prev selectable item
   void cursorDown() {
     int n = (int)items.size();
     for (int i = 1; i < n; ++i) {
@@ -93,7 +74,7 @@ struct Menu {
     }
   }
 
-  // Returns submenu pointer if a submenu was entered, nullptr otherwise
+  // Returns submenu if one was entered
   Menu* activate() {
     if (cursor < 0 || cursor >= (int)items.size()) return nullptr;
     MenuItem& item = items[cursor];
@@ -105,10 +86,7 @@ struct Menu {
         if (item.action) item.action();
         break;
       case MenuItemType::Submenu:
-        if (item.submenu) { item.submenu->visible = true; return item.submenu; }
-        break;
-      case MenuItemType::Slider:
-        // Enter/activate on slider does nothing; use left/right
+        if (item.submenu) return item.submenu;
         break;
       default: break;
     }
@@ -124,143 +102,165 @@ struct Menu {
       if (*item.sliderVal > item.sliderMax) *item.sliderVal = item.sliderMax;
     }
   }
-
-  // ── Drawing ────────────────────────────────────────────────────────────
-
-  void draw(int originX, int originY, int scale = 2) const {
-    if (!visible) return;
-
-    constexpr int PAD = 8;
-    const int charW = 8 * scale;
-    const int lineH = 8 * scale + 2;
-
-    // Measure width from longest line
-    int maxChars = (int)title.size();
-    for (auto& item : items) {
-      int len = (int)item.text.size() + 4; // room for value suffix
-      if (item.type == MenuItemType::Toggle) len += 6;
-      if (item.type == MenuItemType::Slider) len += 10;
-      if (item.type == MenuItemType::Submenu) len += 2;
-      if (len > maxChars) maxChars = len;
-    }
-
-    const int pw = maxChars * charW + PAD * 2;
-    const int ph = ((int)items.size() + 2) * lineH + PAD * 2; // +2 for title + separator
-
-    Overlay::fillRect(originX, originY, pw, ph, 0x1A1A2E, 220);
-    Overlay::drawRect(originX, originY, pw, ph, 0x4A4A6A);
-
-    int tx = originX + PAD;
-    int ty = originY + PAD;
-
-    // Title
-    Overlay::drawText(tx, ty, title, 0xFFDD00, scale);
-    ty += lineH;
-    // Separator line
-    Overlay::fillRect(tx, ty + lineH / 2 - 1, pw - PAD * 2, 1, 0x4A4A6A, 255);
-    ty += lineH;
-
-    char buf[64];
-    for (int i = 0; i < (int)items.size(); ++i) {
-      const MenuItem& item = items[i];
-      bool selected = (i == cursor);
-      unsigned color = 0xCCCCCC;
-
-      if (selected) {
-        Overlay::fillRect(originX + 2, ty - 1, pw - 4, lineH, 0x3A3A5E, 200);
-        color = 0xFFFFFF;
-      }
-
-      switch (item.type) {
-        case MenuItemType::Label:
-          Overlay::drawText(tx, ty, item.text, 0x888888, scale);
-          break;
-        case MenuItemType::Toggle:
-          snprintf(buf, sizeof(buf), "%s: %s", item.text.c_str(),
-                   (item.toggleVal && *item.toggleVal) ? "ON" : "OFF");
-          Overlay::drawText(tx, ty, buf,
-                            (item.toggleVal && *item.toggleVal) ? 0x55FF55 : color, scale);
-          break;
-        case MenuItemType::Slider:
-          snprintf(buf, sizeof(buf), "%s: %.1f", item.text.c_str(),
-                   item.sliderVal ? *item.sliderVal : 0.0f);
-          Overlay::drawText(tx, ty, buf, 0x88FFFF, scale);
-          break;
-        case MenuItemType::Action:
-          Overlay::drawText(tx, ty, item.text, color, scale);
-          break;
-        case MenuItemType::Submenu:
-          snprintf(buf, sizeof(buf), "%s >", item.text.c_str());
-          Overlay::drawText(tx, ty, buf, 0xAAAAFF, scale);
-          break;
-      }
-
-      if (selected) {
-        Overlay::drawText(tx - charW, ty, ">", 0xFFDD00, scale);
-      }
-
-      ty += lineH;
-    }
-  }
 };
 
-// ─── MenuStack — manages open menu hierarchy and input ───────────────────────
+// ─── MenuStack — manages open menu hierarchy, input, and rendering ───────────
+
+struct MenuStyle {
+  int scale      = 2;
+  int pad        = 8;
+  int minCols    = 24;
+  unsigned bgColor     = 0x1A1A2E;
+  unsigned char bgAlpha = 220;
+  unsigned borderColor = 0x4A4A6A;
+  unsigned titleColor  = 0xFFDD00;
+  unsigned labelColor  = 0x888888;
+  unsigned textColor   = 0xCCCCCC;
+  unsigned selColor    = 0xFFFFFF;
+  unsigned selBg       = 0x3A3A5E;
+  unsigned toggleOn    = 0x55FF55;
+  unsigned sliderColor = 0x88FFFF;
+  unsigned subColor    = 0xAAAAFF;
+  unsigned cursorColor = 0xFFDD00;
+};
 
 class MenuStack {
  public:
-  // Set the root menu. Does not open it.
   void setRoot(Menu* root) { _root = root; }
+  void setPosition(int x, int y) { _x = x; _y = y; }
+  void setStyle(const MenuStyle& s) { _style = s; }
 
-  bool isOpen() const { return _current && _current->visible; }
+  bool isOpen() const { return _current != nullptr; }
 
   void open() {
-    if (_root) { _root->visible = true; _root->cursor = 0; _current = _root; }
+    if (_root) { _current = _root; _current->cursor = 0; snapCursor(); }
   }
+  void close() { _current = nullptr; }
 
-  void close() {
-    // Close entire stack
-    for (Menu* m = _current; m; m = m->parent) m->visible = false;
-    _current = nullptr;
-  }
+  void toggle() { isOpen() ? close() : open(); }
 
-  // Returns true if the key was consumed by the menu
+  // Returns true if the key was consumed
   bool handleKey(SDL_Keycode key) {
     if (!isOpen()) return false;
-
     switch (key) {
-      case SDLK_UP:     _current->cursorUp();   return true;
-      case SDLK_DOWN:   _current->cursorDown();  return true;
-      case SDLK_LEFT:
-        _current->adjustSlider(-1);
-        return true;
-      case SDLK_RIGHT:
-        _current->adjustSlider(1);
-        return true;
+      case SDLK_UP:    _current->cursorUp();   return true;
+      case SDLK_DOWN:  _current->cursorDown();  return true;
+      case SDLK_LEFT:  _current->adjustSlider(-1); return true;
+      case SDLK_RIGHT: _current->adjustSlider(1);  return true;
       case SDLK_RETURN:
       case SDLK_SPACE: {
         Menu* sub = _current->activate();
-        if (sub) _current = sub;
+        if (sub) { _current = sub; snapCursor(); }
         return true;
       }
       case SDLK_ESCAPE:
       case SDLK_BACKSPACE:
-        if (_current->parent) {
-          _current->visible = false;
-          _current = _current->parent;
-        } else {
-          close();
-        }
+        if (_current->parent) _current = _current->parent;
+        else close();
         return true;
-      default:
-        return false;
+      default: return false;
     }
   }
 
-  void draw(int x = 12, int y = 12, int scale = 2) const {
-    if (_current) _current->draw(x, y, scale);
+  void draw() const {
+    if (!_current) return;
+    drawMenu(*_current, _x, _y);
   }
 
  private:
   Menu* _root = nullptr;
   Menu* _current = nullptr;
+  int _x = 12, _y = 12;
+  MenuStyle _style;
+
+  void snapCursor() {
+    // Ensure cursor is on a selectable item
+    if (_current && !_current->items.empty() && !_current->items[_current->cursor].selectable())
+      _current->cursorDown();
+  }
+
+  void drawMenu(const Menu& menu, int ox, int oy) const {
+    const int S = _style.scale;
+    const int PAD = _style.pad;
+    const int charW = 8 * S;
+    const int lineH = 8 * S + 2;
+
+    // Measure width
+    int maxChars = std::max((int)menu.title.size(), _style.minCols);
+    for (auto& item : menu.items) {
+      int len = (int)item.text.size();
+      if (item.type == MenuItemType::Toggle) len += 6;
+      else if (item.type == MenuItemType::Slider) len += 10;
+      else if (item.type == MenuItemType::Submenu) len += 2;
+      if (len > maxChars) maxChars = len;
+    }
+
+    // Count visible rows (separators are half-height)
+    int totalH = 2 * lineH; // title + separator
+    for (auto& item : menu.items)
+      totalH += (item.type == MenuItemType::Separator) ? lineH / 2 : lineH;
+
+    const int pw = maxChars * charW + PAD * 2;
+    const int ph = totalH + PAD * 2;
+
+    Overlay::fillRect(ox, oy, pw, ph, _style.bgColor, _style.bgAlpha);
+    Overlay::drawRect(ox, oy, pw, ph, _style.borderColor);
+
+    int tx = ox + PAD;
+    int ty = oy + PAD;
+
+    // Title
+    Overlay::drawText(tx, ty, menu.title, _style.titleColor, S);
+    ty += lineH;
+    Overlay::fillRect(tx, ty + lineH / 2 - 1, pw - PAD * 2, 1, _style.borderColor, 255);
+    ty += lineH;
+
+    char buf[64];
+    for (int i = 0; i < (int)menu.items.size(); ++i) {
+      const MenuItem& item = menu.items[i];
+
+      if (item.type == MenuItemType::Separator) {
+        int sy = ty + lineH / 4 - 1;
+        Overlay::fillRect(tx, sy, pw - PAD * 2, 1, _style.borderColor, 180);
+        ty += lineH / 2;
+        continue;
+      }
+
+      bool sel = (i == menu.cursor);
+      if (sel)
+        Overlay::fillRect(ox + 2, ty - 1, pw - 4, lineH, _style.selBg, 200);
+
+      unsigned color = sel ? _style.selColor : _style.textColor;
+
+      switch (item.type) {
+        case MenuItemType::Label:
+          Overlay::drawText(tx, ty, item.text, _style.labelColor, S);
+          break;
+        case MenuItemType::Toggle:
+          snprintf(buf, sizeof(buf), "%s: %s", item.text.c_str(),
+                   (item.toggleVal && *item.toggleVal) ? "ON" : "OFF");
+          Overlay::drawText(tx, ty, buf,
+                   (item.toggleVal && *item.toggleVal) ? _style.toggleOn : color, S);
+          break;
+        case MenuItemType::Slider:
+          snprintf(buf, sizeof(buf), "%s: %.1f", item.text.c_str(),
+                   item.sliderVal ? *item.sliderVal : 0.0f);
+          Overlay::drawText(tx, ty, buf, _style.sliderColor, S);
+          break;
+        case MenuItemType::Action:
+          Overlay::drawText(tx, ty, item.text, color, S);
+          break;
+        case MenuItemType::Submenu:
+          snprintf(buf, sizeof(buf), "%s >", item.text.c_str());
+          Overlay::drawText(tx, ty, buf, _style.subColor, S);
+          break;
+        default: break;
+      }
+
+      if (sel)
+        Overlay::drawText(tx - charW, ty, ">", _style.cursorColor, S);
+
+      ty += lineH;
+    }
+  }
 };

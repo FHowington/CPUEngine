@@ -35,15 +35,18 @@ class DemoGame : public Game {
   std::chrono::high_resolution_clock::time_point _fpsStart;
 
   // Camera options
-  float _cameraSpeed = 1.0f;  // Movement speed & look sensitivity multiplier
-  bool _showSettings = true;  // Show/hide settings panel (Tab key)
-  bool _lightFog = true;      // Volumetric light glow (G key)
-  matrix<4,4> _renderCameraTransform;  // Camera transform used for the rendered frame
+  float _cameraSpeed = 1.0f;
+  float _fov = 41.0f;
+  float _nearClip = 2.0f;
+  float _farClip = 100.0f;
+  bool _showSettings = true;
+  bool _lightFog = true;
+  matrix<4,4> _renderCameraTransform;
 
   // Menu system
   Menu _mainMenu{"Settings"};
   Menu _renderMenu{"Render"};
-  Menu _controlsMenu{"Controls"};
+  Menu _cameraMenu{"Camera"};
   MenuStack _menuStack;
   void buildMenus();
 };
