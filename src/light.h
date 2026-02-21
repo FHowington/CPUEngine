@@ -47,6 +47,11 @@ class Light {
 
 illumination getLight(const vertex<float>& norm, float ambient, float x, float y, float z);
 
+// Camera world position — set each frame for specular calculation
+extern vertex<float> cameraPos;
+extern bool specularEnabled;
+extern float specularShininess;
+
 #if defined(__AVX2__) && defined(__FMA__)
 void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, float ambient,
               const __m256& x, const __m256& y, const __m256& z,

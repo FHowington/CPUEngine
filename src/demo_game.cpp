@@ -2,6 +2,7 @@
 #include "demo_game.h"
 #include "depth_fog.h"
 #include "geometry.h"
+#include "light.h"
 #include "light_fog.h"
 #include "loader.h"
 #include "shader.h"
@@ -32,6 +33,8 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Normals", &_showNormals));
   _renderMenu.addItem(MenuItem::toggle("Frustum Cull", &_frustumCull));
   _renderMenu.addItem(MenuItem::toggle("Dynamic Lights", &_dynamicLights));
+  _renderMenu.addItem(MenuItem::toggle("Specular", &_specular));
+  _renderMenu.addItem(MenuItem::slider("Shininess", &_shininess, 4.0f, 128.0f, 4.0f));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -121,6 +124,11 @@ void DemoGame::update(float deltaTime, Engine& engine) {
     Light::sceneLights = _scene.lights;
   else
     Light::sceneLights.clear();
+
+  // Specular lighting
+  specularEnabled = _specular;
+  specularShininess = _shininess;
+  cameraPos = vertex<float>(_camera.getX(), _camera.getY(), _camera.getZ());
 
   // Spin the first model via e/q keys
   matrix<4,4> newPosition = matrix<4,4>::rotationY(_rot);

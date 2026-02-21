@@ -4,11 +4,22 @@
 #include <cmath>
 
 std::list<Light> Light::sceneLights;
+vertex<float> cameraPos;
+bool specularEnabled = false;
+float specularShininess = 32.0f;
 
 illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z) {
   float R = 0;
   float G = 0;
   float B = 0;
+
+  // View direction for specular (computed once per fragment)
+  vertex<float> viewDir;
+  if (specularEnabled) {
+    viewDir = vertex<float>(cameraPos._x - x, cameraPos._y - y, cameraPos._z - z);
+    viewDir.normalize();
+  }
+
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
       case LightType::Directional: {
@@ -17,20 +28,49 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
           R += d * l._R;
           G += d * l._G;
           B += d * l._B;
+
+          if (specularEnabled) {
+            // reflect = 2 * dot(N, L) * N - L, where L = -direction
+            float dn2 = 2.0f * d;
+            vertex<float> refl(dn2 * norm._x + l._direction._x,
+                               dn2 * norm._y + l._direction._y,
+                               dn2 * norm._z + l._direction._z);
+            float spec = dot(refl, viewDir);
+            if (spec > 0) {
+              spec = powf(spec, specularShininess);
+              R += spec * l._R;
+              G += spec * l._G;
+              B += spec * l._B;
+            }
+          }
         }
         break;
       }
 
       case LightType::Point: {
-        float d = dot(vertex<float>(l._x - x, l._y - y, l._z - z).normalize(), norm);
+        vertex<float> toLight(l._x - x, l._y - y, l._z - z);
+        auto dist = (float)(toLight._x * toLight._x + toLight._y * toLight._y + toLight._z * toLight._z);
+        toLight.normalize();
+        float d = dot(toLight, norm);
         if (d > 0) {
-          // Falls off according to inverse square law
-          auto dist = (float)(pow(l._x - x, 2) +  pow(l._y - y, 2) +  pow(l._z - z, 2));
-          d /= dist;
-          d *= l._strength;
-          R += d * l._R;
-          G += d * l._G;
-          B += d * l._B;
+          float atten = d * l._strength / dist;
+          R += atten * l._R;
+          G += atten * l._G;
+          B += atten * l._B;
+
+          if (specularEnabled) {
+            float dn2 = 2.0f * d;
+            vertex<float> refl(dn2 * norm._x - toLight._x,
+                               dn2 * norm._y - toLight._y,
+                               dn2 * norm._z - toLight._z);
+            float spec = dot(refl, viewDir);
+            if (spec > 0) {
+              spec = powf(spec, specularShininess) * l._strength / dist;
+              R += spec * l._R;
+              G += spec * l._G;
+              B += spec * l._B;
+            }
+          }
         }
         break;
       }
@@ -44,6 +84,25 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
 }
 
 #if defined(__AVX2__) && defined(__FMA__)
+
+// Fast approximate pow for specular: spec^n via repeated squaring
+// Works well for typical shininess values (16, 32, 64)
+static inline __m256 fastPow(__m256 base, float exponent) {
+  // Use exp2(exponent * log2(base)) approximation
+  // log2(x) ≈ exponent bits trick, but simpler: just do repeated squaring for power-of-2
+  // For arbitrary exponent, fall back to scalar
+  // For common case (32), this is 5 multiplies
+  int n = (int)exponent;
+  __m256 result = _mm256_set1_ps(1.0f);
+  __m256 cur = base;
+  while (n > 0) {
+    if (n & 1) result = _mm256_mul_ps(result, cur);
+    cur = _mm256_mul_ps(cur, cur);
+    n >>= 1;
+  }
+  return result;
+}
+
 void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, float ambient,
               const __m256& x, const __m256& y, const __m256& z,
               __m256& R, __m256& G, __m256& B) {
@@ -52,19 +111,47 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   G = _mm256_setzero_si256();
   B = _mm256_setzero_si256();
 
+  // View direction for specular
+  __m256 vdX, vdY, vdZ;
+  if (specularEnabled) {
+    vdX = _mm256_sub_ps(_mm256_set1_ps(cameraPos._x), x);
+    vdY = _mm256_sub_ps(_mm256_set1_ps(cameraPos._y), y);
+    vdZ = _mm256_sub_ps(_mm256_set1_ps(cameraPos._z), z);
+    __m256 vdLen = _mm256_rsqrt_ps(_mm256_fmadd_ps(vdZ, vdZ, _mm256_fmadd_ps(vdY, vdY, _mm256_mul_ps(vdX, vdX))));
+    vdX = _mm256_mul_ps(vdX, vdLen);
+    vdY = _mm256_mul_ps(vdY, vdLen);
+    vdZ = _mm256_mul_ps(vdZ, vdLen);
+  }
+
+  const __m256 zero = _mm256_setzero_ps();
+
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
       case LightType::Directional: {
-        __m256 dot = _mm256_mul_ps(xNorm, _mm256_set1_ps(-l._direction._x));
-        dot = _mm256_fmsub_ps(yNorm, _mm256_set1_ps(l._direction._y), dot);
-        dot = _mm256_fmsub_ps(zNorm, _mm256_set1_ps(l._direction._z), dot);
+        __m256 d = _mm256_mul_ps(xNorm, _mm256_set1_ps(-l._direction._x));
+        d = _mm256_fmsub_ps(yNorm, _mm256_set1_ps(l._direction._y), d);
+        d = _mm256_fmsub_ps(zNorm, _mm256_set1_ps(l._direction._z), d);
 
-        __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
-        dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+        __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), d);
+        d = _mm256_blendv_ps(d, zero, mask);
 
-        R = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._R), R);
-        G = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._G), G);
-        B = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._B), B);
+        R = _mm256_fmadd_ps(d, _mm256_set1_ps(l._R), R);
+        G = _mm256_fmadd_ps(d, _mm256_set1_ps(l._G), G);
+        B = _mm256_fmadd_ps(d, _mm256_set1_ps(l._B), B);
+
+        if (specularEnabled) {
+          // reflect = 2*dot(N,L)*N - L where L = -direction
+          __m256 dn2 = _mm256_add_ps(d, d);
+          __m256 rX = _mm256_fmadd_ps(dn2, xNorm, _mm256_set1_ps(l._direction._x));
+          __m256 rY = _mm256_fmadd_ps(dn2, yNorm, _mm256_set1_ps(l._direction._y));
+          __m256 rZ = _mm256_fmadd_ps(dn2, zNorm, _mm256_set1_ps(l._direction._z));
+          __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
+          spec = _mm256_max_ps(spec, zero);
+          spec = fastPow(spec, specularShininess);
+          R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
+          G = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._G), G);
+          B = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._B), B);
+        }
         break;
       }
       case LightType::Point: {
@@ -81,20 +168,35 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         lYNorm = _mm256_mul_ps(lYNorm, recipRoot);
         lZNorm = _mm256_mul_ps(lZNorm, recipRoot);
 
-        __m256 dot = _mm256_mul_ps(lXNorm, xNorm);
-        dot = _mm256_fmadd_ps(lYNorm, yNorm, dot);
-        dot = _mm256_fmadd_ps(lZNorm, zNorm, dot);
+        __m256 d = _mm256_mul_ps(lXNorm, xNorm);
+        d = _mm256_fmadd_ps(lYNorm, yNorm, d);
+        d = _mm256_fmadd_ps(lZNorm, zNorm, d);
 
         // Clamp negative to zero (one-sided lighting)
-        const __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
-        dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+        const __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), d);
+        d = _mm256_blendv_ps(d, zero, mask);
 
-        dot = _mm256_div_ps(dot, dist);
-        dot = _mm256_mul_ps(dot, _mm256_set1_ps(l._strength));
+        __m256 atten = _mm256_div_ps(d, dist);
+        atten = _mm256_mul_ps(atten, _mm256_set1_ps(l._strength));
 
-        R = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._R), R);
-        G = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._G), G);
-        B = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._B), B);
+        R = _mm256_fmadd_ps(atten, _mm256_set1_ps(l._R), R);
+        G = _mm256_fmadd_ps(atten, _mm256_set1_ps(l._G), G);
+        B = _mm256_fmadd_ps(atten, _mm256_set1_ps(l._B), B);
+
+        if (specularEnabled) {
+          __m256 dn2 = _mm256_add_ps(d, d);
+          __m256 rX = _mm256_fmsub_ps(dn2, xNorm, lXNorm);
+          __m256 rY = _mm256_fmsub_ps(dn2, yNorm, lYNorm);
+          __m256 rZ = _mm256_fmsub_ps(dn2, zNorm, lZNorm);
+          __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
+          spec = _mm256_max_ps(spec, zero);
+          spec = fastPow(spec, specularShininess);
+          __m256 specAtten = _mm256_mul_ps(spec, _mm256_set1_ps(l._strength));
+          specAtten = _mm256_div_ps(specAtten, dist);
+          R = _mm256_fmadd_ps(specAtten, _mm256_set1_ps(l._R), R);
+          G = _mm256_fmadd_ps(specAtten, _mm256_set1_ps(l._G), G);
+          B = _mm256_fmadd_ps(specAtten, _mm256_set1_ps(l._B), B);
+        }
         break;
       }
     }
