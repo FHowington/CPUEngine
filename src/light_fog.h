@@ -63,6 +63,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       float dy = y - sy;
       __m256 dySqV = _mm256_set1_ps(dy * dy);
       int rowOff = y * W;
+      int zRowOff = (H - y) * W;  // zbuff uses non-flipped Y
 
       for (int x = x0a; x <= x1; x += 8) {
         __m256 dxV = _mm256_sub_ps(
@@ -84,7 +85,8 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
 
         // Depth occlusion: zbuff[idx] <= lightZ + 2000
         int base = rowOff + x;
-        __m256i pzV = _mm256_loadu_si256((__m256i*)(zbuff.data() + base));
+        int zbase = zRowOff + x;
+        __m256i pzV = _mm256_loadu_si256((__m256i*)(zbuff.data() + zbase));
         __m256i depthOk = _mm256_or_si256(
           _mm256_cmpgt_epi32(lightZV, pzV),
           _mm256_cmpeq_epi32(lightZV, pzV));
@@ -129,6 +131,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       float dy = y - sy;
       float dySq = dy * dy;
       int rowOff = y * W;
+      int zRowOff = (H - y) * W;
       for (int x = x0; x <= x1; ++x) {
         float dx = x - sx;
         float dSq = dx * dx + dySq;
@@ -138,7 +141,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
         float fog = t * t;
 
         int idx = rowOff + x;
-        int pz = zbuff[idx];
+        int pz = zbuff[zRowOff + x];
         if (pz > lightZ + 2000) continue;
 
         unsigned px = pixels[idx];
