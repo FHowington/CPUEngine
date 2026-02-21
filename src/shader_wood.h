@@ -3,7 +3,7 @@
 #include <cmath>
 
 // Procedural wood grain: vertical plank pattern with grain lines
-inline unsigned woodColor(float u, float v, const vertex<float>& faceNorm, float luminance, float wx, float wy, float wz) {
+inline unsigned woodColor(float u, float v, const vertex<float>& faceNorm, float luminance, float wx, float wy, float wz, bool ds = false) {
   const float plankW = 0.8f;
   const float gap = 0.02f;
 
@@ -17,7 +17,7 @@ inline unsigned woodColor(float u, float v, const vertex<float>& faceNorm, float
 
   // Gap between planks
   if (uLocal < gap || uLocal > plankW - gap) {
-    illumination il = getLight(faceNorm, luminance, wx, wy, wz);
+    illumination il = getLight(faceNorm, luminance, wx, wy, wz, ds);
     unsigned r = fast_min(255, (int)(25 * il._R));
     unsigned g = fast_min(255, (int)(18 * il._G));
     unsigned b = fast_min(255, (int)(12 * il._B));
@@ -59,7 +59,7 @@ inline unsigned woodColor(float u, float v, const vertex<float>& faceNorm, float
   baseG = fminf(255, fmaxf(0, baseG));
   baseB = fminf(255, fmaxf(0, baseB));
 
-  illumination il = getLight(faceNorm, luminance, wx, wy, wz);
+  illumination il = getLight(faceNorm, luminance, wx, wy, wz, ds);
   unsigned r = fast_min(255, (int)(baseR * il._R));
   unsigned g = fast_min(255, (int)(baseG * il._G));
   unsigned b = fast_min(255, (int)(baseB * il._B));
@@ -69,7 +69,7 @@ inline unsigned woodColor(float u, float v, const vertex<float>& faceNorm, float
 #ifdef __AVX2__
 inline __m256i woodColorV(const __m256& uV, const __m256& vV,
                           const vertex<float>& faceNorm, float luminance,
-                          const __m256& wx, const __m256& wy, const __m256& wz) {
+                          const __m256& wx, const __m256& wy, const __m256& wz, bool ds = false) {
   const __m256 plankW = _mm256_set1_ps(0.8f);
   const __m256 gapV = _mm256_set1_ps(0.02f);
   const __m256 zero = _mm256_setzero_ps();
@@ -96,16 +96,10 @@ inline __m256i woodColorV(const __m256& uV, const __m256& vV,
   __m256 baseG = _mm256_add_ps(_mm256_set1_ps(75.0f), _mm256_mul_ps(pVar, _mm256_set1_ps(25.0f)));
   __m256 baseB = _mm256_add_ps(_mm256_set1_ps(40.0f), _mm256_mul_ps(pVar, _mm256_set1_ps(15.0f)));
 
-  // Grain: sin((v + pVar*10) * 12) * 0.5 + 0.5
-  // Approximate sin with polynomial for speed: sin(x) ≈ x - x³/6 (good enough for visual grain)
-  // Actually, let's just use the scalar approach per-lane since this is visual-only
-  // We'll compute a simple hash-based grain instead for SIMD friendliness
+  // Grain
   __m256 grainPhase = _mm256_mul_ps(_mm256_add_ps(vV, _mm256_mul_ps(pVar, _mm256_set1_ps(10.0f))), _mm256_set1_ps(12.0f));
-  // Wrap to [0,1] via fract
   __m256 grainFract = _mm256_sub_ps(grainPhase, _mm256_floor_ps(grainPhase));
-  // Triangle wave: abs(fract*2 - 1)
   __m256 grain = _mm256_sub_ps(_mm256_mul_ps(grainFract, _mm256_set1_ps(2.0f)), _mm256_set1_ps(1.0f));
-  // abs
   grain = _mm256_max_ps(grain, _mm256_sub_ps(zero, grain));
 
   __m256 finePhase = _mm256_mul_ps(_mm256_add_ps(vV, _mm256_mul_ps(pVar, _mm256_set1_ps(3.7f))), _mm256_set1_ps(47.0f));
@@ -137,7 +131,7 @@ inline __m256i woodColorV(const __m256& uV, const __m256& vV,
 
   __m256 rV, gV, bV;
   getLight(_mm256_set1_ps(faceNorm._x), _mm256_set1_ps(faceNorm._y),
-           _mm256_set1_ps(faceNorm._z), luminance, wx, wy, wz, rV, gV, bV);
+           _mm256_set1_ps(faceNorm._z), luminance, wx, wy, wz, rV, gV, bV, ds);
   return vectorLight(colorsData, rV, gV, bV);
 }
 #endif
@@ -148,14 +142,14 @@ class WoodXZShader : public UntexturedShader, public BehindCamera {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2)), _ds(m._doubleSided)
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return woodColor(x, z, _norm, _luminance, x, y, z);
+    return woodColor(x, z, _norm, _luminance, x, y, z, _ds);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = woodColorV(xV, zV, _norm, _luminance, xV, yV, zV);
+    colorsData = woodColorV(xV, zV, _norm, _luminance, xV, yV, zV, _ds);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -163,6 +157,7 @@ class WoodXZShader : public UntexturedShader, public BehindCamera {
  private:
   const float _luminance;
   const vertex<float>& _norm;
+  const bool _ds;
 };
 
 class WoodXYShader : public UntexturedShader, public BehindCamera {
@@ -171,14 +166,14 @@ class WoodXYShader : public UntexturedShader, public BehindCamera {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2)), _ds(m._doubleSided)
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return woodColor(x, y, _norm, _luminance, x, y, z);
+    return woodColor(x, y, _norm, _luminance, x, y, z, _ds);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = woodColorV(xV, yV, _norm, _luminance, xV, yV, zV);
+    colorsData = woodColorV(xV, yV, _norm, _luminance, xV, yV, zV, _ds);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -186,6 +181,7 @@ class WoodXYShader : public UntexturedShader, public BehindCamera {
  private:
   const float _luminance;
   const vertex<float>& _norm;
+  const bool _ds;
 };
 
 class WoodYZShader : public UntexturedShader, public BehindCamera {
@@ -194,14 +190,14 @@ class WoodYZShader : public UntexturedShader, public BehindCamera {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2)), _ds(m._doubleSided)
   { }
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
-    return woodColor(z, y, _norm, _luminance, x, y, z);
+    return woodColor(z, y, _norm, _luminance, x, y, z, _ds);
   }
 #ifdef __AVX2__
   const inline __attribute__((always_inline)) void fragmentShader(__m256i& colorsData, const __m256i& zv, const __m256i& xV, const __m256i& yV, const __m256i& zV) override {
-    colorsData = woodColorV(zV, yV, _norm, _luminance, xV, yV, zV);
+    colorsData = woodColorV(zV, yV, _norm, _luminance, xV, yV, zV, _ds);
   }
 #endif
   inline __attribute__((always_inline)) void stepXForX(const unsigned step = 1) override {}
@@ -209,4 +205,5 @@ class WoodYZShader : public UntexturedShader, public BehindCamera {
  private:
   const float _luminance;
   const vertex<float>& _norm;
+  const bool _ds;
 };

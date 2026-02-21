@@ -7,13 +7,13 @@ class PlaneXZShader : public UntexturedShader, public BehindCamera {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2)), _ds(m._doubleSided)
   { }
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     unsigned res = ((((int)floor(x)) & 0x1) ^ (((int)floor(z)) & 0x1)) != 0U ? 8405024 : 8421504;
-    illumination il = getLight(_norm, _luminance, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z, _ds);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -50,7 +50,7 @@ class PlaneXZShader : public UntexturedShader, public BehindCamera {
 
     getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
              _mm256_set1_ps(_norm._z), _luminance,
-             xV, yV, zV, rV, gV, bV);
+             xV, yV, zV, rV, gV, bV, _ds);
 
 
     colorsData = vectorLight(colorsData, rV, gV, bV);
@@ -66,6 +66,7 @@ class PlaneXZShader : public UntexturedShader, public BehindCamera {
  private:
   const float _luminance;
   const vertex<float>& _norm;
+  const bool _ds;
 };
 
 // The goal of this texture is to create a grid pattern based on the global x/y coords of each pixel
@@ -75,13 +76,13 @@ class PlaneXYShader : public UntexturedShader, public BehindCamera {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2)), _ds(m._doubleSided)
   { }
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     unsigned res = ((((int)floor(x)) & 0x1) ^ (((int)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
-    illumination il = getLight(_norm, _luminance, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z, _ds);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -118,7 +119,7 @@ class PlaneXYShader : public UntexturedShader, public BehindCamera {
 
     getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
              _mm256_set1_ps(_norm._z), _luminance,
-             xV, yV, zV, rV, gV, bV);
+             xV, yV, zV, rV, gV, bV, _ds);
 
 
     colorsData = vectorLight(colorsData, rV, gV, bV);
@@ -134,6 +135,7 @@ class PlaneXYShader : public UntexturedShader, public BehindCamera {
  private:
   const float _luminance;
   const vertex<float>& _norm;
+  const bool _ds;
 };
 
 // The goal of this texture is to create a grid pattern based on the global z/y coords of each pixel
@@ -143,13 +145,13 @@ class PlaneYZShader : public UntexturedShader, public BehindCamera {
               const short A12, const short A20, const short A01,
               const short B12, const short B20, const short B01,
               const float wTotal, int w0, int w1, int w2,
-              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2))
+              const vertex<int>& v0, const vertex<int>& v1, const vertex<int>& v2) : _luminance(m._globalIllumination), _norm(m._baseModel.getVertexNormal(f._v2)), _ds(m._doubleSided)
   { }
 
 
   inline __attribute__((always_inline)) fcolor fragmentShader(const float x, const float y, const float z, const unsigned color = 0) override {
     unsigned res = ((((int)floor(z)) & 0x1) ^ (((int)floor(y)) & 0x1)) != 0U ? 8405024 : 8421504;
-    illumination il = getLight(_norm, _luminance, x, y, z);
+    illumination il = getLight(_norm, _luminance, x, y, z, _ds);
 
     res = fast_min(255, ((int)(((res >> 16) & 0xff) * il._R))) << 16 |
                        fast_min(255, ((int)(((res >> 8) & 0xff) * il._G))) << 8 |
@@ -186,7 +188,7 @@ class PlaneYZShader : public UntexturedShader, public BehindCamera {
 
     getLight(_mm256_set1_ps(_norm._x), _mm256_set1_ps(_norm._y),
              _mm256_set1_ps(_norm._z), _luminance,
-             xV, yV, zV, rV, gV, bV);
+             xV, yV, zV, rV, gV, bV, _ds);
 
 
     colorsData = vectorLight(colorsData, rV, gV, bV);
@@ -202,4 +204,5 @@ class PlaneYZShader : public UntexturedShader, public BehindCamera {
  private:
   const float _luminance;
   const vertex<float>& _norm;
+  const bool _ds;
 };

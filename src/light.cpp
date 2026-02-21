@@ -5,7 +5,7 @@
 
 std::list<Light> Light::sceneLights;
 
-illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z) {
+illumination getLight(const vertex<float>& norm, const float ambient, const float x, const float y, const float z, bool doubleSided) {
   float R = 0;
   float G = 0;
   float B = 0;
@@ -13,6 +13,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
     switch (l._type) {
       case LightType::Directional: {
         float d = -dot(l._direction, norm);
+        if (doubleSided) d = std::fabs(d);
         if (d > 0) {
           R += d * l._R;
           G += d * l._G;
@@ -23,6 +24,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
 
       case LightType::Point: {
         float d = dot(vertex<float>(l._x - x, l._y - y, l._z - z).normalize(), norm);
+        if (doubleSided) d = std::fabs(d);
         if (d > 0) {
           // Falls off according to inverse square law
           auto dist = (float)(pow(l._x - x, 2) +  pow(l._y - y, 2) +  pow(l._z - z, 2));
@@ -46,7 +48,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
 #if defined(__AVX2__) && defined(__FMA__)
 void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, float ambient,
               const __m256& x, const __m256& y, const __m256& z,
-              __m256& R, __m256& G, __m256& B) {
+              __m256& R, __m256& G, __m256& B, bool doubleSided) {
 
   R = _mm256_setzero_si256();
   G = _mm256_setzero_si256();
@@ -59,8 +61,13 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         dot = _mm256_fmsub_ps(yNorm, _mm256_set1_ps(l._direction._y), dot);
         dot = _mm256_fmsub_ps(zNorm, _mm256_set1_ps(l._direction._z), dot);
 
-        __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
-        dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+        if (doubleSided) {
+          const __m256 signMask = _mm256_set1_ps(-0.0f);
+          dot = _mm256_andnot_ps(signMask, dot);
+        } else {
+          __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
+          dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+        }
 
         R = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._R), R);
         G = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._G), G);
@@ -89,8 +96,13 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         dot = _mm256_div_ps(dot, dist);
         dot = _mm256_mul_ps(dot, _mm256_set1_ps(l._strength));
 
-        const __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
-        dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+        if (doubleSided) {
+          const __m256 signMask = _mm256_set1_ps(-0.0f);
+          dot = _mm256_andnot_ps(signMask, dot);
+        } else {
+          const __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
+          dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+        }
 
         R = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._R), R);
         G = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._G), G);
