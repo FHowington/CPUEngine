@@ -21,6 +21,7 @@ extern thread_local unsigned pMaxY;
 class Pool { // NOLINT
  public:
   static void job_wait();
+  static void wait_for_render();
   Pool(unsigned numThreads);
   ~Pool();
   static void enqueue_model(const std::shared_ptr<const ModelInstance>& model);
@@ -29,8 +30,10 @@ class Pool { // NOLINT
   static void copy_to_main_buffer();
   static std::mutex job_queue_mutex_;
   static std::mutex main_buffer_mutex_;
+  static std::mutex done_mutex_;
   static std::condition_variable job_condition;
   static std::condition_variable render_condition;
+  static std::condition_variable done_condition;
   static std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> buffer_zones;
   static bool terminate;
   std::vector<std::thread> thread_pool;

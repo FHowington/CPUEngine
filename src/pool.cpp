@@ -2,6 +2,7 @@
 #include "rasterize.h"
 #include "shader.h"
 #include <atomic>
+#include <cstring>
 #include <limits>
 
 
@@ -13,9 +14,11 @@ extern std::atomic<unsigned> remaining_models;
 std::mutex Pool::job_queue_mutex_;
 std::condition_variable Pool::job_condition;
 std::condition_variable Pool::render_condition;
+std::condition_variable Pool::done_condition;
 std::list<std::shared_ptr<const ModelInstance>> Pool::model_queue;
 bool Pool::terminate = false;
 std::mutex Pool::main_buffer_mutex_;
+std::mutex Pool::done_mutex_;
 std::map<const std::thread::id, const std::pair<const std::pair<const unsigned, const unsigned>, const std::pair<const unsigned, const unsigned>>> Pool::buffer_zones;
 
 thread_local unsigned pMinX;
@@ -43,10 +46,8 @@ Pool::~Pool() {
 }
 
 void Pool::job_wait() {
-  for(auto& p: t_pixels) { p = 0;
-}
-  for(auto& p: t_zbuff) { p = std::numeric_limits<int>::min();
-}
+  std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
+  std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
 
   while(true) {
     std::unique_lock<std::mutex> lock(job_queue_mutex_);
@@ -134,12 +135,13 @@ void Pool::job_wait() {
     }
 
     Pool::copy_to_main_buffer();
-    --remaining_models;
+    if (--remaining_models == 0) {
+      std::lock_guard<std::mutex> lk(done_mutex_);
+      done_condition.notify_one();
+    }
 
-    for(auto& p: t_pixels) { p = 0;
-}
-    for(auto& p: t_zbuff) { p = std::numeric_limits<int>::min();
-}
+    std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
+    std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
   }
 }
 
@@ -224,4 +226,9 @@ void Pool::enqueue_model(const std::shared_ptr<const ModelInstance>& model) {
   std::unique_lock<std::mutex> lock(job_queue_mutex_);
   model_queue.push_back(model);
   job_condition.notify_one();
+}
+
+void Pool::wait_for_render() {
+  std::unique_lock<std::mutex> lk(done_mutex_);
+  done_condition.wait(lk, []{ return remaining_models == 0U; });
 }

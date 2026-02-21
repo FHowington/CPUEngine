@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <thread>
 
@@ -66,8 +67,8 @@ void Engine::run(Game& game) {
 
   for (bool quit = false; !quit;) {
     // Clear framebuffer and z-buffer
-    for (auto& p : pixels) { p = 0; }
-    for (auto& p : zbuff)  { p = std::numeric_limits<int>::min(); }
+    std::memset(pixels.data(), 0, W * H * sizeof(unsigned));
+    std::fill(zbuff.begin(), zbuff.end(), std::numeric_limits<int>::min());
 
     // Submit all models in the scene for rendering
     const auto& models = game.getModels();
@@ -76,8 +77,8 @@ void Engine::run(Game& game) {
       Pool::enqueue_model(m);
     }
 
-    // TODO(forbes): Change this to something..better. A conditional perhaps.
-    while (remaining_models != 0U) { ; }
+    // Wait for all models to finish rendering
+    Pool::wait_for_render();
 
     // Save the camera transform that was actually used for this frame's rendering
     _renderCameraTransform = cameraTransform;
