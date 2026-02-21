@@ -31,7 +31,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       continue;
 
     float sx = (float)screenPos._x;
-    float sy = (float)screenPos._y;
+    float sy = (float)(H - screenPos._y);  // Renderer flips Y when writing pixels
     int lightZ = screenPos._z;
 
     // Scale radius by depth — closer lights have bigger, more diffuse glow
