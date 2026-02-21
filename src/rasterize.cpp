@@ -748,32 +748,6 @@ void line(const vertex<int>& v0, const vertex<int>& v1, const unsigned color) {
   int x1 = v1._x;
   int y1 = v1._y;
 
-  if (x0 > W) {
-    x0 = 0;
-  }
-  if (x0 < 0) {
-    x0 = W;
-  }
-  if (x1 > W) {
-    x1 = 0;
-  }
-  if (x1 < 0) {
-    x1 = W;
-  }
-
-  if (y0 > H) {
-    y0 = 0;
-  }
-  if (y0 < 0) {
-    y0 = H;
-  }
-  if (y1 > H) {
-    y1 = 0;
-  }
-  if (y1 < 0) {
-    y1 = H;
-  }
-
   bool longX = std::abs((long)x1 - x0) >= std::abs((long)y1 - y0);
   if (x1 < x0) {
     std::swap(x1, x0);
@@ -1118,6 +1092,7 @@ void renderModel<WoodYZShader>(const std::shared_ptr<const ModelInstance>& model
 
 void plot(unsigned x, unsigned y, const unsigned color)
 {
+    if (x >= W || y >= H) return;
     t_pixels[y*W+x] = color;
     t_zbuff[y*W+x] = std::numeric_limits<int>::max();
     if (x < pMinX) pMinX = x;
