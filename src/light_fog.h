@@ -32,8 +32,8 @@ inline void applyLightFog(float intensity = 0.35f, float radius = 120.0f) {
     // Zbuffer value this light would have
     int lightZ = (int)(cz * depth);
 
-    // Scale radius by distance — closer lights have bigger glow
-    float distScale = 3.0f / (-cz);
+    // Scale radius by distance — closer lights have bigger, more diffuse glow
+    float distScale = 5.0f / (-cz);
     float r = radius * distScale;
     if (r < 10.0f) continue;
     float rSq = r * r;
@@ -61,13 +61,12 @@ inline void applyLightFog(float intensity = 0.35f, float radius = 120.0f) {
         float t = 1.0f - dSq / rSq;
         float fog = t * t;
 
-        // Depth occlusion: if geometry is much closer than the light, reduce glow
+        // Depth occlusion: if geometry is closer than the light, block the glow
         int idx = rowOff + x;
         int pz = zbuff[idx];
-        if (pz > lightZ + 5000) {
-          float occlude = (float)(pz - lightZ) / 30000.0f;
-          if (occlude > 1.0f) occlude = 1.0f;
-          fog *= (1.0f - occlude * 0.85f);
+        if (pz > lightZ + 2000) {
+          fog = 0;
+          continue;
         }
 
         unsigned px = pixels[idx];
