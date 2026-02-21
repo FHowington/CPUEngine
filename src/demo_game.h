@@ -36,4 +36,5 @@ class DemoGame : public Game {
   // Camera options
   float _cameraSpeed = 1.0f;  // Movement speed & look sensitivity multiplier
   bool _showSettings = true;  // Show/hide settings panel (Tab key)
+  bool _lightFog = true;      // Volumetric light glow (G key)
 };

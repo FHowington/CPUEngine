@@ -1,4 +1,5 @@
 #include "demo_game.h"
+#include "light_fog.h"
 #include <cstdio>
 #include <iostream>
 
@@ -28,6 +29,7 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
       case SDLK_k: _lightY -= 0.2f;          break;
       case SDLK_l: _lightX += 0.2f;          break;
       case SDLK_j: _lightX -= 0.2f;          break;
+      case SDLK_g: _lightFog = !_lightFog;   break;
       // Settings panel toggle
       case SDLK_TAB:
         _showSettings = !_showSettings;
@@ -106,6 +108,8 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 // 4x SDL window. Line pitch = 18px (16px glyph + 2px gap).
 
 void DemoGame::drawOverlay() {
+  if (_lightFog) applyLightFog(0.35f, 120.0f);
+
   constexpr int S       = 2;           // font scale factor
   constexpr int MARGIN  = 12;
   constexpr int PAD     = 8;
@@ -154,6 +158,9 @@ void DemoGame::drawOverlay() {
   snprintf(buf, sizeof(buf), "Wire: %s  [P]", _wireframe ? "ON " : "OFF");
   Overlay::drawText(tx, ty, buf, _wireframe ? 0x55FF55 : 0xCCCCCC, S); ty += LINE_H;
 
+  snprintf(buf, sizeof(buf), "Fog:  %s  [G]", _lightFog ? "ON " : "OFF");
+  Overlay::drawText(tx, ty, buf, _lightFog ? 0x55FF55 : 0xCCCCCC, S); ty += LINE_H;
+
   snprintf(buf, sizeof(buf), "FOV:  %.0f     [/]", _camera.getFOV());
   Overlay::drawText(tx, ty, buf, 0x88FFFF, S); ty += LINE_H;
 
@@ -170,7 +177,7 @@ void DemoGame::drawOverlay() {
     Overlay::drawText(tx, ty, "Q/E  Spin model", 0xCCCCCC, S); ty += LINE_H;
     Overlay::drawText(tx, ty, "IJKL Move light", 0xCCCCCC, S); ty += LINE_H;
     Overlay::drawText(tx, ty, "[/]  FOV  -/= Speed", 0xCCCCCC, S); ty += LINE_H;
-    Overlay::drawText(tx, ty, "P Wire  F FPS", 0xCCCCCC, S); ty += LINE_H;
+    Overlay::drawText(tx, ty, "P Wire  F FPS  G Fog", 0xCCCCCC, S); ty += LINE_H;
   } else {
     Overlay::drawText(tx, ty, "[TAB] Show controls", 0x666666, S); ty += LINE_H;
   }
