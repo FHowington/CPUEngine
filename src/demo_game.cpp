@@ -61,8 +61,7 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
 }
 
 void DemoGame::update(float deltaTime, Engine& engine) {
-  // Snapshot the camera transform that was used for rendering this frame
-  _renderCameraTransform = _camera.getTransform();
+  _renderCameraTransform = engine.getRenderCameraTransform();
 
   _camera.update(deltaTime);
   engine.setCameraTransform(_camera.getTransform());

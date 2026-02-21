@@ -79,6 +79,9 @@ void Engine::run(Game& game) {
     // TODO(forbes): Change this to something..better. A conditional perhaps.
     while (remaining_models != 0U) { ; }
 
+    // Save the camera transform that was actually used for this frame's rendering
+    _renderCameraTransform = cameraTransform;
+
     // Process SDL events
     SDL_Event ev;
     while (SDL_PollEvent(&ev) != 0) {
