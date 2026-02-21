@@ -1,5 +1,6 @@
 #include "geometry.h"
 #include "light.h"
+#include "shadow.h"
 #include <algorithm>
 #include <cmath>
 
@@ -14,6 +15,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
       case LightType::Directional: {
         float d = -dot(l._direction, norm);
         if (d > 0) {
+          if (shadowsEnabled) d *= shadowMap.test(x, y, z);
           R += d * l._R;
           G += d * l._G;
           B += d * l._B;
@@ -61,6 +63,17 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
 
         __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
         dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
+
+        if (shadowsEnabled) {
+          // Scalar shadow test for each of 8 lanes
+          alignas(32) float xArr[8], yArr[8], zArr[8], sArr[8];
+          _mm256_store_ps(xArr, x);
+          _mm256_store_ps(yArr, y);
+          _mm256_store_ps(zArr, z);
+          for (int i = 0; i < 8; ++i)
+            sArr[i] = shadowMap.test(xArr[i], yArr[i], zArr[i]);
+          dot = _mm256_mul_ps(dot, _mm256_load_ps(sArr));
+        }
 
         R = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._R), R);
         G = _mm256_fmadd_ps(dot, _mm256_set1_ps(l._G), G);

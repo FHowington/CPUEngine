@@ -4,6 +4,7 @@
 #include "geometry.h"
 #include "light_fog.h"
 #include "loader.h"
+#include "shadow.h"
 #include "shader.h"
 #include <algorithm>
 #include <cstdio>
@@ -32,6 +33,8 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Normals", &_showNormals));
   _renderMenu.addItem(MenuItem::toggle("Frustum Cull", &_frustumCull));
   _renderMenu.addItem(MenuItem::toggle("Dynamic Lights", &_dynamicLights));
+  _renderMenu.addItem(MenuItem::toggle("Shadows", &_shadows));
+  _renderMenu.addItem(MenuItem::slider("Shadow Bias", &_shadowBias, 0.01f, 0.5f, 0.01f));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -115,6 +118,8 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   engine.setCameraTransform(_camera.getTransform());
   engine.setWireframeMode(_wireframe);
   engine.setFrustumCulling(_frustumCull);
+  engine.setShadows(_shadows);
+  shadowMap.bias = _shadowBias;
   engine.setFOV(_camera.getFOV());
   engine.setClipDistances(_camera.getNearClip(), _camera.getFarClip());
 
