@@ -55,12 +55,36 @@ class Model {
 
 
 struct ModelInstance {
-  ModelInstance (const Model& mod, const shaderType shader, const float globalIllumination = 0.2, const bool doubleSided = false) : _baseModel(mod), _shader(shader), _globalIllumination(globalIllumination), _doubleSided(doubleSided) {}
+  ModelInstance (const Model& mod, const shaderType shader, const float globalIllumination = 0.2, const bool doubleSided = false) : _baseModel(mod), _shader(shader), _globalIllumination(globalIllumination), _doubleSided(doubleSided) {
+    computeBounds();
+  }
+  void computeBounds() {
+    const auto& faces = _baseModel.getFaces();
+    if (faces.empty()) return;
+    float cx = 0, cy = 0, cz = 0;
+    unsigned n = 0;
+    for (const auto& f : faces) {
+      const auto& v = _baseModel.getVertex(f._v0);
+      cx += v._x; cy += v._y; cz += v._z; ++n;
+    }
+    cx /= n; cy /= n; cz /= n;
+    _bCenter = vertex<float>(cx, cy, cz);
+    _bRadius = 0;
+    for (const auto& f : faces) {
+      const auto& v = _baseModel.getVertex(f._v0);
+      float dx = v._x - cx, dy = v._y - cy, dz = v._z - cz;
+      float d2 = dx*dx + dy*dy + dz*dz;
+      if (d2 > _bRadius) _bRadius = d2;
+    }
+    _bRadius = sqrtf(_bRadius);
+  }
   const Model& _baseModel;
   matrix<4,4> _position;
   const shaderType _shader;
   const float _globalIllumination;
   const bool _doubleSided;
+  vertex<float> _bCenter;
+  float _bRadius = 0;
 };
 
 void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile);
