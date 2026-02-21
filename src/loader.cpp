@@ -256,7 +256,7 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         break;
       }
       std::string extra;
-      bool doubleSided = !(iss >> extra && extra == "1sided");
+      bool absLight = (iss >> extra && extra == "2sided");
       // Compute normal for the plane
       float Ax = x0 - x1;
       float Ay = y0 - y1;
@@ -342,7 +342,7 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         std::cout << "Unknown shader type " << shader << std::endl;
       }
 
-      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st, 0.2, doubleSided);
+      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st, 0.2, true, absLight);
 
       planeInstance->_position = matrix<4,4>::identity();
       modelInstances.push_back(planeInstance);

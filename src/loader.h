@@ -55,12 +55,13 @@ class Model {
 
 
 struct ModelInstance {
-  ModelInstance (const Model& mod, const shaderType shader, const float globalIllumination = 0.2, const bool doubleSided = false) : _baseModel(mod), _shader(shader), _globalIllumination(globalIllumination), _doubleSided(doubleSided) {}
+  ModelInstance (const Model& mod, const shaderType shader, const float globalIllumination = 0.2, const bool doubleSided = false, const bool absLight = false) : _baseModel(mod), _shader(shader), _globalIllumination(globalIllumination), _doubleSided(doubleSided), _absLight(absLight) {}
   const Model& _baseModel;
   matrix<4,4> _position;
   const shaderType _shader;
   const float _globalIllumination;
   const bool _doubleSided;
+  const bool _absLight;
 };
 
 void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile);

@@ -207,25 +207,25 @@ PLANE stoneyz [6 -5 -8], [6 -5 -16], [6 10 -16], [6 10 -8]
 PLANE stonexz [-6 10 -8], [6 10 -8], [6 10 -16], [-6 10 -16]
 
 # === COURTYARD PILLARS ===
-PLANE stonexy [-2 -5 2], [2 -5 2], [2 6 2], [-2 6 2]
-PLANE stoneyz [2 -5 2], [2 -5 -2], [2 6 -2], [2 6 2]
-PLANE stoneyz [-2 -5 -2], [-2 -5 2], [-2 6 2], [-2 6 -2]
-PLANE stonexy [2 -5 -2], [-2 -5 -2], [-2 6 -2], [2 6 -2]
+PLANE stonexy [-2 -5 2], [2 -5 2], [2 6 2], [-2 6 2] 2SIDED
+PLANE stoneyz [2 -5 2], [2 -5 -2], [2 6 -2], [2 6 2] 2SIDED
+PLANE stoneyz [-2 -5 -2], [-2 -5 2], [-2 6 2], [-2 6 -2] 2SIDED
+PLANE stonexy [2 -5 -2], [-2 -5 -2], [-2 6 -2], [2 6 -2] 2SIDED
 
-PLANE stonexy [8 -5 2], [12 -5 2], [12 6 2], [8 6 2]
-PLANE stoneyz [12 -5 2], [12 -5 -2], [12 6 -2], [12 6 2]
-PLANE stoneyz [8 -5 -2], [8 -5 2], [8 6 2], [8 6 -2]
-PLANE stonexy [12 -5 -2], [8 -5 -2], [8 6 -2], [12 6 -2]
+PLANE stonexy [8 -5 2], [12 -5 2], [12 6 2], [8 6 2] 2SIDED
+PLANE stoneyz [12 -5 2], [12 -5 -2], [12 6 -2], [12 6 2] 2SIDED
+PLANE stoneyz [8 -5 -2], [8 -5 2], [8 6 2], [8 6 -2] 2SIDED
+PLANE stonexy [12 -5 -2], [8 -5 -2], [8 6 -2], [12 6 -2] 2SIDED
 
-PLANE stonexy [-12 -5 2], [-8 -5 2], [-8 6 2], [-12 6 2]
-PLANE stoneyz [-8 -5 2], [-8 -5 -2], [-8 6 -2], [-8 6 2]
-PLANE stoneyz [-12 -5 -2], [-12 -5 2], [-12 6 2], [-12 6 -2]
-PLANE stonexy [-8 -5 -2], [-12 -5 -2], [-12 6 -2], [-8 6 -2]
+PLANE stonexy [-12 -5 2], [-8 -5 2], [-8 6 2], [-12 6 2] 2SIDED
+PLANE stoneyz [-8 -5 2], [-8 -5 -2], [-8 6 -2], [-8 6 2] 2SIDED
+PLANE stoneyz [-12 -5 -2], [-12 -5 2], [-12 6 2], [-12 6 -2] 2SIDED
+PLANE stonexy [-8 -5 -2], [-12 -5 -2], [-12 6 -2], [-8 6 -2] 2SIDED
 
 # === GATE ARCH DETAIL ===
-PLANE stoneyz [-3 -5 15], [-3 -5 14], [-3 4 14], [-3 4 15]
-PLANE stoneyz [3 -5 14], [3 -5 15], [3 4 15], [3 4 14]
-PLANE stonexz [-3 4 15], [3 4 15], [3 4 14], [-3 4 14]
+PLANE stoneyz [-3 -5 15], [-3 -5 14], [-3 4 14], [-3 4 15] 2SIDED
+PLANE stoneyz [3 -5 14], [3 -5 15], [3 4 15], [3 4 14] 2SIDED
+PLANE stonexz [-3 4 15], [3 4 15], [3 4 14], [-3 4 14] 2SIDED
 
 # === LANTERNS ===
 
