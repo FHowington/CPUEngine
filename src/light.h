@@ -51,6 +51,7 @@ illumination getLight(const vertex<float>& norm, float ambient, float x, float y
 extern vertex<float> cameraPos;
 extern bool specularEnabled;
 extern float specularShininess;
+extern float specularStrength;
 
 #if defined(__AVX2__) && defined(__FMA__)
 void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, float ambient,

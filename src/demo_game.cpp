@@ -35,6 +35,7 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Dynamic Lights", &_dynamicLights));
   _renderMenu.addItem(MenuItem::toggle("Specular", &_specular));
   _renderMenu.addItem(MenuItem::slider("Shininess", &_shininess, 4.0f, 128.0f, 4.0f));
+  _renderMenu.addItem(MenuItem::slider("Spec Str", &_specStrength, 0.1f, 2.0f, 0.1f));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -128,6 +129,7 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   // Specular lighting
   specularEnabled = _specular;
   specularShininess = _shininess;
+  specularStrength = _specStrength;
   cameraPos = vertex<float>(_camera.getX(), _camera.getY(), _camera.getZ());
 
   // Spin the first model via e/q keys

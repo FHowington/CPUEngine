@@ -50,6 +50,7 @@ class DemoGame : public Game {
   bool _dynamicLights = true;
   bool _specular = false;
   float _shininess = 32.0f;
+  float _specStrength = 0.5f;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system
