@@ -1,4 +1,5 @@
 #include "demo_game.h"
+#include "depth_fog.h"
 #include "light_fog.h"
 #include <algorithm>
 #include <cstdio>
@@ -22,7 +23,6 @@ void DemoGame::init(Engine& engine) {
 void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Wireframe", &_wireframe));
   _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
-  _renderMenu.addItem(MenuItem::toggle("Light Fog", &_lightFog));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -30,8 +30,15 @@ void DemoGame::buildMenus() {
   _cameraMenu.addItem(MenuItem::slider("Near Clip", &_nearClip, 0.5f, 10.0f, 0.5f));
   _cameraMenu.addItem(MenuItem::slider("Far Clip", &_farClip, 20.0f, 500.0f, 10.0f));
 
+  _fogMenu.addItem(MenuItem::toggle("Light Fog", &_lightFog));
+  _fogMenu.addItem(MenuItem::toggle("Depth Fog", &_depthFog));
+  _fogMenu.addItem(MenuItem::separator());
+  _fogMenu.addItem(MenuItem::slider("Fog Near", &_depthFogNear, 0.0f, 1.0f, 0.05f));
+  _fogMenu.addItem(MenuItem::slider("Fog Far", &_depthFogFar, 0.1f, 1.0f, 0.05f));
+
   _mainMenu.addItem(MenuItem::sub("Render", &_renderMenu));
   _mainMenu.addItem(MenuItem::sub("Camera", &_cameraMenu));
+  _mainMenu.addItem(MenuItem::sub("Fog", &_fogMenu));
 
   _menuStack.setRoot(&_mainMenu);
   _menuStack.setPosition(W - 420, 12);
@@ -142,6 +149,7 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 // 4x SDL window. Line pitch = 18px (16px glyph + 2px gap).
 
 void DemoGame::drawOverlay() {
+  if (_depthFog) applyDepthFog(0x8090A0, _depthFogNear, _depthFogFar);
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
 
   constexpr int S       = 2;           // font scale factor
@@ -150,7 +158,7 @@ void DemoGame::drawOverlay() {
   constexpr int CHAR_W  = 8 * S;      // 16px per glyph
   constexpr int LINE_H  = 8 * S + 2;  // 18px per line
   constexpr int COLS    = 30;          // characters per line
-  constexpr int ROWS    = 23;          // max text rows (with settings open)
+  constexpr int ROWS    = 24;          // max text rows (with settings open)
   constexpr int PW      = COLS * CHAR_W + PAD * 2;   // 496px
   constexpr int PH      = ROWS * LINE_H + PAD * 2;   // 412px
 
@@ -194,6 +202,9 @@ void DemoGame::drawOverlay() {
 
   snprintf(buf, sizeof(buf), "Fog:  %s  [G]", _lightFog ? "ON " : "OFF");
   Overlay::drawText(tx, ty, buf, _lightFog ? 0x55FF55 : 0xCCCCCC, S); ty += LINE_H;
+
+  snprintf(buf, sizeof(buf), "Depth:%s", _depthFog ? "ON " : "OFF");
+  Overlay::drawText(tx, ty, buf, _depthFog ? 0x55FF55 : 0xCCCCCC, S); ty += LINE_H;
 
   snprintf(buf, sizeof(buf), "FOV:  %.0f     [/]", _fov);
   Overlay::drawText(tx, ty, buf, 0x88FFFF, S); ty += LINE_H;

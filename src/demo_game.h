@@ -41,12 +41,16 @@ class DemoGame : public Game {
   float _farClip = 100.0f;
   bool _showSettings = true;
   bool _lightFog = true;
+  bool _depthFog = true;
+  float _depthFogNear = 0.15f;
+  float _depthFogFar = 0.85f;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system
   Menu _mainMenu{"Settings"};
   Menu _renderMenu{"Render"};
   Menu _cameraMenu{"Camera"};
+  Menu _fogMenu{"Fog"};
   MenuStack _menuStack;
   void buildMenus();
 };
