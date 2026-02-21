@@ -226,3 +226,36 @@ PLANE stonexy [-12 -5 -2], [-8 -5 -2], [-8 6 -2], [-12 6 -2]
 PLANE stoneyz [-3 -5 15], [-3 -5 14], [-3 4 14], [-3 4 15]
 PLANE stoneyz [3 -5 15], [3 -5 14], [3 4 14], [3 4 15]
 PLANE stonexz [-3 4 15], [3 4 15], [3 4 14], [-3 4 14]
+
+# === LANTERNS ===
+# Left gate torch lantern at (-4, 2, 14) — mounted on inner front wall
+# Back plate (against wall)
+PLANE stonexy [-4.4 1.2 14.0], [-3.6 1.2 14.0], [-3.6 2.8 14.0], [-4.4 2.8 14.0]
+# Left side
+PLANE stoneyz [-4.4 1.2 14.0], [-4.4 1.2 14.5], [-4.4 2.8 14.5], [-4.4 2.8 14.0]
+# Right side
+PLANE stoneyz [-3.6 1.2 14.0], [-3.6 1.2 14.5], [-3.6 2.8 14.5], [-3.6 2.8 14.0]
+# Top
+PLANE stonexz [-4.4 2.8 14.0], [-3.6 2.8 14.0], [-3.6 2.8 14.5], [-4.4 2.8 14.5]
+
+# Right gate torch lantern at (4, 2, 14) — mounted on inner front wall
+# Back plate
+PLANE stonexy [3.6 1.2 14.0], [4.4 1.2 14.0], [4.4 2.8 14.0], [3.6 2.8 14.0]
+# Left side
+PLANE stoneyz [3.6 1.2 14.0], [3.6 1.2 14.5], [3.6 2.8 14.5], [3.6 2.8 14.0]
+# Right side
+PLANE stoneyz [4.4 1.2 14.0], [4.4 1.2 14.5], [4.4 2.8 14.5], [4.4 2.8 14.0]
+# Top
+PLANE stonexz [3.6 2.8 14.0], [4.4 2.8 14.0], [4.4 2.8 14.5], [3.6 2.8 14.5]
+
+# Courtyard hanging lantern at (0, 3, -5) — small box, open bottom
+# Front
+PLANE stonexy [-0.4 2.5 -4.6], [0.4 2.5 -4.6], [0.4 3.5 -4.6], [-0.4 3.5 -4.6]
+# Back
+PLANE stonexy [-0.4 2.5 -5.4], [0.4 2.5 -5.4], [0.4 3.5 -5.4], [-0.4 3.5 -5.4]
+# Left
+PLANE stoneyz [-0.4 2.5 -4.6], [-0.4 2.5 -5.4], [-0.4 3.5 -5.4], [-0.4 3.5 -4.6]
+# Right
+PLANE stoneyz [0.4 2.5 -4.6], [0.4 2.5 -5.4], [0.4 3.5 -5.4], [0.4 3.5 -4.6]
+# Top
+PLANE stonexz [-0.4 3.5 -4.6], [0.4 3.5 -4.6], [0.4 3.5 -5.4], [-0.4 3.5 -5.4]
