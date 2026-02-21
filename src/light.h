@@ -1,9 +1,7 @@
 // Created by Forbes Howington 5/19/20
 #pragma once
 #include "geometry.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
+#include "simd_compat.h"
 #include <cassert>
 #include <list>
 

@@ -3,9 +3,7 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
+#include "simd_compat.h"
 #include <iostream>
 #include <memory>
 

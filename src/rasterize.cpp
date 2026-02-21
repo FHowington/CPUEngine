@@ -2,9 +2,7 @@
 #include "rasterize.h"
 #include <algorithm>
 #include <cmath>
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
+#include "simd_compat.h"
 
 #define AFFINE_SETUP                                                    \
   const int x0 = v0i._x;                                                \
@@ -887,6 +885,7 @@ vertex<float> realCorrectionSingle (const vertex<float>& vOut,  const vertex<flo
 
 template <typename T, typename std::enable_if<std::is_base_of<BehindCamera, T>::value, int>::type*>
 void renderModel (const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform) {
+  const bool ds = model->_doubleSided;
   for (auto t : model->_baseModel.getFaces()) {
     vertex<float> camV0;
     vertex<float> camV1;
@@ -909,38 +908,43 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
         if (!v0Res) {
           camCorrection(camV1, camV2, camV0, t1, t2);
 
-          const vertex<int> v0i = pipelineSlowPartTwo(camV0);
-          const vertex<int> v1i = pipelineSlowPartTwo(camV1);
-          const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+          vertex<int> v0i = pipelineSlowPartTwo(camV0);
+          vertex<int> v1i = pipelineSlowPartTwo(camV1);
+          vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
-          // We get the normal vector for every triangle
           const vertex<float> v = cross(v0i, v1i, v2i);
+          bool flip = v._z >= 0;
 
-          if (v._z < 0) {
+          if (v._z < 0 || ds) {
+            if (flip) { std::swap(v1i, v2i); std::swap(v1, v2); std::swap(t1, t2); }
             if (renderWireframe) { drawWireframeTri(v0i, v1i, v2i); }
             else { realCorrection(v1, v2, v0, t1, t2); drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2); }
           }
         } else if (!v1Res) {
           camCorrection(camV2, camV0, camV1, t1, t2);
 
-          const vertex<int> v0i = pipelineSlowPartTwo(camV0);
-          const vertex<int> v1i = pipelineSlowPartTwo(camV1);
-          const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+          vertex<int> v0i = pipelineSlowPartTwo(camV0);
+          vertex<int> v1i = pipelineSlowPartTwo(camV1);
+          vertex<int> v2i = pipelineSlowPartTwo(camV2);
           const vertex<float> v = cross(v0i, v1i, v2i);
+          bool flip = v._z >= 0;
 
-          if (v._z < 0) {
+          if (v._z < 0 || ds) {
+            if (flip) { std::swap(v0i, v2i); std::swap(v0, v2); std::swap(t1, t2); }
             if (renderWireframe) { drawWireframeTri(v0i, v1i, v2i); }
             else { realCorrection(v2, v0, v1, t1, t2); drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2); }
           }
         } else {
           camCorrection(camV0, camV1, camV2, t1, t2);
 
-          const vertex<int> v0i = pipelineSlowPartTwo(camV0);
-          const vertex<int> v1i = pipelineSlowPartTwo(camV1);
-          const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+          vertex<int> v0i = pipelineSlowPartTwo(camV0);
+          vertex<int> v1i = pipelineSlowPartTwo(camV1);
+          vertex<int> v2i = pipelineSlowPartTwo(camV2);
           const vertex<float> v = cross(v0i, v1i, v2i);
+          bool flip = v._z >= 0;
 
-          if (v._z < 0) {
+          if (v._z < 0 || ds) {
+            if (flip) { std::swap(v0i, v1i); std::swap(v0, v1); std::swap(t1, t2); }
             if (renderWireframe) { drawWireframeTri(v0i, v1i, v2i); }
             else { realCorrection(v0, v1, v2, t1, t2); drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2); }
           }
@@ -948,105 +952,97 @@ void renderModel (const std::shared_ptr<const ModelInstance>& model, const matri
       }
       // Only a single vertex is outside
       else if (v0Res) {
-        //  V0 is the only vertex outside, it must be recalculated
         float t1;
         const vertex<float> camV0_1 = camCorrectionSingle(camV0, camV2, t1);
 
-        // All vertexes are available
-        const vertex<int> v0i_1 = pipelineSlowPartTwo(camV0_1);
-        const vertex<int> v1i = pipelineSlowPartTwo(camV1);
-        const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+        vertex<int> v0i_1 = pipelineSlowPartTwo(camV0_1);
+        vertex<int> v1i = pipelineSlowPartTwo(camV1);
+        vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
-        // We get the normal vector for every triangle
         const vertex<float> v = cross(v0i_1, v1i, v2i);
+        bool flip = v._z >= 0;
 
-        if (v._z < 0) {
+        if (v._z < 0 || ds) {
+          float t2;
+          vertex<float> camV0_2 = camCorrectionSingle(camV0, camV1, t2);
+          const vertex<float> v0_1 = realCorrectionSingle(v0, v2, t1);
+          const vertex<float> v0_2 = realCorrectionSingle(v0, v1, t2);
+          const vertex<int> v0i_2 = pipelineSlowPartTwo(camV0_2);
+
+          if (flip) { std::swap(v1i, v2i); std::swap(v1, v2); }
           if (renderWireframe) {
-            float t2;
-            vertex<float> camV0_2 = camCorrectionSingle(camV0, camV1, t2);
-            const vertex<int> v0i_2 = pipelineSlowPartTwo(camV0_2);
             drawWireframeTri(v0i_1, v1i, v2i);
             drawWireframeTri(v0i_1, v0i_2, v1i);
           } else {
-            float t2;
-            vertex<float> camV0_2 = camCorrectionSingle(camV0, camV1, t2);
-            const vertex<float> v0_1 = realCorrectionSingle(v0, v2, t1);
-            const vertex<float> v0_2 = realCorrectionSingle(v0, v1, t2);
-            const vertex<int> v0i_2 = pipelineSlowPartTwo(camV0_2);
             drawTri<T>(*model, t, v0i_1, v1i, v2i, v0_1, v1, v2);
             drawTri<T>(*model, t, v0i_1, v0i_2, v1i, v0_1, v0_2, v1);
           }
         }
       } else if (v1Res) {
-        //  V0 is the only vertex outside, it must be recalculated
         float t1;
         const vertex<float> camV1_1 = camCorrectionSingle(camV1, camV2, t1);
 
-        // All vertexes are available
-        const vertex<int> v1i_1 = pipelineSlowPartTwo(camV1_1);
-        const vertex<int> v0i = pipelineSlowPartTwo(camV0);
-        const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+        vertex<int> v1i_1 = pipelineSlowPartTwo(camV1_1);
+        vertex<int> v0i = pipelineSlowPartTwo(camV0);
+        vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
-        // We get the normal vector for every triangle
         const vertex<float> v = cross(v0i, v1i_1, v2i);
+        bool flip = v._z >= 0;
 
-        if (v._z < 0) {
+        if (v._z < 0 || ds) {
+          float t2;
+          vertex<float> camV1_2 = camCorrectionSingle(camV1, camV0, t2);
+          const vertex<float> v1_1 = realCorrectionSingle(v1, v2, t1);
+          const vertex<float> v1_2 = realCorrectionSingle(v1, v0, t2);
+          const vertex<int> v1i_2 = pipelineSlowPartTwo(camV1_2);
+
+          if (flip) { std::swap(v0i, v2i); std::swap(v0, v2); }
           if (renderWireframe) {
-            float t2;
-            vertex<float> camV1_2 = camCorrectionSingle(camV1, camV0, t2);
-            const vertex<int> v1i_2 = pipelineSlowPartTwo(camV1_2);
             drawWireframeTri(v0i, v1i_1, v2i);
             drawWireframeTri(v0i, v1i_2, v1i_1);
           } else {
-            float t2;
-            vertex<float> camV1_2 = camCorrectionSingle(camV1, camV0, t2);
-            const vertex<float> v1_1 = realCorrectionSingle(v1, v2, t1);
-            const vertex<float> v1_2 = realCorrectionSingle(v1, v0, t2);
-            const vertex<int> v1i_2 = pipelineSlowPartTwo(camV1_2);
             drawTri<T>(*model, t, v0i, v1i_1, v2i, v0, v1_1, v2);
             drawTri<T>(*model, t, v0i, v1i_2, v1i_1, v0, v1_2, v1_1);
           }
         }
       } else if (v2Res) {
-        //  V0 is the only vertex outside, it must be recalculated
         float t1;
         const vertex<float> camV2_1 = camCorrectionSingle(camV2, camV0, t1);
 
-        // All vertexes are available
-        const vertex<int> v2i_1 = pipelineSlowPartTwo(camV2_1);
-        const vertex<int> v1i = pipelineSlowPartTwo(camV1);
-        const vertex<int> v0i = pipelineSlowPartTwo(camV0);
+        vertex<int> v2i_1 = pipelineSlowPartTwo(camV2_1);
+        vertex<int> v1i = pipelineSlowPartTwo(camV1);
+        vertex<int> v0i = pipelineSlowPartTwo(camV0);
 
-        // We get the normal vector for every triangle
         const vertex<float> v = cross(v0i, v1i, v2i_1);
+        bool flip = v._z >= 0;
 
-        if (v._z < 0) {
+        if (v._z < 0 || ds) {
+          float t2;
+          vertex<float> camV2_2 = camCorrectionSingle(camV2, camV1, t2);
+          const vertex<float> v2_1 = realCorrectionSingle(v2, v0, t1);
+          const vertex<float> v2_2 = realCorrectionSingle(v2, v1, t2);
+          const vertex<int> v2i_2 = pipelineSlowPartTwo(camV2_2);
+
+          if (flip) { std::swap(v0i, v1i); std::swap(v0, v1); }
           if (renderWireframe) {
-            float t2;
-            vertex<float> camV2_2 = camCorrectionSingle(camV2, camV1, t2);
-            const vertex<int> v2i_2 = pipelineSlowPartTwo(camV2_2);
             drawWireframeTri(v0i, v1i, v2i_1);
             drawWireframeTri(v1i, v2i_2, v0i);
           } else {
-            float t2;
-            vertex<float> camV2_2 = camCorrectionSingle(camV2, camV1, t2);
-            const vertex<float> v2_1 = realCorrectionSingle(v2, v0, t1);
-            const vertex<float> v2_2 = realCorrectionSingle(v2, v1, t2);
-            const vertex<int> v2i_2 = pipelineSlowPartTwo(camV2_2);
             drawTri<T>(*model, t, v0i, v1i, v2i_1, v0, v1, v2_1);
             drawTri<T>(*model, t, v1i, v2i_2, v0i, v1, v2_2, v0);
           }
         }
       } else {
         // All vertexes are available
-        const vertex<int> v0i = pipelineSlowPartTwo(camV0);
-        const vertex<int> v1i = pipelineSlowPartTwo(camV1);
-        const vertex<int> v2i = pipelineSlowPartTwo(camV2);
+        vertex<int> v0i = pipelineSlowPartTwo(camV0);
+        vertex<int> v1i = pipelineSlowPartTwo(camV1);
+        vertex<int> v2i = pipelineSlowPartTwo(camV2);
 
-        // We get the normal vector for every triangle
         const vertex<float> v = cross(v0i, v1i, v2i);
+        bool flip = v._z >= 0;
 
-        if (v._z < 0) {
+        if (v._z < 0 || ds) {
+          if (flip) { std::swap(v1i, v2i); std::swap(v1, v2); }
           if (renderWireframe) { drawWireframeTri(v0i, v1i, v2i); }
           else { drawTri<T>(*model, t, v0i, v1i, v2i, v0, v1, v2); }
         }

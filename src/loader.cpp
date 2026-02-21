@@ -255,78 +255,54 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         std::cout << "Parsing failed for line " << line << std::endl;
         break;
       }
-      std::vector<vertex<float>> planeVertices;
-
-      planeVertices.emplace_back(x1, y1, z1);
-      planeVertices.emplace_back(x0, y0, z0);
-      planeVertices.emplace_back(x2, y2, z2);
-
-      planeVertices.emplace_back(x2, y2, z2);
-      planeVertices.emplace_back(x0, y0, z0);
-      planeVertices.emplace_back(x3, y3, z3);
-
-      planeVertices.emplace_back(x1, y1, z1);
-      planeVertices.emplace_back(x0, y0, z0);
-      planeVertices.emplace_back(x2, y2, z2);
-
-      planeVertices.emplace_back(x2, y2, z2);
-      planeVertices.emplace_back(x0, y0, z0);
-      planeVertices.emplace_back(x3, y3, z3);
-
-      std::vector<vertex<float>> planeNorms;
-
+      // Compute normal for the plane
       float Ax = x0 - x1;
       float Ay = y0 - y1;
       float Az = z0 - z1;
-
       float Bx = x1 - x2;
       float By = y1 - y2;
       float Bz = z1 - z2;
-
-      float Nx = Ay * Bz - Az * By;
-      float Ny = Az * Bx - Ax * Bz;
-      float Nz = Ax * By - Ay * Bx;
-
-      float Ax2 = x0 - x2;
-      float Ay2 = y0 - y2;
-      float Az2 = z0 - z2;
-
-      float Bx2 = x2 - x3;
-      float By2 = y2 - y3;
-      float Bz2 = z2 - z3;
-
-      float Nx2 = Ay2 * Bz2 - Az2 * By2;
-      float Ny2 = Az2 * Bx2 - Ax2 * Bz2;
-      float Nz2 = Ax2 * By2 - Ay2 * Bx2;
-
-      vertex<float> norm(Nx, Ny, Nz);
+      vertex<float> norm(Ay * Bz - Az * By, Az * Bx - Ax * Bz, Ax * By - Ay * Bx);
       norm.normalize();
 
-      vertex<float> norm2(Nx2, Ny2, Nz2);
-      norm2.normalize();
-
-      planeNorms.emplace_back(norm._x, norm._y, norm._z);
-      planeNorms.emplace_back(norm._x, norm._y, norm._z);
-      planeNorms.emplace_back(norm._x, norm._y, norm._z);
-
-      planeNorms.emplace_back(norm2._x, norm2._y, norm2._z);
-      planeNorms.emplace_back(norm2._x, norm2._y, norm2._z);
-      planeNorms.emplace_back(norm2._x, norm2._y, norm2._z);
-
-      planeNorms.emplace_back(-norm._x, -norm._y, -norm._z);
-      planeNorms.emplace_back(-norm._x, -norm._y, -norm._z);
-      planeNorms.emplace_back(-norm._x, -norm._y, -norm._z);
-
-      planeNorms.emplace_back(-norm2._x, -norm2._y, -norm2._z);
-      planeNorms.emplace_back(-norm2._x, -norm2._y, -norm2._z);
-      planeNorms.emplace_back(-norm2._x, -norm2._y, -norm2._z);
-
+      // Subdivide the quad into N x N sub-quads to reduce per-triangle depth range
+      constexpr int N = 4;
+      std::vector<vertex<float>> planeVertices;
+      std::vector<vertex<float>> planeNorms;
       std::vector<face> planeFaces;
-      planeFaces.emplace_back(2, 1, 0, x2, y2, x0, y0, x1, y1);
-      planeFaces.emplace_back(5, 4, 3, x3, y3, x0, y0, x2, y2);
 
-      planeFaces.emplace_back(6, 7, 8, x1, y1, x0, y0, x2, y2);
-      planeFaces.emplace_back(9, 10, 11, x2, y2, x0, y0, x3, y3);
+      // Generate (N+1)x(N+1) grid of vertices via bilinear interpolation
+      // Corners: p0--p1
+      //          |    |
+      //          p3--p2
+      for (int j = 0; j <= N; ++j) {
+        float v = (float)j / N;
+        for (int i = 0; i <= N; ++i) {
+          float u = (float)i / N;
+          float px = (1-u)*(1-v)*x0 + u*(1-v)*x1 + u*v*x2 + (1-u)*v*x3;
+          float py = (1-u)*(1-v)*y0 + u*(1-v)*y1 + u*v*y2 + (1-u)*v*y3;
+          float pz = (1-u)*(1-v)*z0 + u*(1-v)*z1 + u*v*z2 + (1-u)*v*z3;
+          planeVertices.emplace_back(px, py, pz);
+          planeNorms.emplace_back(norm._x, norm._y, norm._z);
+        }
+      }
+
+      for (int j = 0; j < N; ++j) {
+        for (int i = 0; i < N; ++i) {
+          unsigned a = j * (N+1) + i;
+          unsigned b = a + 1;
+          unsigned c = a + (N+1) + 1;
+          unsigned d = a + (N+1);
+          planeFaces.emplace_back(c, b, a,
+            planeVertices[c]._x, planeVertices[c]._y,
+            planeVertices[b]._x, planeVertices[b]._y,
+            planeVertices[a]._x, planeVertices[a]._y);
+          planeFaces.emplace_back(d, a, c,
+            planeVertices[d]._x, planeVertices[d]._y,
+            planeVertices[a]._x, planeVertices[a]._y,
+            planeVertices[c]._x, planeVertices[c]._y);
+        }
+      }
 
 
       std::string planeName("plane");
@@ -352,7 +328,7 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         std::cout << "Unknown shader type " << shader << std::endl;
       }
 
-      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st);
+      std::shared_ptr<ModelInstance> planeInstance = std::make_shared<ModelInstance>(models[planeName], st, 0.2, true);
 
       planeInstance->_position = matrix<4,4>::identity();
       modelInstances.push_back(planeInstance);

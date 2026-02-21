@@ -12,12 +12,11 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 
 
-option(SIMD "Use AVX2/FMA instructions" OFF)
+option(SIMD "Use SIMD instructions (portable via SIMDe)" OFF)
 option(DEBUG "Build debug variant with no optimizations" OFF)
 if(SIMD)
-  SET(CLANG_INSTRUCTIONS "-mavx2 -mfma -Rpass=loop-vectorize")
-else()
-#  SET(CLANG_INSTRUCTIONS "-mno-avx")
+  SET(CLANG_INSTRUCTIONS "-march=native -Rpass=loop-vectorize")
+  add_definitions(-DUSE_SIMD)
 endif()
 
 if(DEBUG)
@@ -31,6 +30,9 @@ SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${CLANG_SPEED} ${CLANG_INSTRUCTIONS} -W
 
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
+if(SIMD)
+  include_directories(${PROJECT_SOURCE_DIR}/third_party/simde)
+endif()
 add_library(engineLib "")
 add_subdirectory(src)
 

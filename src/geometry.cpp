@@ -2,9 +2,7 @@
 #include "geometry.h"
 #include <array>
 #include <cmath>
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
+#include "simd_compat.h"
 #include <iostream>
 
 #ifdef __AVX__
@@ -580,6 +578,13 @@ vertex<int> pipelineSlowPartTwo(vertex<float> cameraResult) {
   cameraResult._x += W * xFOV;
   cameraResult._y *= H * yZoom;
   cameraResult._y += H * yFOV;
+
+  // Clamp to prevent short overflow in rasterizer edge deltas (A12 = y1-y2 etc.)
+  constexpr float lim = 16000.0f;
+  if (cameraResult._x < -lim) cameraResult._x = -lim;
+  if (cameraResult._x >  lim) cameraResult._x =  lim;
+  if (cameraResult._y < -lim) cameraResult._y = -lim;
+  if (cameraResult._y >  lim) cameraResult._y =  lim;
 
   cameraResult._z *= depth;
 

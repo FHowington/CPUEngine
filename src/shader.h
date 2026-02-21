@@ -8,9 +8,7 @@
 #include "light.h"
 #include "loader.h"
 #include "tgaimage.h"
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
+#include "simd_compat.h"
 
 // We do this instead of the typical inheritance route because dynamic binding of function calls
 // incurs a perf. hit for shaders. They are simply called too many time.

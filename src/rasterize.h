@@ -100,6 +100,7 @@ void drawTri(const ModelInstance& m, const face& f,
 // type of shader that inherits from InFrontcamera
 template <typename T, typename std::enable_if<std::is_base_of<InFrontCamera, T>::value, int>::type* = nullptr>
 void renderModel(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform) {
+  const bool ds = model->_doubleSided;
   for (auto t : model->_baseModel.getFaces()) {
     vertex<int> v0i;
     vertex<int> v1i;
@@ -115,7 +116,8 @@ void renderModel(const std::shared_ptr<const ModelInstance>& model, const matrix
       const vertex<float> v = cross(v0i, v1i, v2i);
 
       // If it is backfacing, vector will be pointing in +z, so cull it
-      if (v._z < 0) {
+      if (v._z < 0 || ds) {
+        if (v._z >= 0) { std::swap(v1i, v2i); std::swap(v1, v2); }
         if (renderWireframe) {
           line(v0i, v1i, 0x00FF00);
           line(v1i, v2i, 0x00FF00);
