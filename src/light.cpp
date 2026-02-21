@@ -22,14 +22,16 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
       }
 
       case LightType::Point: {
-        float d = std::fabs(dot(vertex<float>(l._x - x, l._y - y, l._z - z).normalize(), norm));
-        // Falls off according to inverse square law
-        auto dist = (float)(pow(l._x - x, 2) +  pow(l._y - y, 2) +  pow(l._z - z, 2));
-        d /= dist;
-        d *= l._strength;
-        R += d * l._R;
-        G += d * l._G;
-        B += d * l._B;
+        float d = dot(vertex<float>(l._x - x, l._y - y, l._z - z).normalize(), norm);
+        if (d > 0) {
+          // Falls off according to inverse square law
+          auto dist = (float)(pow(l._x - x, 2) +  pow(l._y - y, 2) +  pow(l._z - z, 2));
+          d /= dist;
+          d *= l._strength;
+          R += d * l._R;
+          G += d * l._G;
+          B += d * l._B;
+        }
         break;
       }
     }
@@ -83,9 +85,9 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         dot = _mm256_fmadd_ps(lYNorm, yNorm, dot);
         dot = _mm256_fmadd_ps(lZNorm, zNorm, dot);
 
-        // abs(dot) — point lights illuminate both sides
-        const __m256 signMask = _mm256_set1_ps(-0.0f);
-        dot = _mm256_andnot_ps(signMask, dot);
+        // Clamp negative to zero (one-sided lighting)
+        const __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), dot);
+        dot = _mm256_blendv_ps(dot, _mm256_setzero_si256(), mask);
 
         dot = _mm256_div_ps(dot, dist);
         dot = _mm256_mul_ps(dot, _mm256_set1_ps(l._strength));
