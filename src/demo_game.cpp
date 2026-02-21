@@ -5,9 +5,10 @@
 void DemoGame::init(Engine& engine) {
   _scene.load("../src/scene1.scn");
 
-  _scene.lights.emplace_back(LightType::Point, -5, 0, 7, 50, 1, 0, 0);
-  _scene.lights.emplace_back(LightType::Point, 5, 0, 7, 50, 0, 0, 1);
-  _scene.lights.emplace_back(LightType::Directional, vertex<float>(5, _lightY, -1.5), 1, 1, 1);
+  _scene.lights.emplace_back(LightType::Point, -4, 2, 14, 40, 1.0, 0.6, 0.2);
+  _scene.lights.emplace_back(LightType::Point, 4, 2, 14, 40, 1.0, 0.6, 0.2);
+  _scene.lights.emplace_back(LightType::Point, 0, 3, -5, 60, 0.3, 0.3, 0.8);
+  _scene.lights.emplace_back(LightType::Directional, vertex<float>(5, _lightY, -1.5), 1, 0.9, 0.7);
   Light::sceneLights = _scene.lights;
 
   _camera.setSensitivity(_cameraSpeed);

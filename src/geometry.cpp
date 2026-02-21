@@ -5,6 +5,9 @@
 #include "simd_compat.h"
 #include <iostream>
 
+float nearClipDist = 2;
+float farClipDist = 50;
+
 #ifdef __AVX__
 #define MakeShuffleMask(x,y,z,w)           (x | (y<<2) | (z<<4) | (w<<6))
 
@@ -440,9 +443,9 @@ int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, c
   _mm_stream_ps((float *)result, res);
 
   //Apply clip boundaries
-  if (result[2] > -2) {
+  if (result[2] > -nearClipDist) {
     distance = -1;
-  } else if (result[2] < -50) {
+  } else if (result[2] < -farClipDist) {
     distance = 1;
 
   }
@@ -499,7 +502,7 @@ bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
 
   float zDist = _mm_cvtss_f32(_mm_shuffle_ps(res, res, _MM_SHUFFLE(0, 0, 0, 2)));
   //Apply clip boundaries
-  if (zDist >= -1 || zDist < -50) {
+  if (zDist >= -1 || zDist < -farClipDist) {
     return false;
   }
 
@@ -531,9 +534,9 @@ int pipelineSlow(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, c
   imres = (cameraTransform * imres);
 
   // Apply clip boundaries
-  if (imres._m[2] > -2) {
+  if (imres._m[2] > -nearClipDist) {
     distance = -1;
-  } else if (imres._m[2] < -50) {
+  } else if (imres._m[2] < -farClipDist) {
     distance = 1;
   }
 
@@ -548,7 +551,7 @@ bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
 
   imres = (cameraTransform * imres);
   // Apply clip boundaries
-  if (imres._m[2] >= -1 || imres._m[2] < -50) {
+  if (imres._m[2] >= -1 || imres._m[2] < -farClipDist) {
     return false;
   }
 

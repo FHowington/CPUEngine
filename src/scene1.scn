@@ -1,5 +1,4 @@
-### EXAMPLE scene file ###
-### Comment lines begin with "#"
+### Castle Scene ###
 
 #TYPE Texture Name      Texture file
 TEXTURE diabloTexture ../diablo3_pose_diffuse.tga
@@ -10,17 +9,78 @@ MODEL diabloModel ../diablo3_pose.obj diabloTexture
 #TYPE    Model       Shader   X,Y,Z coords      X,Y,Z scale     X,Y,Z rotation
 INSTANCE diabloModel Gourand [0, 0, -5] [0.8, 0.8, 0.8] [0, 0, 0]
 
-#TYPE
-PLANE planexz [-15 -5 10], [15 -5 10], [15 -5 -20], [-15 -5 -20]
-PLANE planexy [-15 -5 10], [15 -5 10], [15 10 10], [-15 10 10]
-PLANE planexy [-15 -5 -20], [15 -5 -20], [15 10 -20], [-15 10 -20]
-PLANE planeyz [-15 -5 10], [-15 -5 -20], [-15 10 -20], [-15 10 10]
-PLANE planeyz [15 -5 10], [15 -5 -20], [15 10 -20], [15 10 10]
-PLANE planexz [-15 10 10], [15 10 10], [15 10 -20], [-15 10 -20]
+# === OUTER WALLS ===
+# Floor
+PLANE planexz [-20 -5 15], [20 -5 15], [20 -5 -25], [-20 -5 -25]
 
+# Front wall (with gap for gate)
+PLANE planexy [-20 -5 15], [-3 -5 15], [-3 8 15], [-20 8 15]
+PLANE planexy [3 -5 15], [20 -5 15], [20 8 15], [3 8 15]
+PLANE planexy [-3 4 15], [3 4 15], [3 8 15], [-3 8 15]
 
-# Center pillar
-PLANE planexy [-2 -5 -5], [2 -5 -5], [2 10 -5], [-2 10 -5]
-PLANE planeyz [2 -5 -5], [2 -5 -9], [2 10 -9], [2 10 -5]
-PLANE planeyz [-2 -5 -5], [-2 -5 -9], [-2 10 -9], [-2 10 -5]
-PLANE planexy [-2 -5 -9], [2 -5 -9], [2 10 -9], [-2 10 -9]
+# Back wall
+PLANE planexy [-20 -5 -25], [20 -5 -25], [20 8 -25], [-20 8 -25]
+
+# Left wall
+PLANE planeyz [-20 -5 15], [-20 -5 -25], [-20 8 -25], [-20 8 15]
+
+# Right wall
+PLANE planeyz [20 -5 15], [20 -5 -25], [20 8 -25], [20 8 15]
+
+# === BATTLEMENTS (top of walls) ===
+PLANE planexz [-20 8 15], [20 8 15], [20 8 14], [-20 8 14]
+PLANE planexz [-20 8 -25], [20 8 -25], [20 8 -24], [-20 8 -24]
+PLANE planexz [-20 8 15], [-20 8 -25], [-19 8 -25], [-19 8 15]
+PLANE planexz [20 8 15], [20 8 -25], [19 8 -25], [19 8 15]
+
+# === CORNER TOWERS ===
+# Front-left tower
+PLANE planexy [-23 -5 18], [-17 -5 18], [-17 12 18], [-23 12 18]
+PLANE planexy [-23 -5 12], [-17 -5 12], [-17 12 12], [-23 12 12]
+PLANE planeyz [-23 -5 18], [-23 -5 12], [-23 12 12], [-23 12 18]
+PLANE planeyz [-17 -5 18], [-17 -5 12], [-17 12 12], [-17 12 18]
+PLANE planexz [-23 12 18], [-17 12 18], [-17 12 12], [-23 12 12]
+
+# Front-right tower
+PLANE planexy [17 -5 18], [23 -5 18], [23 12 18], [17 12 18]
+PLANE planexy [17 -5 12], [23 -5 12], [23 12 12], [17 12 12]
+PLANE planeyz [17 -5 18], [17 -5 12], [17 12 12], [17 12 18]
+PLANE planeyz [23 -5 18], [23 -5 12], [23 12 12], [23 12 18]
+PLANE planexz [17 12 18], [23 12 18], [23 12 12], [17 12 12]
+
+# Back-left tower
+PLANE planexy [-23 -5 -22], [-17 -5 -22], [-17 12 -22], [-23 12 -22]
+PLANE planexy [-23 -5 -28], [-17 -5 -28], [-17 12 -28], [-23 12 -28]
+PLANE planeyz [-23 -5 -22], [-23 -5 -28], [-23 12 -28], [-23 12 -22]
+PLANE planeyz [-17 -5 -22], [-17 -5 -28], [-17 12 -28], [-17 12 -22]
+PLANE planexz [-23 12 -22], [-17 12 -22], [-17 12 -28], [-23 12 -28]
+
+# Back-right tower
+PLANE planexy [17 -5 -22], [23 -5 -22], [23 12 -22], [17 12 -22]
+PLANE planexy [17 -5 -28], [23 -5 -28], [23 12 -28], [17 12 -28]
+PLANE planeyz [17 -5 -22], [17 -5 -28], [17 12 -28], [17 12 -22]
+PLANE planeyz [23 -5 -22], [23 -5 -28], [23 12 -28], [23 12 -22]
+PLANE planexz [17 12 -22], [23 12 -22], [23 12 -28], [17 12 -28]
+
+# === CENTRAL KEEP ===
+PLANE planexy [-6 -5 -8], [6 -5 -8], [6 10 -8], [-6 10 -8]
+PLANE planexy [-6 -5 -16], [6 -5 -16], [6 10 -16], [-6 10 -16]
+PLANE planeyz [-6 -5 -8], [-6 -5 -16], [-6 10 -16], [-6 10 -8]
+PLANE planeyz [6 -5 -8], [6 -5 -16], [6 10 -16], [6 10 -8]
+PLANE planexz [-6 10 -8], [6 10 -8], [6 10 -16], [-6 10 -16]
+
+# === COURTYARD PILLARS ===
+PLANE planexy [-2 -5 2], [2 -5 2], [2 6 2], [-2 6 2]
+PLANE planeyz [2 -5 2], [2 -5 -2], [2 6 -2], [2 6 2]
+PLANE planeyz [-2 -5 2], [-2 -5 -2], [-2 6 -2], [-2 6 2]
+PLANE planexy [-2 -5 -2], [2 -5 -2], [2 6 -2], [-2 6 -2]
+
+PLANE planexy [8 -5 2], [12 -5 2], [12 6 2], [8 6 2]
+PLANE planeyz [12 -5 2], [12 -5 -2], [12 6 -2], [12 6 2]
+PLANE planeyz [8 -5 2], [8 -5 -2], [8 6 -2], [8 6 2]
+PLANE planexy [8 -5 -2], [12 -5 -2], [12 6 -2], [8 6 -2]
+
+PLANE planexy [-12 -5 2], [-8 -5 2], [-8 6 2], [-12 6 2]
+PLANE planeyz [-8 -5 2], [-8 -5 -2], [-8 6 -2], [-8 6 2]
+PLANE planeyz [-12 -5 2], [-12 -5 -2], [-12 6 -2], [-12 6 2]
+PLANE planexy [-12 -5 -2], [-8 -5 -2], [-8 6 -2], [-12 6 -2]

@@ -2,6 +2,8 @@
 #include "rasterize.h"
 #include <algorithm>
 #include <cmath>
+
+extern float nearClipDist;
 #include "simd_compat.h"
 
 #define AFFINE_SETUP                                                    \
@@ -831,20 +833,20 @@ void camCorrection (vertex<float>& vOut1, vertex<float>& vOut2, vertex<float>& v
   const float xDiff1 = vOut1._x - vIn._x;
   const float yDiff1 = vOut1._y - vIn._y;
   const float zDiff1 = vOut1._z - vIn._z;
-  t1 = (-vIn._z - 2)/zDiff1;
+  t1 = (-vIn._z - nearClipDist)/zDiff1;
 
   vOut1._x = vIn._x + xDiff1 * t1;
   vOut1._y = vIn._y + yDiff1 * t1;
-  vOut1._z = -2.0;
+  vOut1._z = -nearClipDist;
 
   const float xDiff2 = vOut2._x - vIn._x;
   const float yDiff2 = vOut2._y - vIn._y;
   const float zDiff2 = vOut2._z - vIn._z;
-  t2 = (-vIn._z - 2)/zDiff2;
+  t2 = (-vIn._z - nearClipDist)/zDiff2;
 
   vOut2._x = vIn._x + xDiff2 * t2;
   vOut2._y = vIn._y + yDiff2 * t2;
-  vOut2._z = -2.0;
+  vOut2._z = -nearClipDist;
 }
 
 vertex<float> camCorrectionSingle (const vertex<float>& vOut, const vertex<float>& vIn, float& t) {
@@ -852,9 +854,9 @@ vertex<float> camCorrectionSingle (const vertex<float>& vOut, const vertex<float
   const float xDiff = vOut._x - vIn._x;
   const float yDiff = vOut._y - vIn._y;
   const float zDiff = vOut._z - vIn._z;
-  t = (-vIn._z - 2)/zDiff;
+  t = (-vIn._z - nearClipDist)/zDiff;
 
-  return vertex<float>(vIn._x + xDiff * t, vIn._y + yDiff * t, -2.0);
+  return vertex<float>(vIn._x + xDiff * t, vIn._y + yDiff * t, -nearClipDist);
 }
 
 void realCorrection (vertex<float>& vOut1, vertex<float>& vOut2, vertex<float>& vIn, const float t1, const float t2) {
