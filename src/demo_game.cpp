@@ -149,7 +149,7 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 // 4x SDL window. Line pitch = 18px (16px glyph + 2px gap).
 
 void DemoGame::drawOverlay() {
-  if (_depthFog) applyDepthFog(0x8090A0, _depthFogNear, _depthFogFar);
+  if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
 
   constexpr int S       = 2;           // font scale factor
