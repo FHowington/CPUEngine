@@ -31,10 +31,11 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
     float sy = (float)(H - screenPos._y);
     int lightZ = screenPos._z;
 
-    // Skip fog if light center is occluded by geometry
-    int csx = fast_max(0, fast_min((int)W - 1, screenPos._x));
-    int csy = fast_max(0, fast_min((int)H - 1, screenPos._y));
-    if (zbuff[csy * W + csx] > lightZ) continue;
+    // Skip fog if light center is off-screen or occluded by geometry
+    if (screenPos._x < 0 || screenPos._x >= (int)W ||
+        screenPos._y < 0 || screenPos._y >= (int)H) continue;
+    int zAtCenter = zbuff[screenPos._y * W + screenPos._x];
+    if (zAtCenter > lightZ) continue;
 
     float camZ = (float)lightZ / (float)depth;
     float distScale = 5.0f / fmaxf(1.0f, -camZ);
