@@ -49,8 +49,8 @@ class DemoGame : public Game {
   bool _frustumCull = true;
   bool _dynamicLights = true;
   bool _specular = true;
-  float _shininess = 32.0f;
-  float _specStrength = 0.5f;
+  float _shininess = 128.0f;
+  float _specStrength = 0.3f;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system
