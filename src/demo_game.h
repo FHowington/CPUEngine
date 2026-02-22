@@ -26,7 +26,7 @@ class DemoGame : public Game {
 
   // Demo-specific state: light controls, model spin, toggles
   float _lightX = 1;
-  float _lightY = -3;
+  float _lightY = -0.5;
   float _rot = 0;
   bool _wireframe = false;
   bool _fps = false;
