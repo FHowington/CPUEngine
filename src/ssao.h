@@ -10,64 +10,72 @@
 extern std::array<unsigned, W * H> pixels;
 extern std::array<int, W * H> zbuff;
 
-// Screen-Space Ambient Occlusion: darkens corners and creases.
-// Uses opposite-pair sampling: if BOTH sides of a pixel have closer
-// geometry, the pixel is in a concavity (corner/crease).
-inline void applySSAO(float radius = 8.0f, float strength = 0.7f) {
+// Crease darkening: darkens pixels near depth discontinuities on the
+// recessed (further) side. At a wall-floor junction, the floor pixels
+// near the wall get darkened because the wall is closer.
+inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
   const int zMin = std::numeric_limits<int>::min();
 
-  static std::array<unsigned, W * H> pixCopy;
-  std::memcpy(pixCopy.data(), pixels.data(), W * H * sizeof(unsigned));
+  // Compute per-pixel occlusion factor into a float buffer
+  static std::array<float, W * H> aoMap;
+  std::fill(aoMap.begin(), aoMap.end(), 1.0f);
 
-  // 6 opposite pairs at varying angles
-  static const float pairs[][4] = {
-    { 1, 0, -1,  0},   // horizontal
-    { 0, 1,  0, -1},   // vertical
-    { 1, 1, -1, -1},   // diagonal
-    { 1,-1, -1,  1},   // anti-diagonal
-    { 2, 1, -2, -1},   // wide angle
-    { 1, 2, -1, -2},   // wide angle 2
-  };
-  static const int nPairs = 6;
+  const int R = (int)radius;
 
   for (unsigned y = 0; y < H; ++y) {
-    unsigned pxRow = (H - 1 - y) * W;
-
     for (unsigned x = 0; x < W; ++x) {
       int centerZ = zbuff[y * W + x];
       if (centerZ == zMin) continue;
 
-      // Threshold: how much closer a neighbor must be to count
-      int thresh = (int)(fabsf((float)centerZ) * 0.003f);
-      if (thresh < 50) thresh = 50;
+      // Count how many nearby pixels are significantly closer (larger z)
+      // Only sample in 4 cardinal + 4 diagonal directions at the radius distance
+      int closerCount = 0;
+      int totalSamples = 0;
+      float totalWeight = 0.0f;
 
-      int occPairs = 0;
-      for (int p = 0; p < nPairs; ++p) {
-        int ax = (int)x + (int)(pairs[p][0] * radius);
-        int ay = (int)y + (int)(pairs[p][1] * radius);
-        int bx = (int)x + (int)(pairs[p][2] * radius);
-        int by = (int)y + (int)(pairs[p][3] * radius);
+      for (int dy = -R; dy <= R; dy += R) {
+        for (int dx = -R; dx <= R; dx += R) {
+          if (dx == 0 && dy == 0) continue;
+          int sx = (int)x + dx;
+          int sy = (int)y + dy;
+          if (sx < 0 || sx >= (int)W || sy < 0 || sy >= (int)H) continue;
 
-        // Clamp to screen
-        if (ax < 0 || ax >= (int)W || ay < 0 || ay >= (int)H) continue;
-        if (bx < 0 || bx >= (int)W || by < 0 || by >= (int)H) continue;
+          int sZ = zbuff[sy * W + sx];
+          if (sZ == zMin) continue;
+          totalSamples++;
 
-        int zA = zbuff[ay * W + ax];
-        int zB = zbuff[by * W + bx];
-        if (zA == zMin || zB == zMin) continue;
-
-        // Both sides of the pair are closer than center → concavity
-        if (zA - centerZ > thresh && zB - centerZ > thresh) {
-          ++occPairs;
+          int diff = sZ - centerZ;
+          if (diff > 0) {
+            // Neighbor is closer — weight by how much closer
+            float w = (float)diff / (float)(-centerZ) * 100.0f;
+            if (w > 1.0f) w = 1.0f;
+            totalWeight += w;
+            closerCount++;
+          }
         }
       }
 
-      if (occPairs == 0) continue;
+      if (closerCount == 0 || totalSamples == 0) continue;
 
-      float ao = 1.0f - strength * (float)occPairs / (float)nPairs;
-      if (ao < 0.25f) ao = 0.25f;
+      // Only darken if at least 1 neighbor is closer (we're on the recessed side)
+      // Scale by fraction of closer neighbors and their weight
+      float frac = totalWeight / (float)totalSamples;
+      float ao = 1.0f - strength * frac;
+      if (ao < 0.3f) ao = 0.3f;
+      if (ao >= 1.0f) continue;
 
-      unsigned px = pixCopy[pxRow + x];
+      aoMap[y * W + x] = ao;
+    }
+  }
+
+  // Apply AO to pixels (pixels are Y-flipped relative to zbuff)
+  for (unsigned y = 0; y < H; ++y) {
+    unsigned pxRow = (H - 1 - y) * W;
+    for (unsigned x = 0; x < W; ++x) {
+      float ao = aoMap[y * W + x];
+      if (ao >= 1.0f) continue;
+
+      unsigned px = pixels[pxRow + x];
       unsigned pr = (unsigned)((float)((px >> 16) & 0xFF) * ao);
       unsigned pg = (unsigned)((float)((px >> 8) & 0xFF) * ao);
       unsigned pb = (unsigned)((float)(px & 0xFF) * ao);
