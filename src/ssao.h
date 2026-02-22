@@ -10,20 +10,26 @@
 extern std::array<unsigned, W * H> pixels;
 extern std::array<int, W * H> zbuff;
 
-// Screen-Space Ambient Occlusion: darkens corners and crevices.
-inline void applySSAO(float radius = 12.0f, float strength = 0.6f) {
-  static const float offsets[][2] = {
-    {1,0},{-1,0},{0,1},{0,-1},
-    {0.7f,0.7f},{-0.7f,0.7f},{0.7f,-0.7f},{-0.7f,-0.7f},
-    {0.5f,0.87f},{-0.5f,0.87f},{0.87f,-0.5f},{-0.87f,-0.5f},
-  };
-  static const int nSamples = 12;
+// Screen-Space Ambient Occlusion: darkens corners and creases.
+// Uses opposite-pair sampling: if BOTH sides of a pixel have closer
+// geometry, the pixel is in a concavity (corner/crease).
+inline void applySSAO(float radius = 8.0f, float strength = 0.7f) {
   const int zMin = std::numeric_limits<int>::min();
 
   static std::array<unsigned, W * H> pixCopy;
   std::memcpy(pixCopy.data(), pixels.data(), W * H * sizeof(unsigned));
 
-  // zbuff: non-flipped (row 0 = screen top), pixels: flipped (row 0 = screen bottom)
+  // 6 opposite pairs at varying angles
+  static const float pairs[][4] = {
+    { 1, 0, -1,  0},   // horizontal
+    { 0, 1,  0, -1},   // vertical
+    { 1, 1, -1, -1},   // diagonal
+    { 1,-1, -1,  1},   // anti-diagonal
+    { 2, 1, -2, -1},   // wide angle
+    { 1, 2, -1, -2},   // wide angle 2
+  };
+  static const int nPairs = 6;
+
   for (unsigned y = 0; y < H; ++y) {
     unsigned pxRow = (H - 1 - y) * W;
 
@@ -31,28 +37,35 @@ inline void applySSAO(float radius = 12.0f, float strength = 0.6f) {
       int centerZ = zbuff[y * W + x];
       if (centerZ == zMin) continue;
 
-      // Threshold scales with depth — 0.5% of |centerZ|, min 100
-      int thresh = (int)(fabsf((float)centerZ) * 0.005f);
-      if (thresh < 100) thresh = 100;
+      // Threshold: how much closer a neighbor must be to count
+      int thresh = (int)(fabsf((float)centerZ) * 0.003f);
+      if (thresh < 50) thresh = 50;
 
-      int occluded = 0;
-      for (int s = 0; s < nSamples; ++s) {
-        int sx = (int)x + (int)(offsets[s][0] * radius);
-        int sy = (int)y + (int)(offsets[s][1] * radius);
-        if (sx < 0 || sx >= (int)W || sy < 0 || sy >= (int)H) continue;
+      int occPairs = 0;
+      for (int p = 0; p < nPairs; ++p) {
+        int ax = (int)x + (int)(pairs[p][0] * radius);
+        int ay = (int)y + (int)(pairs[p][1] * radius);
+        int bx = (int)x + (int)(pairs[p][2] * radius);
+        int by = (int)y + (int)(pairs[p][3] * radius);
 
-        int sampleZ = zbuff[sy * W + sx];
-        if (sampleZ == zMin) continue;
+        // Clamp to screen
+        if (ax < 0 || ax >= (int)W || ay < 0 || ay >= (int)H) continue;
+        if (bx < 0 || bx >= (int)W || by < 0 || by >= (int)H) continue;
 
-        if (sampleZ - centerZ > thresh) {
-          ++occluded;
+        int zA = zbuff[ay * W + ax];
+        int zB = zbuff[by * W + bx];
+        if (zA == zMin || zB == zMin) continue;
+
+        // Both sides of the pair are closer than center → concavity
+        if (zA - centerZ > thresh && zB - centerZ > thresh) {
+          ++occPairs;
         }
       }
 
-      if (occluded == 0) continue;
+      if (occPairs == 0) continue;
 
-      float ao = 1.0f - strength * (float)occluded / (float)nSamples;
-      if (ao < 0.3f) ao = 0.3f;
+      float ao = 1.0f - strength * (float)occPairs / (float)nPairs;
+      if (ao < 0.25f) ao = 0.25f;
 
       unsigned px = pixCopy[pxRow + x];
       unsigned pr = (unsigned)((float)((px >> 16) & 0xFF) * ao);
