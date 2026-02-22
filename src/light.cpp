@@ -14,6 +14,10 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
   float G = 0;
   float B = 0;
 
+  // Normalize the interpolated normal (Gouraud interpolation doesn't preserve unit length)
+  vertex<float> N = norm;
+  N.normalize();
+
   // View direction for specular (computed once per fragment)
   vertex<float> viewDir;
   if (specularEnabled) {
@@ -24,7 +28,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
       case LightType::Directional: {
-        float d = -dot(l._direction, norm);
+        float d = -dot(l._direction, N);
         if (d > 0) {
           R += d * l._R;
           G += d * l._G;
@@ -33,12 +37,12 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
           if (specularEnabled) {
             // reflect = 2 * dot(N, L) * N - L, where L = -direction
             float dn2 = 2.0f * d;
-            vertex<float> refl(dn2 * norm._x + l._direction._x,
-                               dn2 * norm._y + l._direction._y,
-                               dn2 * norm._z + l._direction._z);
+            vertex<float> refl(dn2 * N._x + l._direction._x,
+                               dn2 * N._y + l._direction._y,
+                               dn2 * N._z + l._direction._z);
+            refl.normalize();
             float spec = dot(refl, viewDir);
             if (spec > 0) {
-              if (spec > 1.0f) spec = 1.0f;
               spec = powf(spec, specularShininess) * specularStrength;
               R += spec * l._R;
               G += spec * l._G;
@@ -53,7 +57,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
         vertex<float> toLight(l._x - x, l._y - y, l._z - z);
         auto dist = (float)(toLight._x * toLight._x + toLight._y * toLight._y + toLight._z * toLight._z);
         toLight.normalize();
-        float d = dot(toLight, norm);
+        float d = dot(toLight, N);
         if (d > 0) {
           float atten = d * l._strength / dist;
           R += atten * l._R;
@@ -99,6 +103,12 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   G = _mm256_setzero_si256();
   B = _mm256_setzero_si256();
 
+  // Normalize interpolated normals (Gouraud interpolation doesn't preserve unit length)
+  __m256 nLen = _mm256_rsqrt_ps(_mm256_fmadd_ps(zNorm, zNorm, _mm256_fmadd_ps(yNorm, yNorm, _mm256_mul_ps(xNorm, xNorm))));
+  __m256 nX = _mm256_mul_ps(xNorm, nLen);
+  __m256 nY = _mm256_mul_ps(yNorm, nLen);
+  __m256 nZ = _mm256_mul_ps(zNorm, nLen);
+
   // View direction for specular
   __m256 vdX, vdY, vdZ;
   if (specularEnabled) {
@@ -112,14 +122,13 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   }
 
   const __m256 zero = _mm256_setzero_ps();
-  const __m256 one = _mm256_set1_ps(1.0f);
 
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
       case LightType::Directional: {
-        __m256 d = _mm256_mul_ps(xNorm, _mm256_set1_ps(l._direction._x));
-        d = _mm256_fmadd_ps(yNorm, _mm256_set1_ps(l._direction._y), d);
-        d = _mm256_fmadd_ps(zNorm, _mm256_set1_ps(l._direction._z), d);
+        __m256 d = _mm256_mul_ps(nX, _mm256_set1_ps(l._direction._x));
+        d = _mm256_fmadd_ps(nY, _mm256_set1_ps(l._direction._y), d);
+        d = _mm256_fmadd_ps(nZ, _mm256_set1_ps(l._direction._z), d);
         d = _mm256_sub_ps(zero, d);
 
         __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), d);
@@ -132,11 +141,16 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         if (specularEnabled) {
           // reflect = 2*dot(N,L)*N - L where L = -direction
           __m256 dn2 = _mm256_add_ps(d, d);
-          __m256 rX = _mm256_fmadd_ps(dn2, xNorm, _mm256_set1_ps(l._direction._x));
-          __m256 rY = _mm256_fmadd_ps(dn2, yNorm, _mm256_set1_ps(l._direction._y));
-          __m256 rZ = _mm256_fmadd_ps(dn2, zNorm, _mm256_set1_ps(l._direction._z));
+          __m256 rX = _mm256_fmadd_ps(dn2, nX, _mm256_set1_ps(l._direction._x));
+          __m256 rY = _mm256_fmadd_ps(dn2, nY, _mm256_set1_ps(l._direction._y));
+          __m256 rZ = _mm256_fmadd_ps(dn2, nZ, _mm256_set1_ps(l._direction._z));
+          // Normalize reflection vector
+          __m256 rLen = _mm256_rsqrt_ps(_mm256_fmadd_ps(rZ, rZ, _mm256_fmadd_ps(rY, rY, _mm256_mul_ps(rX, rX))));
+          rX = _mm256_mul_ps(rX, rLen);
+          rY = _mm256_mul_ps(rY, rLen);
+          rZ = _mm256_mul_ps(rZ, rLen);
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
-          spec = _mm256_min_ps(_mm256_max_ps(spec, zero), one);
+          spec = _mm256_max_ps(spec, zero);
           spec = fastPow(spec, specularShininess);
           spec = _mm256_mul_ps(spec, _mm256_set1_ps(specularStrength));
           R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
@@ -159,9 +173,9 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         lYNorm = _mm256_mul_ps(lYNorm, recipRoot);
         lZNorm = _mm256_mul_ps(lZNorm, recipRoot);
 
-        __m256 d = _mm256_mul_ps(lXNorm, xNorm);
-        d = _mm256_fmadd_ps(lYNorm, yNorm, d);
-        d = _mm256_fmadd_ps(lZNorm, zNorm, d);
+        __m256 d = _mm256_mul_ps(lXNorm, nX);
+        d = _mm256_fmadd_ps(lYNorm, nY, d);
+        d = _mm256_fmadd_ps(lZNorm, nZ, d);
 
         // Clamp negative to zero (one-sided lighting)
         const __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), d);
