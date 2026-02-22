@@ -13,8 +13,8 @@
 void DemoGame::init(Engine& engine) {
   _scene.load("../src/scene1.scn");
 
-  _scene.lights.emplace_back(LightType::Point, -4, 2, 14, 40, 1.0, 0.6, 0.2);
-  _scene.lights.emplace_back(LightType::Point, 4, 2, 14, 40, 1.0, 0.6, 0.2);
+  _scene.lights.emplace_back(LightType::Point, -4, 2, 13, 40, 1.0, 0.6, 0.2);
+  _scene.lights.emplace_back(LightType::Point, 4, 2, 13, 40, 1.0, 0.6, 0.2);
   _scene.lights.emplace_back(LightType::Point, 0, 3, -5, 200, 0.3, 0.3, 0.8);
   Light::sceneLights = _scene.lights;
 
