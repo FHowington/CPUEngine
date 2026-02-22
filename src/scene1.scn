@@ -9,7 +9,6 @@ MODEL diabloModel ../diablo3_pose.obj diabloTexture
 MODEL sphereModel ../sphere.obj chromeTexture
 
 #TYPE    Model       Shader   X,Y,Z coords      X,Y,Z scale     X,Y,Z rotation
-INSTANCE diabloModel Gourand [0, 0, -5] [0.8, 0.8, 0.8] [0, 0, 0]
 
 # Chrome spheres — row along courtyard for specular demo
 INSTANCE sphereModel Gourand [-12, -3, -15] [2, 2, 2] [0, 0, 0]

@@ -63,6 +63,21 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
           R += atten * l._R;
           G += atten * l._G;
           B += atten * l._B;
+
+          if (specularEnabled) {
+            float dn2 = 2.0f * d;
+            vertex<float> refl(dn2 * N._x - toLight._x,
+                               dn2 * N._y - toLight._y,
+                               dn2 * N._z - toLight._z);
+            refl.normalize();
+            float spec = dot(refl, viewDir);
+            if (spec > 0) {
+              spec = powf(spec, specularShininess) * specularStrength * l._strength / dist;
+              R += spec * l._R;
+              G += spec * l._G;
+              B += spec * l._B;
+            }
+          }
         }
         break;
       }
@@ -187,6 +202,27 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
         R = _mm256_fmadd_ps(atten, _mm256_set1_ps(l._R), R);
         G = _mm256_fmadd_ps(atten, _mm256_set1_ps(l._G), G);
         B = _mm256_fmadd_ps(atten, _mm256_set1_ps(l._B), B);
+
+        if (specularEnabled) {
+          // reflect = 2*dot(N,L)*N - L where L = toLight (already normalized)
+          __m256 dn2 = _mm256_add_ps(d, d);
+          __m256 rX = _mm256_fmsub_ps(dn2, nX, lXNorm);
+          __m256 rY = _mm256_fmsub_ps(dn2, nY, lYNorm);
+          __m256 rZ = _mm256_fmsub_ps(dn2, nZ, lZNorm);
+          __m256 rLen = _mm256_rsqrt_ps(_mm256_fmadd_ps(rZ, rZ, _mm256_fmadd_ps(rY, rY, _mm256_mul_ps(rX, rX))));
+          rX = _mm256_mul_ps(rX, rLen);
+          rY = _mm256_mul_ps(rY, rLen);
+          rZ = _mm256_mul_ps(rZ, rLen);
+          __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
+          spec = _mm256_max_ps(spec, zero);
+          spec = fastPow(spec, specularShininess);
+          // Attenuate specular same as diffuse
+          __m256 specAtten = _mm256_div_ps(_mm256_set1_ps(specularStrength * l._strength), dist);
+          spec = _mm256_mul_ps(spec, specAtten);
+          R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
+          G = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._G), G);
+          B = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._B), B);
+        }
 
         break;
       }
