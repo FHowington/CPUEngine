@@ -141,9 +141,12 @@ void Pool::job_wait() {
     }
 
     // Only clear the dirty region instead of the full screen buffer
-    if (pMaxX > pMinX && pMaxY > pMinY) {
-      const unsigned clearW = pMaxX - pMinX;
-      for (unsigned row = pMinY; row < pMaxY; ++row) {
+    // pMaxX/pMaxY are inclusive; SIMD rasterizer may write up to 7 pixels past maxX
+    if (pMaxX > pMinX) {
+      const unsigned clearEnd = std::min((unsigned)Wt, ((pMaxX + 8u) & ~7u));
+      const unsigned clearW = clearEnd - pMinX;
+      const unsigned endY = std::min(pMaxY + 1u, (unsigned)H);
+      for (unsigned row = pMinY; row < endY; ++row) {
         const unsigned off = row * Wt + pMinX;
         std::memset(t_pixels.data() + off, 0, clearW * sizeof(unsigned));
         std::fill(t_zbuff.data() + off, t_zbuff.data() + off + clearW, std::numeric_limits<int>::min());
