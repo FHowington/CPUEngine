@@ -17,11 +17,17 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
   static std::array<float, W * H> aoMap;
   std::fill(aoMap.begin(), aoMap.end(), 1.0f);
 
-  // Sample offsets: 8 directions (4 cardinal + 4 diagonal) at radius R
+  // Sample offsets: 8 directions at 3 different radii for stability
+  const int R1 = std::max(1, R / 3);
+  const int R2 = std::max(2, R * 2 / 3);
+  const int R3 = R;
   const int offsets[][2] = {
-    {-R,0},{R,0},{0,-R},{0,R},{-R,-R},{R,-R},{-R,R},{R,R}
+    {-R1,0},{R1,0},{0,-R1},{0,R1},
+    {-R2,-R2},{R2,-R2},{-R2,R2},{R2,R2},
+    {-R3,0},{R3,0},{0,-R3},{0,R3},
+    {-R3,-R3},{R3,-R3},{-R3,R3},{R3,R3},
   };
-  const int nOffsets = 8;
+  const int nOffsets = 16;
 
 #ifdef __AVX2__
   const __m256i zMinV = _mm256_set1_epi32(zMin);
