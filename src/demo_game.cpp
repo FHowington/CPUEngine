@@ -15,7 +15,7 @@ void DemoGame::init(Engine& engine) {
 
   _scene.lights.emplace_back(LightType::Point, -4, 2, 14, 40, 1.0, 0.6, 0.2);
   _scene.lights.emplace_back(LightType::Point, 4, 2, 14, 40, 1.0, 0.6, 0.2);
-  _scene.lights.emplace_back(LightType::Point, 0, 3, -5, 60, 0.3, 0.3, 0.8);
+  _scene.lights.emplace_back(LightType::Point, 0, 3, -5, 200, 0.3, 0.3, 0.8);
   Light::sceneLights = _scene.lights;
 
   _camera.setSensitivity(_cameraSpeed);
