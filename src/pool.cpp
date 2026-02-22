@@ -47,7 +47,15 @@ Pool::~Pool() {
 
 void Pool::job_wait() {
   std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
+#ifdef __AVX2__
+  {
+    const __m256i zMinV = _mm256_set1_epi32(std::numeric_limits<int>::min());
+    for (unsigned i = 0; i < t_zbuff.size(); i += 8)
+      _mm256_storeu_si256((__m256i*)(t_zbuff.data() + i), zMinV);
+  }
+#else
   std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
+#endif
 
   while(true) {
     std::unique_lock<std::mutex> lock(job_queue_mutex_);
@@ -141,7 +149,15 @@ void Pool::job_wait() {
     }
 
     std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
+#ifdef __AVX2__
+    {
+      const __m256i zMinV = _mm256_set1_epi32(std::numeric_limits<int>::min());
+      for (unsigned i = 0; i < t_zbuff.size(); i += 8)
+        _mm256_storeu_si256((__m256i*)(t_zbuff.data() + i), zMinV);
+    }
+#else
     std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
+#endif
   }
 }
 

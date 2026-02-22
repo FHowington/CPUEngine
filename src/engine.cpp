@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "pool.h"
 #include "Window.h"
+#include "simd_compat.h"
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -73,7 +74,15 @@ void Engine::run(Game& game) {
   for (bool quit = false; !quit;) {
     // Clear framebuffer and z-buffer
     std::memset(pixels.data(), 0, W * H * sizeof(unsigned));
+#ifdef __AVX2__
+    {
+      const __m256i zMinV = _mm256_set1_epi32(std::numeric_limits<int>::min());
+      for (unsigned i = 0; i < W * H; i += 8)
+        _mm256_storeu_si256((__m256i*)(zbuff.data() + i), zMinV);
+    }
+#else
     std::fill(zbuff.begin(), zbuff.end(), std::numeric_limits<int>::min());
+#endif
 
     // Submit all models in the scene for rendering
     const auto& models = game.getModels();
