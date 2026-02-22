@@ -15,7 +15,7 @@ void DemoGame::init(Engine& engine) {
 
   _scene.lights.emplace_back(LightType::Point, -4, 2, 14, 40, 1.0, 0.6, 0.2);
   _scene.lights.emplace_back(LightType::Point, 4, 2, 14, 40, 1.0, 0.6, 0.2);
-  _scene.lights.emplace_back(LightType::Directional, vertex<float>(5, _lightY, -1.5), 1, 0.9, 0.7);
+  _scene.lights.emplace_back(LightType::Point, 0, 3, -5, 60, 0.3, 0.3, 0.8);
   Light::sceneLights = _scene.lights;
 
   _camera.setSensitivity(_cameraSpeed);
@@ -117,9 +117,7 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   engine.setFOV(_camera.getFOV());
   engine.setClipDistances(_camera.getNearClip(), _camera.getFarClip());
 
-  // Update directional light and sync to the rendering global
-  _scene.lights.back()._direction = vertex<float>(_lightX, _lightY, -1.5);
-  _scene.lights.back()._direction.normalize();
+  // Sync lights to the rendering global
   if (_dynamicLights)
     Light::sceneLights = _scene.lights;
   else
