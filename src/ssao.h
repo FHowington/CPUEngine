@@ -45,7 +45,9 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
           totalSamples++;
 
           int diff = sZ - centerZ;
-          if (diff > 0) {
+          // Only count as occluding if the depth jump is large enough
+          // (skip small geometry like lamp pillars)
+          if (diff > (int)(fabsf((float)centerZ) * 0.01f)) {
             // Neighbor is closer — weight by how much closer
             float w = (float)diff / (float)(-centerZ) * 100.0f;
             if (w > 1.0f) w = 1.0f;
