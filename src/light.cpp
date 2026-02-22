@@ -38,6 +38,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
                                dn2 * norm._z + l._direction._z);
             float spec = dot(refl, viewDir);
             if (spec > 0) {
+              if (spec > 1.0f) spec = 1.0f;
               spec = powf(spec, specularShininess) * specularStrength;
               R += spec * l._R;
               G += spec * l._G;
@@ -66,6 +67,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
                                dn2 * norm._z - toLight._z);
             float spec = dot(refl, viewDir);
             if (spec > 0) {
+              if (spec > 1.0f) spec = 1.0f;
               spec = powf(spec, specularShininess) * specularStrength * l._strength / dist;
               R += spec * l._R;
               G += spec * l._G;
@@ -125,6 +127,7 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   }
 
   const __m256 zero = _mm256_setzero_ps();
+  const __m256 one = _mm256_set1_ps(1.0f);
 
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
@@ -147,7 +150,7 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           __m256 rY = _mm256_fmadd_ps(dn2, yNorm, _mm256_set1_ps(l._direction._y));
           __m256 rZ = _mm256_fmadd_ps(dn2, zNorm, _mm256_set1_ps(l._direction._z));
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
-          spec = _mm256_max_ps(spec, zero);
+          spec = _mm256_min_ps(_mm256_max_ps(spec, zero), one);
           spec = fastPow(spec, specularShininess);
           spec = _mm256_mul_ps(spec, _mm256_set1_ps(specularStrength));
           R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
@@ -191,7 +194,7 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           __m256 rY = _mm256_fmsub_ps(dn2, yNorm, lYNorm);
           __m256 rZ = _mm256_fmsub_ps(dn2, zNorm, lZNorm);
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
-          spec = _mm256_max_ps(spec, zero);
+          spec = _mm256_min_ps(_mm256_max_ps(spec, zero), one);
           spec = fastPow(spec, specularShininess);
           __m256 specAtten = _mm256_mul_ps(spec, _mm256_set1_ps(specularStrength * l._strength));
           specAtten = _mm256_div_ps(specAtten, dist);
