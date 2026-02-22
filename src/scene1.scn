@@ -12,11 +12,11 @@ MODEL sphereModel ../sphere.obj chromeTexture
 INSTANCE diabloModel Gourand [0, 0, -5] [0.8, 0.8, 0.8] [0, 0, 0]
 
 # Chrome spheres — row along courtyard for specular demo
-INSTANCE sphereModel Gourand [-12, -3, -15] [2, 2, 2] [0, 0, 0]
-INSTANCE sphereModel Gourand [-6, -3, -15] [2, 2, 2] [0, 0, 0]
-INSTANCE sphereModel Gourand [0, -3, -15] [2, 2, 2] [0, 0, 0]
-INSTANCE sphereModel Gourand [6, -3, -15] [2, 2, 2] [0, 0, 0]
-INSTANCE sphereModel Gourand [12, -3, -15] [2, 2, 2] [0, 0, 0]
+INSTANCE sphereModel Gourand [-12, -3, -15] [1, 1, 1] [0, 0, 0]
+INSTANCE sphereModel Gourand [-6, -3, -15] [1, 1, 1] [0, 0, 0]
+INSTANCE sphereModel Gourand [0, -3, -15] [1, 1, 1] [0, 0, 0]
+INSTANCE sphereModel Gourand [6, -3, -15] [1, 1, 1] [0, 0, 0]
+INSTANCE sphereModel Gourand [12, -3, -15] [1, 1, 1] [0, 0, 0]
 
 # === OUTER WALLS ===
 # Floor
