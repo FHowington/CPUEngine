@@ -49,7 +49,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
 #ifdef __AVX2__
     const __m256 sxV = _mm256_set1_ps(sx);
     const __m256 rSqV = _mm256_set1_ps(rSq);
-    const __m256i lightZV = _mm256_set1_epi32(lightZ + 2000);
+    const __m256i lightZV = _mm256_set1_epi32(lightZ);
     const __m256 lRV = _mm256_set1_ps(lR);
     const __m256 lGV = _mm256_set1_ps(lG);
     const __m256 lBV = _mm256_set1_ps(lB);
@@ -142,7 +142,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
 
         int idx = rowOff + x;
         int pz = zbuff[zRowOff + x];
-        if (pz > lightZ + 2000) continue;
+        if (pz > lightZ) continue;
 
         unsigned px = pixels[idx];
         unsigned pr = (px >> 16) & 0xFF;
