@@ -23,6 +23,10 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
   if (specularEnabled) {
     viewDir = vertex<float>(cameraPos._x - x, cameraPos._y - y, cameraPos._z - z);
     viewDir.normalize();
+    // Flip normal for back-facing fragments (double-sided surfaces)
+    if (dot(viewDir, N) < 0) {
+      N._x = -N._x; N._y = -N._y; N._z = -N._z;
+    }
   }
 
   for (const Light& l : Light::sceneLights) {
@@ -42,7 +46,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
                                dn2 * N._z + l._direction._z);
             refl.normalize();
             float spec = dot(refl, viewDir);
-            if (spec > 0 && dot(viewDir, N) > 0) {
+            if (spec > 0) {
               spec = powf(spec, specularShininess) * specularStrength;
               R += spec * l._R;
               G += spec * l._G;
@@ -71,7 +75,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
                                dn2 * N._z - toLight._z);
             refl.normalize();
             float spec = dot(refl, viewDir);
-            if (spec > 0 && dot(viewDir, N) > 0) {
+            if (spec > 0) {
               spec = powf(spec, specularShininess) * specularStrength * l._strength / dist;
               R += spec * l._R;
               G += spec * l._G;
@@ -125,7 +129,7 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   __m256 nZ = _mm256_mul_ps(zNorm, nLen);
 
   // View direction for specular
-  __m256 vdX, vdY, vdZ, viewDotN;
+  __m256 vdX, vdY, vdZ;
   if (specularEnabled) {
     vdX = _mm256_sub_ps(_mm256_set1_ps(cameraPos._x), x);
     vdY = _mm256_sub_ps(_mm256_set1_ps(cameraPos._y), y);
@@ -134,7 +138,12 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
     vdX = _mm256_mul_ps(vdX, vdLen);
     vdY = _mm256_mul_ps(vdY, vdLen);
     vdZ = _mm256_mul_ps(vdZ, vdLen);
-    viewDotN = _mm256_fmadd_ps(vdZ, nZ, _mm256_fmadd_ps(vdY, nY, _mm256_mul_ps(vdX, nX)));
+    __m256 viewDotN = _mm256_fmadd_ps(vdZ, nZ, _mm256_fmadd_ps(vdY, nY, _mm256_mul_ps(vdX, nX)));
+    // Flip normals for back-facing fragments (double-sided surfaces)
+    __m256 flipMask = _mm256_cmp_ps(viewDotN, _mm256_setzero_ps(), _CMP_LT_OQ);
+    nX = _mm256_blendv_ps(nX, _mm256_sub_ps(_mm256_setzero_ps(), nX), flipMask);
+    nY = _mm256_blendv_ps(nY, _mm256_sub_ps(_mm256_setzero_ps(), nY), flipMask);
+    nZ = _mm256_blendv_ps(nZ, _mm256_sub_ps(_mm256_setzero_ps(), nZ), flipMask);
   }
 
   const __m256 zero = _mm256_setzero_ps();
@@ -167,7 +176,6 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           rZ = _mm256_mul_ps(rZ, rLen);
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
           spec = _mm256_max_ps(spec, zero);
-          spec = _mm256_blendv_ps(spec, zero, _mm256_cmpgt_epi32(_mm256_setzero_si256(), viewDotN));
           spec = fastPow(spec, specularShininess);
           spec = _mm256_mul_ps(spec, _mm256_set1_ps(specularStrength));
           R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
@@ -217,7 +225,6 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           rZ = _mm256_mul_ps(rZ, rLen);
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
           spec = _mm256_max_ps(spec, zero);
-          spec = _mm256_blendv_ps(spec, zero, _mm256_cmpgt_epi32(_mm256_setzero_si256(), viewDotN));
           spec = fastPow(spec, specularShininess);
           // Attenuate specular same as diffuse
           __m256 specAtten = _mm256_div_ps(_mm256_set1_ps(specularStrength * l._strength), dist);
