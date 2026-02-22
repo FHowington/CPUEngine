@@ -140,19 +140,8 @@ void Pool::job_wait() {
       done_condition.notify_one();
     }
 
-    // Only clear the dirty region instead of the full screen buffer
-    // pMaxX/pMaxY are inclusive; align to 8-pixel SIMD boundaries
-    if (pMaxX > pMinX) {
-      const unsigned clearStart = pMinX & ~7u;
-      const unsigned clearEnd = std::min((unsigned)Wt, ((pMaxX + 8u) & ~7u));
-      const unsigned clearW = clearEnd - clearStart;
-      const unsigned endY = std::min(pMaxY + 1u, (unsigned)H);
-      for (unsigned row = pMinY; row < endY; ++row) {
-        const unsigned off = row * Wt + clearStart;
-        std::memset(t_pixels.data() + off, 0, clearW * sizeof(unsigned));
-        std::fill(t_zbuff.data() + off, t_zbuff.data() + off + clearW, std::numeric_limits<int>::min());
-      }
-    }
+    std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
+    std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
   }
 }
 
