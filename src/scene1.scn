@@ -9,6 +9,7 @@ MODEL diabloModel ../diablo3_pose.obj diabloTexture
 MODEL sphereModel ../sphere.obj chromeTexture
 
 #TYPE    Model       Shader   X,Y,Z coords      X,Y,Z scale     X,Y,Z rotation
+INSTANCE diabloModel Gourand [0, 0, -5] [0.8, 0.8, 0.8] [0, 0, 0]
 
 # Chrome spheres — row along courtyard for specular demo
 INSTANCE sphereModel Gourand [-12, -3, -15] [2, 2, 2] [0, 0, 0]
@@ -328,12 +329,6 @@ PLANE stoneyz [-5 10 -9], [-5 -5 -9], [-5 -5 -15], [-5 10 -15]
 PLANE stoneyz [5 -5 -9], [5 10 -9], [5 10 -15], [5 -5 -15]
 
 # === COURTYARD PILLARS ===
-PLANE stonexy [-2 -5 2], [2 -5 2], [2 6 2], [-2 6 2]
-PLANE stoneyz [2 -5 2], [2 -5 -2], [2 6 -2], [2 6 2]
-PLANE stoneyz [-2 -5 -2], [-2 -5 2], [-2 6 2], [-2 6 -2]
-PLANE stonexy [2 -5 -2], [-2 -5 -2], [-2 6 -2], [2 6 -2]
-PLANE stonexz [-2 6 2], [2 6 2], [2 6 -2], [-2 6 -2]
-
 PLANE stonexy [8 -5 2], [12 -5 2], [12 6 2], [8 6 2]
 PLANE stoneyz [12 -5 2], [12 -5 -2], [12 6 -2], [12 6 2]
 PLANE stoneyz [8 -5 -2], [8 -5 2], [8 6 2], [8 6 -2]
