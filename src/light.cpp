@@ -72,7 +72,7 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
             refl.normalize();
             float spec = dot(refl, viewDir);
             if (spec > 0) {
-              spec = powf(spec, specularShininess) * specularStrength / dist;
+              spec = powf(spec, specularShininess) * specularStrength * l._strength / dist;
               R += spec * l._R;
               G += spec * l._G;
               B += spec * l._B;
@@ -217,7 +217,7 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           spec = _mm256_max_ps(spec, zero);
           spec = fastPow(spec, specularShininess);
           // Attenuate specular same as diffuse
-          __m256 specAtten = _mm256_div_ps(_mm256_set1_ps(specularStrength), dist);
+          __m256 specAtten = _mm256_div_ps(_mm256_set1_ps(specularStrength * l._strength), dist);
           spec = _mm256_mul_ps(spec, specAtten);
           R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
           G = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._G), G);
