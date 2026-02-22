@@ -45,6 +45,9 @@ class DemoGame : public Game {
   float _depthFogFar = 0.85f;
   bool _aa = true;
   float _aaThreshold = 24.0f;
+  bool _ssao = true;
+  float _ssaoRadius = 3.0f;
+  float _ssaoStrength = 0.5f;
   bool _showNormals = false;
   bool _frustumCull = true;
   bool _dynamicLights = true;

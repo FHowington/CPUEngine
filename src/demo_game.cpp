@@ -1,6 +1,7 @@
 #include "antialias.h"
 #include "demo_game.h"
 #include "depth_fog.h"
+#include "ssao.h"
 #include "geometry.h"
 #include "light.h"
 #include "light_fog.h"
@@ -29,6 +30,9 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
   _renderMenu.addItem(MenuItem::toggle("AA", &_aa));
   _renderMenu.addItem(MenuItem::slider("AA Thresh", &_aaThreshold, 4.0f, 64.0f, 4.0f));
+  _renderMenu.addItem(MenuItem::toggle("SSAO", &_ssao));
+  _renderMenu.addItem(MenuItem::slider("SSAO Radius", &_ssaoRadius, 1.0f, 10.0f, 1.0f));
+  _renderMenu.addItem(MenuItem::slider("SSAO Str", &_ssaoStrength, 0.1f, 1.0f, 0.1f));
   _renderMenu.addItem(MenuItem::toggle("Normals", &_showNormals));
   _renderMenu.addItem(MenuItem::toggle("Frustum Cull", &_frustumCull));
   _renderMenu.addItem(MenuItem::toggle("Dynamic Lights", &_dynamicLights));
@@ -217,6 +221,7 @@ void DemoGame::drawOverlay() {
     }
   }
 
+  if (_ssao) applySSAO(_ssaoRadius, _ssaoStrength);
   if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
   if (_aa) applyAA(_aaThreshold);
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
