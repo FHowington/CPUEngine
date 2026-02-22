@@ -117,9 +117,10 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   for (const Light& l : Light::sceneLights) {
     switch (l._type) {
       case LightType::Directional: {
-        __m256 d = _mm256_mul_ps(xNorm, _mm256_set1_ps(-l._direction._x));
-        d = _mm256_fmsub_ps(yNorm, _mm256_set1_ps(l._direction._y), d);
-        d = _mm256_fmsub_ps(zNorm, _mm256_set1_ps(l._direction._z), d);
+        __m256 d = _mm256_mul_ps(xNorm, _mm256_set1_ps(l._direction._x));
+        d = _mm256_fmadd_ps(yNorm, _mm256_set1_ps(l._direction._y), d);
+        d = _mm256_fmadd_ps(zNorm, _mm256_set1_ps(l._direction._z), d);
+        d = _mm256_sub_ps(zero, d);
 
         __m256 mask = _mm256_cmpgt_epi32(_mm256_setzero_si256(), d);
         d = _mm256_blendv_ps(d, zero, mask);
