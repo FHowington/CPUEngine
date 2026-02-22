@@ -34,7 +34,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
     // Skip fog if light center is off-screen or occluded by geometry
     if (screenPos._x < 0 || screenPos._x >= (int)W ||
         screenPos._y < 0 || screenPos._y >= (int)H) continue;
-    int zAtCenter = zbuff[screenPos._y * W + screenPos._x];
+    int zAtCenter = zbuff[(H - 1 - screenPos._y) * W + screenPos._x];
     if (zAtCenter > lightZ) continue;
 
     float camZ = (float)lightZ / (float)depth;

@@ -168,6 +168,7 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           rZ = _mm256_mul_ps(rZ, rLen);
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
           spec = _mm256_max_ps(spec, zero);
+          spec = _mm256_blendv_ps(spec, zero, mask);
           spec = fastPow(spec, specularShininess);
           spec = _mm256_mul_ps(spec, _mm256_set1_ps(specularStrength));
           R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
@@ -217,8 +218,9 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
           rZ = _mm256_mul_ps(rZ, rLen);
           __m256 spec = _mm256_fmadd_ps(rZ, vdZ, _mm256_fmadd_ps(rY, vdY, _mm256_mul_ps(rX, vdX)));
           spec = _mm256_max_ps(spec, zero);
+          // Zero specular where diffuse is zero (light behind surface)
+          spec = _mm256_blendv_ps(spec, zero, mask);
           spec = fastPow(spec, specularShininess);
-          // Attenuate specular same as diffuse
           __m256 specAtten = _mm256_div_ps(_mm256_set1_ps(specularStrength * l._strength), dist);
           spec = _mm256_mul_ps(spec, specAtten);
           R = _mm256_fmadd_ps(spec, _mm256_set1_ps(l._R), R);
