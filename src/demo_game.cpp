@@ -39,6 +39,7 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Specular", &_specular));
   _renderMenu.addItem(MenuItem::slider("Shininess", &_shininess, 4.0f, 512.0f, 8.0f));
   _renderMenu.addItem(MenuItem::slider("Spec Str", &_specStrength, 0.1f, 2.0f, 0.1f));
+  _renderMenu.addItem(MenuItem::slider("Win Scale", &_windowScale, 1.0f, 4.0f, 0.5f));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -120,6 +121,7 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   engine.setFrustumCulling(_frustumCull);
   engine.setFOV(_camera.getFOV());
   engine.setClipDistances(_camera.getNearClip(), _camera.getFarClip());
+  engine.setWindowScale(_windowScale);
 
   // Sync lights to the rendering global
   if (_dynamicLights)

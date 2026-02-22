@@ -37,6 +37,7 @@ class Engine {
   void setFrustumCulling(bool enabled);
   void setFOV(float degrees);  // Sets projection focalLength from FOV angle
   void setClipDistances(float near, float far);
+  void setWindowScale(float scale);
   const matrix<4,4>& getRenderCameraTransform() const { return _renderCameraTransform; }
 
  private:

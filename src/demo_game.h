@@ -54,6 +54,7 @@ class DemoGame : public Game {
   bool _specular = true;
   float _shininess = 64.0f;
   float _specStrength = 1.0f;
+  float _windowScale = 4.0f;
   matrix<4,4> _renderCameraTransform;
 
   // Menu system

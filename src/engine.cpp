@@ -65,6 +65,10 @@ void Engine::setClipDistances(float near, float far) {
   farClipDist = far;
 }
 
+void Engine::setWindowScale(float scale) {
+  SDL_SetWindowSize(_window, (int)(W * scale), (int)(H * scale));
+}
+
 void Engine::run(Game& game) {
   game.init(*this);
 
