@@ -140,8 +140,15 @@ void Pool::job_wait() {
       done_condition.notify_one();
     }
 
-    std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
-    std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
+    // Only clear the dirty region instead of the full screen buffer
+    if (pMaxX > pMinX && pMaxY > pMinY) {
+      const unsigned clearW = pMaxX - pMinX;
+      for (unsigned row = pMinY; row < pMaxY; ++row) {
+        const unsigned off = row * Wt + pMinX;
+        std::memset(t_pixels.data() + off, 0, clearW * sizeof(unsigned));
+        std::fill(t_zbuff.data() + off, t_zbuff.data() + off + clearW, std::numeric_limits<int>::min());
+      }
+    }
   }
 }
 
