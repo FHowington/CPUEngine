@@ -18,15 +18,11 @@ illumination getLight(const vertex<float>& norm, const float ambient, const floa
   vertex<float> N = norm;
   N.normalize();
 
-  // View direction for specular (computed once per fragment)
-  vertex<float> viewDir;
-  if (specularEnabled) {
-    viewDir = vertex<float>(cameraPos._x - x, cameraPos._y - y, cameraPos._z - z);
-    viewDir.normalize();
-    // Flip normal for back-facing fragments (double-sided surfaces)
-    if (dot(viewDir, N) < 0) {
-      N._x = -N._x; N._y = -N._y; N._z = -N._z;
-    }
+  // Flip normal for back-facing fragments (double-sided surfaces)
+  vertex<float> viewDir(cameraPos._x - x, cameraPos._y - y, cameraPos._z - z);
+  viewDir.normalize();
+  if (dot(viewDir, N) < 0) {
+    N._x = -N._x; N._y = -N._y; N._z = -N._z;
   }
 
   for (const Light& l : Light::sceneLights) {
@@ -128,23 +124,19 @@ void getLight(const __m256& xNorm, const __m256& yNorm, const __m256& zNorm, flo
   __m256 nY = _mm256_mul_ps(yNorm, nLen);
   __m256 nZ = _mm256_mul_ps(zNorm, nLen);
 
-  // View direction for specular
-  __m256 vdX, vdY, vdZ;
-  if (specularEnabled) {
-    vdX = _mm256_sub_ps(_mm256_set1_ps(cameraPos._x), x);
-    vdY = _mm256_sub_ps(_mm256_set1_ps(cameraPos._y), y);
-    vdZ = _mm256_sub_ps(_mm256_set1_ps(cameraPos._z), z);
-    __m256 vdLen = _mm256_rsqrt_ps(_mm256_fmadd_ps(vdZ, vdZ, _mm256_fmadd_ps(vdY, vdY, _mm256_mul_ps(vdX, vdX))));
-    vdX = _mm256_mul_ps(vdX, vdLen);
-    vdY = _mm256_mul_ps(vdY, vdLen);
-    vdZ = _mm256_mul_ps(vdZ, vdLen);
-    __m256 viewDotN = _mm256_fmadd_ps(vdZ, nZ, _mm256_fmadd_ps(vdY, nY, _mm256_mul_ps(vdX, nX)));
-    // Flip normals for back-facing fragments (double-sided surfaces)
-    __m256 flipMask = _mm256_cmp_ps(viewDotN, _mm256_setzero_ps(), _CMP_LT_OQ);
-    nX = _mm256_blendv_ps(nX, _mm256_sub_ps(_mm256_setzero_ps(), nX), flipMask);
-    nY = _mm256_blendv_ps(nY, _mm256_sub_ps(_mm256_setzero_ps(), nY), flipMask);
-    nZ = _mm256_blendv_ps(nZ, _mm256_sub_ps(_mm256_setzero_ps(), nZ), flipMask);
-  }
+  // Flip normals for back-facing fragments (double-sided surfaces)
+  __m256 vdX = _mm256_sub_ps(_mm256_set1_ps(cameraPos._x), x);
+  __m256 vdY = _mm256_sub_ps(_mm256_set1_ps(cameraPos._y), y);
+  __m256 vdZ = _mm256_sub_ps(_mm256_set1_ps(cameraPos._z), z);
+  __m256 vdLen = _mm256_rsqrt_ps(_mm256_fmadd_ps(vdZ, vdZ, _mm256_fmadd_ps(vdY, vdY, _mm256_mul_ps(vdX, vdX))));
+  vdX = _mm256_mul_ps(vdX, vdLen);
+  vdY = _mm256_mul_ps(vdY, vdLen);
+  vdZ = _mm256_mul_ps(vdZ, vdLen);
+  __m256 viewDotN = _mm256_fmadd_ps(vdZ, nZ, _mm256_fmadd_ps(vdY, nY, _mm256_mul_ps(vdX, nX)));
+  __m256 flipMask = _mm256_cmp_ps(viewDotN, _mm256_setzero_ps(), _CMP_LT_OQ);
+  nX = _mm256_blendv_ps(nX, _mm256_sub_ps(_mm256_setzero_ps(), nX), flipMask);
+  nY = _mm256_blendv_ps(nY, _mm256_sub_ps(_mm256_setzero_ps(), nY), flipMask);
+  nZ = _mm256_blendv_ps(nZ, _mm256_sub_ps(_mm256_setzero_ps(), nZ), flipMask);
 
   const __m256 zero = _mm256_setzero_ps();
 
