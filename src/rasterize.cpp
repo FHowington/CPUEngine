@@ -24,8 +24,8 @@ extern float nearClipDist;
   const int minX = min3(x0, x1, x2);                                    \
   const int minY = min3(y0, y1, y2);                                    \
                                                                         \
-  const int maxX = max3(x0, x1, x2, (int)W - 1);                        \
-  const int maxY = max3(y0, y1, y2, (int)H - 1);                        \
+  const int maxX = max3(x0, x1, x2, (int)rW - 1);                        \
+  const int maxY = max3(y0, y1, y2, (int)rH - 1);                        \
                                                                         \
   /* Same idea. These have no area (happens when triangle is outside of viewing area) */ \
   if (maxX < minX || maxY < minY) {                                     \
@@ -1092,7 +1092,7 @@ void renderModel<WoodYZShader>(const std::shared_ptr<const ModelInstance>& model
 
 void plot(unsigned x, unsigned y, const unsigned color)
 {
-    if (x >= W || y >= H) return;
+    if (x >= rW || y >= rH) return;
     t_pixels[y*W+x] = color;
     t_zbuff[y*W+x] = std::numeric_limits<int>::max();
     if (x < pMinX) pMinX = x;

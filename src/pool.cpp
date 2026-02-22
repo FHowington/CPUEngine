@@ -167,7 +167,7 @@ void Pool::copy_to_main_buffer() {
   zone_lock.unlock();
 
   unsigned offset = pMinY * W;
-  unsigned offsetH = (H - pMinY) * W;
+  unsigned offsetH = (rH - pMinY) * W;
 
 #ifdef __AVX2__
   unsigned offset_t = pMinY * Wt;

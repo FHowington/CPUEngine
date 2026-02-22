@@ -52,10 +52,10 @@ inline void applyDepthFog(float nearClip, float farClip,
   const __m256i maskFF = _mm256_set1_epi32(0xFF);
   const __m256i vEmpty = _mm256_set1_epi32(empty);
 
-  for (unsigned py = 0; py < H; ++py) {
+  for (unsigned py = 0; py < rH; ++py) {
     unsigned pixRow = py * W;
-    unsigned zRow = (H - 1 - py) * W;
-    for (unsigned x = 0; x < W; x += 8) {
+    unsigned zRow = (rH - 1 - py) * W;
+    for (unsigned x = 0; x < rW; x += 8) {
       __m256i zVals = _mm256_loadu_si256((__m256i*)&zbuff[zRow + x]);
       __m256i hasgeo = _mm256_xor_si256(_mm256_cmpeq_epi32(zVals, vEmpty), _mm256_set1_epi32(-1));
       if (_mm256_testz_si256(hasgeo, hasgeo)) continue;
@@ -90,10 +90,10 @@ inline void applyDepthFog(float nearClip, float farClip,
     }
   }
 #else
-  for (unsigned py = 0; py < H; ++py) {
+  for (unsigned py = 0; py < rH; ++py) {
     unsigned pixRow = py * W;
-    unsigned zRow = (H - 1 - py) * W;
-    for (unsigned x = 0; x < W; ++x) {
+    unsigned zRow = (rH - 1 - py) * W;
+    for (unsigned x = 0; x < rW; ++x) {
       int z = zbuff[zRow + x];
       if (z == empty) continue;
 

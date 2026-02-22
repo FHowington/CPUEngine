@@ -10,7 +10,7 @@ extern std::array<unsigned, W * H> pixels;
 
 inline void applyAA(float threshold = 24.0f) {
   static std::array<unsigned, W * H> copy;
-  std::memcpy(copy.data(), pixels.data(), W * H * sizeof(unsigned));
+  std::memcpy(copy.data(), pixels.data(), W * rH * sizeof(unsigned));
 
   const float invThresh = 1.0f / threshold;
 
@@ -27,10 +27,10 @@ inline void applyAA(float threshold = 24.0f) {
   const __m256 wG = _mm256_set1_ps(5.0f / 8.0f);
   const __m256 wB = _mm256_set1_ps(1.0f / 8.0f);
 
-  for (unsigned y = 1; y < H - 1; ++y) {
+  for (unsigned y = 1; y < rH - 1; ++y) {
     unsigned x = 1;
     // Process 8 pixels at a time, stop before right edge
-    for (; x + 8 <= W - 1; x += 8) {
+    for (; x + 8 <= rW - 1; x += 8) {
       const unsigned idx = y * W + x;
 
       // Load center and 4 neighbors
@@ -103,7 +103,7 @@ inline void applyAA(float threshold = 24.0f) {
     }
 
     // Scalar tail
-    for (; x < W - 1; ++x) {
+    for (; x < rW - 1; ++x) {
       const unsigned idx = y * W + x;
       const unsigned c = copy[idx];
       const int cR = (c >> 16) & 0xFF, cG = (c >> 8) & 0xFF, cB = c & 0xFF;
@@ -131,8 +131,8 @@ inline void applyAA(float threshold = 24.0f) {
   }
 
 #else
-  for (unsigned y = 1; y < H - 1; ++y) {
-    for (unsigned x = 1; x < W - 1; ++x) {
+  for (unsigned y = 1; y < rH - 1; ++y) {
+    for (unsigned x = 1; x < rW - 1; ++x) {
       const unsigned idx = y * W + x;
       const unsigned c = copy[idx];
       const int cR = (c >> 16) & 0xFF, cG = (c >> 8) & 0xFF, cB = c & 0xFF;

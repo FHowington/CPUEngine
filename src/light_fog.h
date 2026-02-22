@@ -28,13 +28,13 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       continue;
 
     float sx = (float)screenPos._x;
-    float sy = (float)(H - screenPos._y);
+    float sy = (float)(rH - screenPos._y);
     int lightZ = screenPos._z;
 
     // Skip fog if light center is off-screen or occluded by geometry
-    if (screenPos._x < 0 || screenPos._x >= (int)W ||
-        screenPos._y < 0 || screenPos._y >= (int)H) continue;
-    int zAtCenter = zbuff[(H - 1 - screenPos._y) * W + screenPos._x];
+    if (screenPos._x < 0 || screenPos._x >= (int)rW ||
+        screenPos._y < 0 || screenPos._y >= (int)rH) continue;
+    int zAtCenter = zbuff[(rH - 1 - screenPos._y) * W + screenPos._x];
     if (zAtCenter > lightZ) continue;
 
     float camZ = (float)lightZ / (float)depth;
@@ -44,9 +44,9 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
     float rSq = r * r;
 
     int x0 = fast_max(0, (int)(sx - r));
-    int x1 = fast_min((int)W - 1, (int)(sx + r));
+    int x1 = fast_min((int)rW - 1, (int)(sx + r));
     int y0 = fast_max(0, (int)(sy - r));
-    int y1 = fast_min((int)H - 1, (int)(sy + r));
+    int y1 = fast_min((int)rH - 1, (int)(sy + r));
 
     float lR = light._R * light._strength * intensity * 255.0f;
     float lG = light._G * light._strength * intensity * 255.0f;
@@ -69,7 +69,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       float dy = y - sy;
       __m256 dySqV = _mm256_set1_ps(dy * dy);
       int rowOff = y * W;
-      int zRowOff = (H - y) * W;  // zbuff uses non-flipped Y
+      int zRowOff = (rH - y) * W;  // zbuff uses non-flipped Y
 
       for (int x = x0a; x <= x1; x += 8) {
         __m256 dxV = _mm256_sub_ps(
@@ -137,7 +137,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       float dy = y - sy;
       float dySq = dy * dy;
       int rowOff = y * W;
-      int zRowOff = (H - y) * W;
+      int zRowOff = (rH - y) * W;
       for (int x = x0; x <= x1; ++x) {
         float dx = x - sx;
         float dSq = dx * dx + dySq;

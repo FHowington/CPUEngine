@@ -39,6 +39,7 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("Specular", &_specular));
   _renderMenu.addItem(MenuItem::slider("Shininess", &_shininess, 4.0f, 512.0f, 8.0f));
   _renderMenu.addItem(MenuItem::slider("Spec Str", &_specStrength, 0.1f, 2.0f, 0.1f));
+  _renderMenu.addItem(MenuItem::slider("Resolution", &_resolution, 270.0f, 1080.0f, 270.0f));
 
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
@@ -57,7 +58,7 @@ void DemoGame::buildMenus() {
   _mainMenu.addItem(MenuItem::sub("Fog", &_fogMenu));
 
   _menuStack.setRoot(&_mainMenu);
-  _menuStack.setPosition(W - 420, 12);
+  _menuStack.setPosition(rW - 420, 12);
 }
 
 void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
@@ -120,6 +121,7 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   engine.setFrustumCulling(_frustumCull);
   engine.setFOV(_camera.getFOV());
   engine.setClipDistances(_camera.getNearClip(), _camera.getFarClip());
+  engine.setResolution((unsigned)_resolution, (unsigned)_resolution);
 
   // Sync lights to the rendering global
   if (_dynamicLights)
@@ -258,5 +260,6 @@ void DemoGame::drawOverlay() {
   }
 
   // Menu overlay (Escape to toggle)
+  _menuStack.setPosition(rW - 420, 12);
   _menuStack.draw();
 }

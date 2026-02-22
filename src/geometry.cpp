@@ -514,10 +514,10 @@ bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
   v1 = _mm_div_ps(res, v1);
 
   _mm_stream_ps((float *)result, v1);
-  result[0] *= W * xZoom;
-  result[0] += W * xFOV;
-  result[1] *= H * yZoom;
-  result[1] += H * yFOV;
+  result[0] *= rW * xZoom;
+  result[0] += rW * xFOV;
+  result[1] *= rH * yZoom;
+  result[1] += rH * yFOV;
 
   result[2] *= depth;
   retResult = vertex<int>(result[0], result[1], result[2]);
@@ -559,10 +559,10 @@ bool pipelineFast(const matrix<4,4>& cameraTransform, const matrix<4,4>& model, 
   imres._m[0] = imres._m[0] *= imres._m[3];
   imres._m[1] = imres._m[1] *= imres._m[3];
 
-  imres._m[0] *= W * xZoom;
-  imres._m[0] += W * xFOV;
-  imres._m[1] *= H * yZoom;
-  imres._m[1] += H * yFOV;
+  imres._m[0] *= rW * xZoom;
+  imres._m[0] += rW * xFOV;
+  imres._m[1] *= rH * yZoom;
+  imres._m[1] += rH * yFOV;
 
   imres._m[2] *= depth;
 
@@ -577,10 +577,10 @@ vertex<int> pipelineSlowPartTwo(vertex<float> cameraResult) {
   cameraResult._x = cameraResult._x *= scale;
   cameraResult._y = cameraResult._y *= scale;
 
-  cameraResult._x *= W * xZoom;
-  cameraResult._x += W * xFOV;
-  cameraResult._y *= H * yZoom;
-  cameraResult._y += H * yFOV;
+  cameraResult._x *= rW * xZoom;
+  cameraResult._x += rW * xFOV;
+  cameraResult._y *= rH * yZoom;
+  cameraResult._y += rH * yFOV;
 
   // Clamp to prevent short overflow in rasterizer edge deltas (A12 = y1-y2 etc.)
   constexpr float lim = 16000.0f;

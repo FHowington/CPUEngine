@@ -35,9 +35,9 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
   const __m256 threshScale = _mm256_set1_ps(0.01f);
   const __m256i mask8 = _mm256_set1_epi32(0xFF);
 
-  for (unsigned y = 0; y < H; ++y) {
-    unsigned pxRow = (H - 1 - y) * W;
-    for (unsigned x = 0; x + 7 < W; x += 8) {
+  for (unsigned y = 0; y < rH; ++y) {
+    unsigned pxRow = (rH - 1 - y) * W;
+    for (unsigned x = 0; x + 7 < rW; x += 8) {
       unsigned idx = y * W + x;
       __m256i centerZ = _mm256_loadu_si256((__m256i*)(zbuff.data() + idx));
 
@@ -48,7 +48,6 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
       __m256 absCenterZ = _mm256_andnot_ps(_mm256_set1_ps(-0.0f), centerZf);
       __m256i thresh = _mm256_cvttps_epi32(_mm256_mul_ps(absCenterZ, threshScale));
 
-      // Precompute reciprocal to avoid division in inner loop
       __m256 rcpNegCenterZ = _mm256_rcp_ps(_mm256_sub_ps(_mm256_setzero_ps(), centerZf));
 
       __m256 totalWeight = _mm256_setzero_ps();
@@ -57,7 +56,7 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
       for (int s = 0; s < nOffsets; ++s) {
         int sx = (int)x + offsets[s][0];
         int sy = (int)y + offsets[s][1];
-        if (sx < 0 || sx + 7 >= (int)W || sy < 0 || sy >= (int)H) continue;
+        if (sx < 0 || sx + 7 >= (int)rW || sy < 0 || sy >= (int)rH) continue;
 
         __m256i sampleZ = _mm256_loadu_si256((__m256i*)(zbuff.data() + sy * W + sx));
 
@@ -75,7 +74,6 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
         totalWeight = _mm256_add_ps(totalWeight, w);
       }
 
-      // Check if any pixel needs AO
       __m256 hasOcc = _mm256_cmp_ps(totalWeight, _mm256_setzero_ps(), _CMP_GT_OQ);
       __m256 totalSamplesF = _mm256_cvtepi32_ps(totalSamples);
       __m256 hasSamples = _mm256_cmp_ps(totalSamplesF, _mm256_setzero_ps(), _CMP_GT_OQ);
@@ -86,7 +84,6 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
       __m256 ao = _mm256_max_ps(minAO, _mm256_sub_ps(oneV, _mm256_mul_ps(strengthV, frac)));
       ao = _mm256_blendv_ps(oneV, ao, applyMask);
 
-      // Apply directly to pixels — fused, no intermediate buffer
       __m256 needsWork = _mm256_cmp_ps(ao, oneV, _CMP_LT_OQ);
       __m256i px = _mm256_loadu_si256((__m256i*)(pixels.data() + pxRow + x));
 
@@ -102,10 +99,9 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
     }
   }
 #else
-  // Scalar: single-pass, no intermediate buffer
-  for (unsigned y = 0; y < H; ++y) {
-    unsigned pxRow = (H - 1 - y) * W;
-    for (unsigned x = 0; x < W; ++x) {
+  for (unsigned y = 0; y < rH; ++y) {
+    unsigned pxRow = (rH - 1 - y) * W;
+    for (unsigned x = 0; x < rW; ++x) {
       int centerZ = zbuff[y * W + x];
       if (centerZ == zMin) continue;
 
@@ -117,7 +113,7 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
       for (int s = 0; s < nOffsets; ++s) {
         int sx = (int)x + offsets[s][0];
         int sy = (int)y + offsets[s][1];
-        if (sx < 0 || sx >= (int)W || sy < 0 || sy >= (int)H) continue;
+        if (sx < 0 || sx >= (int)rW || sy < 0 || sy >= (int)rH) continue;
 
         int sZ = zbuff[sy * W + sx];
         if (sZ == zMin) continue;

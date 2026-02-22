@@ -14,6 +14,8 @@
 constexpr float SPEED = 80000000.0;
 std::array<unsigned, W * H> pixels;
 std::array<int, W * H> zbuff;
+unsigned rW = W;
+unsigned rH = H;
 matrix<4,4> cameraTransform;
 std::atomic<unsigned> remaining_models;
 bool renderWireframe = false;
@@ -51,8 +53,6 @@ void Engine::setFrustumCulling(bool enabled) {
 }
 
 void Engine::setFOV(float degrees) {
-  // Relationship: tan(hfov/2) = (1-xFOV) * focalLength / xZoom
-  // Solving: focalLength = tan(hfov/2) * xZoom / (1-xFOV)
   float radians = degrees * (float)M_PI / 180.0f;
   focalLength = tanf(radians * 0.5f) * (float)xZoom / (1.0f - xFOV);
 }
@@ -65,15 +65,24 @@ void Engine::setClipDistances(float near, float far) {
   farClipDist = far;
 }
 
+void Engine::setResolution(unsigned w, unsigned h) {
+  if (w > W) w = W;
+  if (h > H) h = H;
+  rW = w;
+  rH = h;
+}
+
 void Engine::run(Game& game) {
   game.init(*this);
 
   auto lastFrame = std::chrono::high_resolution_clock::now();
 
   for (bool quit = false; !quit;) {
-    // Clear framebuffer and z-buffer
-    std::memset(pixels.data(), 0, W * H * sizeof(unsigned));
-    std::fill(zbuff.begin(), zbuff.end(), std::numeric_limits<int>::min());
+    // Clear framebuffer and z-buffer (only active region, stride is still W)
+    for (unsigned y = 0; y < rH; ++y) {
+      std::memset(pixels.data() + y * W, 0, rW * sizeof(unsigned));
+      std::fill(zbuff.begin() + y * W, zbuff.begin() + y * W + rW, std::numeric_limits<int>::min());
+    }
 
     // Submit all models in the scene for rendering
     const auto& models = game.getModels();
@@ -129,9 +138,10 @@ void Engine::run(Game& game) {
     // Draw any 2D overlay on top of the finished 3D frame
     game.drawOverlay();
 
-    // Present the rendered frame
+    // Present the rendered frame — source rect selects active region
+    SDL_Rect src = {0, 0, (int)rW, (int)rH};
     SDL_UpdateTexture(_texture, nullptr, pixels.data(), 4 * W);
-    SDL_RenderCopy(_renderer, _texture, nullptr, nullptr);
+    SDL_RenderCopy(_renderer, _texture, &src, nullptr);
     SDL_RenderPresent(_renderer);
   }
 }

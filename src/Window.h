@@ -3,6 +3,10 @@
 const unsigned W = 1080;
 const unsigned H = 1080;
 
+// Active render resolution (always <= W/H). Arrays stay sized at W*H.
+extern unsigned rW;
+extern unsigned rH;
+
 #ifdef __AVX2__
 const unsigned Wt = W + 7;
 #else
