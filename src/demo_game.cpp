@@ -23,9 +23,9 @@ void DemoGame::init(Engine& engine) {
   _fpsStart = std::chrono::high_resolution_clock::now();
 
   // Spawn fireflies orbiting under the main lamp at (0, 3, -5)
-  _fireflies.emplace_back(0, 1.5f, -5, 2.0f, 1.2f, 0.2f, 1.0f, 0.4f, 15.0f, 0.0f);
-  _fireflies.emplace_back(0, 1.0f, -5, 3.0f, 0.8f, 0.4f, 0.9f, 1.0f, 12.0f, 2.1f);
-  _fireflies.emplace_back(0, 2.0f, -5, 1.5f, 1.5f, 1.0f, 0.8f, 0.2f, 10.0f, 4.2f);
+  _fireflies.emplace_back(0, 1.5f, -5, 2.0f, 1.2f, 0.2f, 1.0f, 0.4f, 0.8f, 0.4f, 0.0f);
+  _fireflies.emplace_back(0, 1.0f, -5, 3.0f, 0.8f, 0.4f, 0.9f, 1.0f, 0.6f, 0.3f, 2.1f);
+  _fireflies.emplace_back(0, 2.0f, -5, 1.5f, 1.5f, 1.0f, 0.8f, 0.2f, 0.7f, 0.35f, 4.2f);
 
   buildMenus();
 }
@@ -131,14 +131,13 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   // Sync lights to the rendering global
   if (_dynamicLights) {
     Light::sceneLights = _scene.lights;
-    // Update fireflies and add their lights
-    for (auto& f : _fireflies) {
-      f.update(deltaTime);
-      f.emitLights(Light::sceneLights);
-    }
   } else {
     Light::sceneLights.clear();
   }
+
+  // Update fireflies
+  for (auto& f : _fireflies)
+    f.update(deltaTime);
 
   // Specular lighting
   specularEnabled = _specular;
@@ -186,6 +185,10 @@ void DemoGame::postProcess() {
   if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
   if (_aa) applyAA(_aaThreshold);
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
+
+  // Draw firefly glow (additive, no lighting cost)
+  for (const auto& f : _fireflies)
+    f.draw(_renderCameraTransform);
 }
 
 void DemoGame::drawOverlay() {
