@@ -21,8 +21,11 @@ class Game {
   virtual void update(float deltaTime, Engine& engine) = 0;
   virtual const std::vector<std::shared_ptr<ModelInstance>>& getModels() const = 0;
 
+  // Optional: post-process the 3D framebuffer (rW×rH) before upscale.
+  virtual void postProcess() {}
+
   // Optional: draw 2D overlay into the pixel framebuffer after 3D rendering.
-  // Called after all models are rendered, before the frame is presented.
+  // Called after upscale to W×H, before the frame is presented.
   virtual void drawOverlay() {}
 };
 

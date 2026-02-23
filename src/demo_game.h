@@ -19,6 +19,7 @@ class DemoGame : public Game {
   void update(float deltaTime, Engine& engine) override;
   const std::vector<std::shared_ptr<ModelInstance>>& getModels() const override;
   void drawOverlay() override;
+  void postProcess() override;
 
  private:
   Scene _scene;

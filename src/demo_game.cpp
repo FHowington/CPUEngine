@@ -170,6 +170,13 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 // At 2x scale: each glyph is 16x16 in the 1080px framebuffer → 64x64 on the
 // 4x SDL window. Line pitch = 18px (16px glyph + 2px gap).
 
+void DemoGame::postProcess() {
+  if (_ssao) applySSAO(_ssaoRadius, _ssaoStrength);
+  if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
+  if (_aa) applyAA(_aaThreshold);
+  if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
+}
+
 void DemoGame::drawOverlay() {
   // Draw normal arrows before post-processing so they're clearly visible
   if (_showNormals) {
@@ -222,11 +229,6 @@ void DemoGame::drawOverlay() {
       }
     }
   }
-
-  if (_ssao) applySSAO(_ssaoRadius, _ssaoStrength);
-  if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
-  if (_aa) applyAA(_aaThreshold);
-  if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
 
   // ── Compact always-visible HUD (top-left) ──────────────────────────────
   constexpr int S      = 2;

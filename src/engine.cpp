@@ -135,6 +135,9 @@ void Engine::run(Game& game) {
     // Let the game update state for the next frame
     game.update(deltaTime, *this);
 
+    // Post-process the 3D framebuffer at rW×rH (before upscale)
+    game.postProcess();
+
     // Upscale 3D framebuffer from rW×rH to W×H (nearest-neighbor) so
     // the overlay can draw at full resolution and always look the same.
     if (rW < W || rH < H) {
