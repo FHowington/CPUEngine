@@ -229,14 +229,11 @@ void DemoGame::drawOverlay() {
   if (_lightFog) applyLightFog(_renderCameraTransform, 0.2f, 80.0f);
 
   // ── Compact always-visible HUD (top-left) ──────────────────────────────
-  // UI is drawn in rW×rH space which SDL stretches to the window,
-  // so scale everything down by rH/H to keep apparent size constant.
-  const float uiScale = (float)rH / (float)H;
-  const int S      = std::max(1, (int)(2 * uiScale));
-  const int CHAR_W = 8 * S;
-  const int LINE_H = 8 * S + 2;
-  const int PAD    = std::max(2, (int)(6 * uiScale));
-  const int MARGIN = std::max(2, (int)(8 * uiScale));
+  constexpr int S      = 2;
+  constexpr int CHAR_W = 8 * S;
+  constexpr int LINE_H = 8 * S + 2;
+  constexpr int PAD    = 6;
+  constexpr int MARGIN = 8;
 
   char buf[64];
   int hudLines = 4; // FPS + X + Y + Z
@@ -263,12 +260,6 @@ void DemoGame::drawOverlay() {
   }
 
   // Menu overlay (Escape to toggle)
-  MenuStyle ms;
-  ms.scale = S;
-  ms.pad = PAD;
-  ms.minCols = std::max(12, (int)(24 * uiScale));
-  _menuStack.setStyle(ms);
-  int menuW = ms.minCols * 8 * ms.scale + ms.pad * 4;
-  _menuStack.setPosition((int)rW - menuW - MARGIN, MARGIN);
+  _menuStack.setPosition(W - 420, 12);
   _menuStack.draw();
 }

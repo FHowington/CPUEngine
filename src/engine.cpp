@@ -135,13 +135,25 @@ void Engine::run(Game& game) {
     // Let the game update state for the next frame
     game.update(deltaTime, *this);
 
+    // Upscale 3D framebuffer from rW×rH to W×H (nearest-neighbor) so
+    // the overlay can draw at full resolution and always look the same.
+    if (rW < W || rH < H) {
+      // Work bottom-up so we don't overwrite source rows we still need
+      for (int dy = (int)H - 1; dy >= 0; --dy) {
+        const unsigned sy = dy * rH / H;
+        const unsigned* srcRow = pixels.data() + sy * W;
+        unsigned* dstRow = pixels.data() + dy * W;
+        for (int dx = (int)W - 1; dx >= 0; --dx)
+          dstRow[dx] = srcRow[dx * rW / W];
+      }
+    }
+
     // Draw any 2D overlay on top of the finished 3D frame
     game.drawOverlay();
 
-    // Present the rendered frame — source rect selects active region
-    SDL_Rect src = {0, 0, (int)rW, (int)rH};
+    // Present the full-resolution frame
     SDL_UpdateTexture(_texture, nullptr, pixels.data(), 4 * W);
-    SDL_RenderCopy(_renderer, _texture, &src, nullptr);
+    SDL_RenderCopy(_renderer, _texture, nullptr, nullptr);
     SDL_RenderPresent(_renderer);
   }
 }

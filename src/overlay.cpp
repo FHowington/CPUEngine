@@ -114,8 +114,8 @@ void Overlay::fillRect(int x, int y, int w, int h, unsigned bgColor, unsigned ch
 
   const int x1 = std::max(x, 0);
   const int y1 = std::max(y, 0);
-  const int x2 = std::min(x + w, (int)rW);
-  const int y2 = std::min(y + h, (int)rH);
+  const int x2 = std::min(x + w, (int)W);
+  const int y2 = std::min(y + h, (int)H);
 
   for (int py = y1; py < y2; ++py) {
     for (int px = x1; px < x2; ++px) {
@@ -135,15 +135,15 @@ void Overlay::drawRect(int x, int y, int w, int h, unsigned color) {
   const int x2 = x + w - 1;
   const int y2 = y + h - 1;
   for (int px = x; px <= x2; ++px) {
-    if (px >= 0 && px < (int)rW) {
-      if (y  >= 0 && y  < (int)rH) pixels[y  * W + px] = color;
-      if (y2 >= 0 && y2 < (int)rH) pixels[y2 * W + px] = color;
+    if (px >= 0 && px < (int)W) {
+      if (y  >= 0 && y  < (int)H) pixels[y  * W + px] = color;
+      if (y2 >= 0 && y2 < (int)H) pixels[y2 * W + px] = color;
     }
   }
   for (int py = y + 1; py < y2; ++py) {
-    if (py >= 0 && py < (int)rH) {
-      if (x  >= 0 && x  < (int)rW) pixels[py * W + x ] = color;
-      if (x2 >= 0 && x2 < (int)rW) pixels[py * W + x2] = color;
+    if (py >= 0 && py < (int)H) {
+      if (x  >= 0 && x  < (int)W) pixels[py * W + x ] = color;
+      if (x2 >= 0 && x2 < (int)W) pixels[py * W + x2] = color;
     }
   }
 }
@@ -157,8 +157,8 @@ void Overlay::drawLine(int x0, int y0, int x1, int y1, unsigned color, int thick
     for (int oy = -r; oy <= r; ++oy)
       for (int ox = -r; ox <= r; ++ox) {
         int px = x0 + ox, py = y0 + oy;
-        if (px >= 0 && px < (int)rW && py >= 0 && py < (int)rH)
-          pixels[(rH - py) * W + px] = color;
+        if (px >= 0 && px < (int)W && py >= 0 && py < (int)H)
+          pixels[(H - py) * W + px] = color;
       }
     if (x0 == x1 && y0 == y1) break;
     int e2 = 2 * err;
@@ -177,10 +177,10 @@ void Overlay::drawGlyph(int px, int py, unsigned char c, unsigned color, int sca
         // Fill a scale x scale block for each lit pixel
         for (int sy = 0; sy < scale; ++sy) {
           const int screenY = py + row * scale + sy;
-          if (screenY < 0 || screenY >= (int)rH) continue;
+          if (screenY < 0 || screenY >= (int)H) continue;
           for (int sx = 0; sx < scale; ++sx) {
             const int screenX = px + col * scale + sx;
-            if (screenX >= 0 && screenX < (int)rW) {
+            if (screenX >= 0 && screenX < (int)W) {
               pixels[screenY * W + screenX] = color;
             }
           }
