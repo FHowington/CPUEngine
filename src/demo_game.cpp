@@ -23,9 +23,12 @@ void DemoGame::init(Engine& engine) {
   _fpsStart = std::chrono::high_resolution_clock::now();
 
   // Spawn fireflies orbiting under the main lamp at (0, 3, -5)
-  _fireflies.emplace_back(0, 1.5f, -5, 2.0f, 1.2f, 0.2f, 1.0f, 0.4f, 0.8f, 0.4f, 0.0f);
-  _fireflies.emplace_back(0, 1.0f, -5, 3.0f, 0.8f, 0.4f, 0.9f, 1.0f, 0.6f, 0.3f, 2.1f);
-  _fireflies.emplace_back(0, 2.0f, -5, 1.5f, 1.5f, 1.0f, 0.8f, 0.2f, 0.7f, 0.35f, 4.2f);
+  //                    cx   cy    cz  radius speed   r    g    b   intensity glowR phase
+  _fireflies.emplace_back(0, 1.5f, -5, 2.0f, 0.15f, 0.3f, 1.0f, 0.5f, 1.0f, 0.25f, 0.0f);
+  _fireflies.emplace_back(0, 1.0f, -5, 2.5f, 0.10f, 0.5f, 0.9f, 1.0f, 0.8f, 0.20f, 2.1f);
+  _fireflies.emplace_back(0, 2.0f, -5, 1.8f, 0.18f, 1.0f, 0.85f, 0.3f, 0.9f, 0.22f, 4.2f);
+  _fireflies.emplace_back(0, 1.2f, -5, 3.0f, 0.08f, 0.8f, 0.5f, 1.0f, 0.7f, 0.18f, 1.0f);
+  _fireflies.emplace_back(0, 1.8f, -5, 1.2f, 0.20f, 0.4f, 1.0f, 0.9f, 0.85f, 0.20f, 5.5f);
 
   buildMenus();
 }
