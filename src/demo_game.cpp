@@ -48,6 +48,8 @@ void DemoGame::init(Engine& engine) {
 }
 
 void DemoGame::buildMenus() {
+  _renderMenu.addItem(MenuItem::back());
+  _renderMenu.addItem(MenuItem::separator());
   _renderMenu.addItem(MenuItem::toggle("Wireframe", &_wireframe));
   _renderMenu.addItem(MenuItem::toggle("FPS Log", &_fps));
   _renderMenu.addItem(MenuItem::toggle("AA", &_aa));
@@ -63,12 +65,16 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::slider("Spec Str", &_specStrength, 0.1f, 2.0f, 0.1f));
   _renderMenu.addItem(MenuItem::slider("Resolution", &_resolution, 270.0f, 1080.0f, 270.0f));
 
+  _cameraMenu.addItem(MenuItem::back());
+  _cameraMenu.addItem(MenuItem::separator());
   _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
   _cameraMenu.addItem(MenuItem::separator());
   _cameraMenu.addItem(MenuItem::slider("Near Clip", &_nearClip, 0.5f, 10.0f, 0.5f));
   _cameraMenu.addItem(MenuItem::slider("Far Clip", &_farClip, 20.0f, 500.0f, 10.0f));
 
+  _fogMenu.addItem(MenuItem::back());
+  _fogMenu.addItem(MenuItem::separator());
   _fogMenu.addItem(MenuItem::toggle("Light Fog", &_lightFog));
   _fogMenu.addItem(MenuItem::toggle("Depth Fog", &_depthFog));
   _fogMenu.addItem(MenuItem::separator());
@@ -85,14 +91,19 @@ void DemoGame::buildMenus() {
 
 void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
   if (event.type == SDL_KEYDOWN) {
-    // Menu toggle
     if (event.key.keysym.sym == SDLK_ESCAPE) {
       if (_menuStack.isOpen()) _menuStack.close();
       else _menuStack.open();
       return;
     }
-    // If menu is open, it consumes arrow/enter/backspace keys
     if (_menuStack.handleKey(event.key.keysym.sym))
+      return;
+  }
+
+  // Mouse events for menu
+  if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP ||
+      event.type == SDL_MOUSEMOTION) {
+    if (_menuStack.handleMouse(event))
       return;
   }
 
