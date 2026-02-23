@@ -188,16 +188,25 @@ class MenuStack {
   bool handleMouse(const SDL_Event& ev) {
     if (!isOpen()) return false;
 
-    // Convert window coords to framebuffer coords
     int mx = 0, my = 0;
+    Uint32 winID = 0;
     if (ev.type == SDL_MOUSEBUTTONDOWN || ev.type == SDL_MOUSEBUTTONUP) {
-      mx = ev.button.x / xZoom;
-      my = ev.button.y / yZoom;
+      mx = ev.button.x; my = ev.button.y; winID = ev.button.windowID;
     } else if (ev.type == SDL_MOUSEMOTION) {
-      mx = ev.motion.x / xZoom;
-      my = ev.motion.y / yZoom;
+      mx = ev.motion.x; my = ev.motion.y; winID = ev.motion.windowID;
     } else {
       return false;
+    }
+
+    // Map window coords → framebuffer coords (W×H)
+    SDL_Window* win = SDL_GetWindowFromID(winID);
+    if (win) {
+      int ww, wh;
+      SDL_GetWindowSize(win, &ww, &wh);
+      if (ww > 0 && wh > 0) {
+        mx = mx * (int)W / ww;
+        my = my * (int)H / wh;
+      }
     }
 
     if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
