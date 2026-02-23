@@ -5,8 +5,10 @@
 #include "Window.h"
 #include <array>
 #include <cmath>
+#include <limits>
 
 extern std::array<unsigned, W * H> pixels;
+extern std::array<int, W * H> zbuff;
 extern float focalLength;
 
 // Firefly — a slow-drifting tiny light with a long sparkle trail.
@@ -86,6 +88,9 @@ class Firefly : public Entity {
     int ix = (int)sx;
     int iy = (int)(rH - 1 - sy);
 
+    // Depth value comparable to zbuffer (camZ * depth, negative)
+    int fireflyZ = (int)(cz * depth);
+
     float screenR = glowR * scale * rH * yZoom;
     if (screenR < 1.0f) screenR = 1.0f;
     int r = (int)screenR;
@@ -102,7 +107,13 @@ class Firefly : public Entity {
 
     for (int py = y0; py <= y1; ++py) {
       float dy = (float)(py - iy);
+      int zRow = (int)(rH - 1 - py) * W;
       for (int px = x0; px <= x1; ++px) {
+        // Depth test: skip if geometry is closer than the firefly
+        int zVal = zbuff[zRow + px];
+        if (zVal != std::numeric_limits<int>::min() && zVal > fireflyZ)
+          continue;
+
         float dx = (float)(px - ix);
         float d2 = dx * dx + dy * dy;
         if (d2 >= screenR * screenR) continue;
