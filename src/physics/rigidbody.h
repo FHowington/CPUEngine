@@ -16,17 +16,17 @@ class RigidBody {
  public:
   Vec3 position;
   Vec3 velocity;
-  Vec3 force;       // accumulated force, cleared each step
+  Vec3 force;
   float mass = 1.0f;
-  float invMass = 1.0f;  // 0 = static/infinite mass
+  float invMass = 1.0f;
   float restitution = 0.5f;
-  Vec3 halfExtents;  // AABB half-size
+  Vec3 halfExtents;
 
   RigidBody() = default;
-  RigidBody(Vec3 pos, float mass, Vec3 halfExt, float restitution = 0.5f)
-      : position(pos), mass(mass),
-        invMass(mass > 0 ? 1.0f / mass : 0.0f),
-        restitution(restitution), halfExtents(halfExt) {}
+  RigidBody(Vec3 pos, float m, Vec3 halfExt, float rest = 0.5f)
+      : position(pos), mass(m),
+        invMass(m > 0 ? 1.0f / m : 0.0f),
+        restitution(rest), halfExtents(halfExt) {}
 
   bool isStatic() const { return invMass == 0.0f; }
 
@@ -36,7 +36,6 @@ class RigidBody {
 
   void applyForce(const Vec3& f) { force += f; }
 
-  // Semi-implicit Euler integration
   void integrate(float dt) {
     if (isStatic()) return;
     Vec3 accel = force * invMass;
