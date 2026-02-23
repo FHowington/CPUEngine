@@ -7,10 +7,12 @@
 
 #include "camera.h"
 #include "engine.h"
+#include "firefly.h"
 #include "menu.h"
 #include "overlay.h"
 #include "scene.h"
 #include <chrono>
+#include <vector>
 
 class DemoGame : public Game {
  public:
@@ -57,6 +59,9 @@ class DemoGame : public Game {
   float _specStrength = 1.0f;
   float _resolution = 1080.0f;
   matrix<4,4> _renderCameraTransform;
+
+  // Animated entities
+  std::vector<Firefly> _fireflies;
 
   // Menu system
   Menu _mainMenu{"Settings"};
