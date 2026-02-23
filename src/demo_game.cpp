@@ -30,6 +30,20 @@ void DemoGame::init(Engine& engine) {
   _fireflies.emplace_back(0, 1.2f, -5, 3.0f, 0.08f, 0.8f, 0.5f, 1.0f, 0.7f, 0.18f, 1.0f);
   _fireflies.emplace_back(0, 1.8f, -5, 1.2f, 0.20f, 0.4f, 1.0f, 0.9f, 0.85f, 0.20f, 5.5f);
 
+  // Physics: spheres are models[1..5], floor is a static plane at y=-5
+  _sphereBodies.resize(5);
+  for (int i = 0; i < 5; ++i) {
+    auto& m = _scene.models[1 + i];
+    float x = m->_position.at(3, 0);
+    float y = m->_position.at(3, 1);
+    float z = m->_position.at(3, 2);
+    _sphereBodies[i] = RigidBody({x, y, z}, 1.0f, {1, 1, 1}, 0.6f);
+    _physWorld.addBody(&_sphereBodies[i]);
+  }
+  // Static floor: thin slab spanning the courtyard at y=-5
+  _floor = RigidBody({0, -5.5f, -5}, 0.0f, {20, 0.5f, 25}, 0.5f);
+  _physWorld.addBody(&_floor);
+
   buildMenus();
 }
 
@@ -159,6 +173,18 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   newPosition.set(3, 2, -5);
   newPosition.set(3, 0, -5);
   _scene.models.front()->_position = newPosition;
+
+  // Step physics and sync sphere positions back to model instances
+  // deltaTime is in engine units (ns / 80M); convert to seconds
+  float physicsDt = deltaTime * (80000000.0f / 1e9f);
+  _physWorld.step(physicsDt);
+  for (int i = 0; i < 5; ++i) {
+    auto& body = _sphereBodies[i];
+    auto& model = _scene.models[1 + i];
+    model->_position.set(3, 0, body.position.x);
+    model->_position.set(3, 1, body.position.y);
+    model->_position.set(3, 2, body.position.z);
+  }
 
   // FPS counter — always running so the overlay can show it
   ++_frame;

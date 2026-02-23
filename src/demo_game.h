@@ -10,6 +10,7 @@
 #include "firefly.h"
 #include "menu.h"
 #include "overlay.h"
+#include "physics/physics_world.h"
 #include "scene.h"
 #include <chrono>
 #include <vector>
@@ -62,6 +63,11 @@ class DemoGame : public Game {
 
   // Animated entities
   std::vector<Firefly> _fireflies;
+
+  // Physics
+  PhysicsWorld _physWorld;
+  std::vector<RigidBody> _sphereBodies;
+  RigidBody _floor;
 
   // Menu system
   Menu _mainMenu{"Settings"};
