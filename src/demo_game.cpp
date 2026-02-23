@@ -37,7 +37,7 @@ void DemoGame::init(Engine& engine) {
     float x = m->_position.at(3, 0);
     float y = m->_position.at(3, 1);
     float z = m->_position.at(3, 2);
-    _sphereBodies[i] = RigidBody({x, y, z}, 1.0f, {1, 1, 1}, 0.6f);
+    _sphereBodies[i] = RigidBody({x, y, z}, 1.0f, {1, 1, 1}, 0.8f);
     _physWorld.addBody(&_sphereBodies[i]);
   }
   // Static floor: thin slab spanning the courtyard at y=-5

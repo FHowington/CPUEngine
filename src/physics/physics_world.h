@@ -142,7 +142,8 @@ class PhysicsWorld {
     float relVel = (a.velocity - b.velocity).dot(normal);
     if (relVel > 0) return;
 
-    float e = std::min(a.restitution, b.restitution);
+    // Kill restitution for tiny impacts — prevents micro-bounce energy drain
+    float e = (relVel < -0.5f) ? std::min(a.restitution, b.restitution) : 0.0f;
     float j = -(1.0f + e) * relVel / totalInv;
 
     Vec3 impulse = normal * j;
