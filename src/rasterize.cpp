@@ -168,7 +168,10 @@ extern float nearClipDist;
   const  __m256i a20Add8 = _mm256_set1_epi32(8*A20);                    \
                                                                         \
   const __m256i a01Add = _mm256_mullo_epi32(_mm256_set1_epi32(A01), scale); \
-  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);
+  const __m256i a01Add8 = _mm256_set1_epi32(8*A01);                     \
+                                                                        \
+  const __m256i maxXv = _mm256_set1_epi32(maxX);                        \
+  const __m256i add8 = _mm256_set1_epi32(8);
 #endif
 
 #define TEXTURE_DELTAS                                                  \
@@ -245,13 +248,16 @@ void drawTri(const ModelInstance& m, const face& f,
     w2Init = _mm256_set1_epi32(w2);
     w2Init = _mm256_add_epi32(w2Init, a01Add);
 
+    __m256i colV = _mm256_add_epi32(_mm256_set1_epi32(minX), scale);
     xVal = minX;
     for (inner = 0; inner < numInner; ++inner) {
       const __m256i zbuffv = _mm256_loadu_si256((__m256i*)(t_zbuff.data() + xVal + offset)); // NOLINT
 
       const __m256i zInit = _mm256_set1_epi32(depth);
       const __m256i zv = _mm256_add_epi32(zInit, depthDxAdd);
-      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min));
+      const __m256i edgeTest = _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min);
+      const __m256i inBounds = _mm256_andnot_si256(_mm256_cmpgt_epi32(colV, maxXv), edgeTest);
+      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), inBounds);
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
@@ -284,6 +290,7 @@ void drawTri(const ModelInstance& m, const face& f,
         shader.stepXForX(8);
       }
       xVal += 8;
+      colV = _mm256_add_epi32(colV, add8);
       // We must step 8 times.
       xCol += xColDx * 8;
       yCol += yColDx * 8;
@@ -415,10 +422,7 @@ void drawTri(const ModelInstance& m, const face& f,
   unsigned offset = minY * Wt;
 
   numInner = (maxX - minX) / 8;
-
-  if ((maxX - minX) % 8) {
-    ++numInner;
-  }
+  numInner += ((maxX - minX) % 8 != 0);
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
@@ -439,6 +443,7 @@ void drawTri(const ModelInstance& m, const face& f,
     w2Init = _mm256_set1_epi32(w2);
     w2Init = _mm256_add_epi32(w2Init, a01Add);
 
+    __m256i colV = _mm256_add_epi32(_mm256_set1_epi32(minX), scale);
     xVal = minX;
 
     for (inner = 0; inner < numInner; ++inner) {
@@ -446,7 +451,9 @@ void drawTri(const ModelInstance& m, const face& f,
 
       const __m256i zInit = _mm256_set1_epi32(depth);
       const __m256i zv = _mm256_add_epi32(zInit, depthDxAdd);
-      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min));
+      const __m256i edgeTest = _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min);
+      const __m256i inBounds = _mm256_andnot_si256(_mm256_cmpgt_epi32(colV, maxXv), edgeTest);
+      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), inBounds);
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
@@ -467,6 +474,7 @@ void drawTri(const ModelInstance& m, const face& f,
       }
 
       xVal += 8;
+      colV = _mm256_add_epi32(colV, add8);
       // We must step 8 times.
       depth += depthDx * 8;
 
@@ -584,10 +592,7 @@ void drawTri(const ModelInstance& m, const face& f,
   unsigned offset = minY * Wt;
 
   numInner = (maxX - minX) / 8;
-
-  if ((maxX - minX) % 8) {
-    ++numInner;
-  }
+  numInner += ((maxX - minX) % 8 != 0);
 
   for (y = minY; y <= maxY; ++y) {
     w0 = w0Row;
@@ -609,6 +614,7 @@ void drawTri(const ModelInstance& m, const face& f,
     w2Init = _mm256_set1_epi32(w2);
     w2Init = _mm256_add_epi32(w2Init, a01Add);
 
+    __m256i colV = _mm256_add_epi32(_mm256_set1_epi32(minX), scale);
     xVal = minX;
 
     for (inner = 0; inner < numInner; ++inner) {
@@ -620,7 +626,9 @@ void drawTri(const ModelInstance& m, const face& f,
       zv = _mm256_div_ps(zv, wTotalRV);
       zv = _mm256_cvtps_epi32(zv);
 
-      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min));
+      const __m256i edgeTest = _mm256_cmpgt_epi32(_mm256_or_si256(w2Init, _mm256_or_si256(w0Init, w1Init)), min);
+      const __m256i inBounds = _mm256_andnot_si256(_mm256_cmpgt_epi32(colV, maxXv), edgeTest);
+      const __m256i needsUpdate = _mm256_and_si256(_mm256_cmpgt_epi32(zv, zbuffv), inBounds);
 
       if (!_mm256_testz_si256(needsUpdate, needsUpdate)) {
         const __m256i zUpdate = _mm256_blendv_epi8(zbuffv, zv, needsUpdate);
@@ -641,6 +649,7 @@ void drawTri(const ModelInstance& m, const face& f,
       }
 
       xVal += 8;
+      colV = _mm256_add_epi32(colV, add8);
       // We must step 8 times.
       depthCorr += depthCorrDx * 8;
 
@@ -1089,6 +1098,14 @@ void renderModel<WoodXYShader>(const std::shared_ptr<const ModelInstance>& model
 
 template
 void renderModel<WoodYZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
+
+template
+void drawTri<WaterXZShader>(const ModelInstance& m, const face& f,
+             const vertex<int>& v0i, const vertex<int>& v1i, const vertex<int>& v2i,
+             const vertex<float>& v0, const vertex<float>& v1, const vertex<float>& v2);
+
+template
+void renderModel<WaterXZShader>(const std::shared_ptr<const ModelInstance>& model, const matrix<4,4>& cameraTransform);
 
 void plot(unsigned x, unsigned y, const unsigned color)
 {

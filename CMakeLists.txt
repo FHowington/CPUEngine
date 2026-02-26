@@ -13,6 +13,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 
 option(SIMD "Use SIMD instructions (portable via SIMDe)" OFF)
+option(METAL "Build with Metal GPU rasterizer backend" OFF)
 option(DEBUG "Build debug variant with no optimizations" OFF)
 if(SIMD)
   SET(CLANG_INSTRUCTIONS "-march=native -Rpass=loop-vectorize")
@@ -35,6 +36,20 @@ if(SIMD)
 endif()
 add_library(engineLib "")
 add_subdirectory(src)
+
+if(METAL)
+  if(APPLE)
+    add_definitions(-DUSE_METAL)
+    # Metal shaders compiled at runtime from source via newLibraryWithSource:
+    # Copy shader source next to the binary so the backend can load it
+    configure_file(${PROJECT_SOURCE_DIR}/src/shaders.metal ${CMAKE_BINARY_DIR}/shaders.metal COPYONLY)
+    target_sources(engineLib PRIVATE src/metal_backend.mm)
+    target_link_libraries(engineLib "-framework Metal" "-framework Foundation")
+    set_source_files_properties(src/metal_backend.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+  else()
+    message(WARNING "METAL=ON but not on Apple platform. Building without Metal support.")
+  endif()
+endif()
 
 add_executable(engine src/main.cpp)
 target_link_libraries(engine ${SDL2_LIBRARY})

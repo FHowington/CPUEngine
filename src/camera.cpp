@@ -27,34 +27,52 @@ void Camera::handleEvent(const SDL_Event& event) {
 }
 
 void Camera::update(float deltaTime) {
-  if (_lUp)    _rotX -= 0.03f * _sensitivity;
-  if (_lDown)  _rotX += 0.03f * _sensitivity;
-  if (_lRight) _rotY -= 0.03f * _sensitivity;
-  if (_lLeft)  _rotY += 0.03f * _sensitivity;
+  float lookScale = deltaTime * 3.0f * _lookSpeed;
+  if (_lUp)    _rotX -= lookScale;
+  if (_lDown)  _rotX += lookScale;
+  if (_lRight) _rotY -= lookScale;
+  if (_lLeft)  _rotY += lookScale;
 
   matrix<4,4> rotXM = matrix<4,4>::rotationX(_rotX);
   matrix<4,4> rotYM = matrix<4,4>::rotationY(_rotY);
   matrix<4,4> rot(rotXM * rotYM);
 
-  float moveScale = deltaTime * 10.0f * _sensitivity;  // Base speed = 10.0
+  // Cap moveScale so a single frame can never move more than half the player width
+  float moveScale = deltaTime * 10.0f * _moveSpeed;
+  constexpr float hx = 0.5f, hy = 1.5f, hz = 0.5f;
+  constexpr float maxStep = hx;  // never move more than half-extent per frame
+  if (moveScale > maxStep) moveScale = maxStep;
+  float dx = 0, dy = 0, dz = 0;
   if (_mForward) {
-    _x -= moveScale * rot._m[8];
-    _y -= moveScale * rot._m[9];
-    _z -= moveScale * rot._m[10];
+    dx -= moveScale * rot._m[8];
+    dy -= moveScale * rot._m[9];
+    dz -= moveScale * rot._m[10];
   } else if (_mBackward) {
-    _x += moveScale * rot._m[8];
-    _y += moveScale * rot._m[9];
-    _z += moveScale * rot._m[10];
+    dx += moveScale * rot._m[8];
+    dy += moveScale * rot._m[9];
+    dz += moveScale * rot._m[10];
   }
 
   if (_mLeft) {
-    _x -= moveScale * rot._m[0];
-    _y -= moveScale * rot._m[1];
-    _z -= moveScale * rot._m[2];
+    dx -= moveScale * rot._m[0];
+    dy -= moveScale * rot._m[1];
+    dz -= moveScale * rot._m[2];
   } else if (_mRight) {
-    _x += moveScale * rot._m[0];
-    _y += moveScale * rot._m[1];
-    _z += moveScale * rot._m[2];
+    dx += moveScale * rot._m[0];
+    dy += moveScale * rot._m[1];
+    dz += moveScale * rot._m[2];
+  }
+
+  // Resolve collisions per-axis to prevent tunneling and enable wall sliding
+  if (_collision) {
+    _x += dx;
+    _collision->resolveMove(_x, _y, _z, hx, hy, hz);
+    _y += dy;
+    _collision->resolveMove(_x, _y, _z, hx, hy, hz);
+    _z += dz;
+    _collision->resolveMove(_x, _y, _z, hx, hy, hz);
+  } else {
+    _x += dx; _y += dy; _z += dz;
   }
 
   rot.set(3, 0, _x);

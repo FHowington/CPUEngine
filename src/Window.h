@@ -2,6 +2,8 @@
 
 const unsigned W = 1080;
 const unsigned H = 1080;
+// Extra row for the Y-flip overflow in copy_to_main_buffer
+const unsigned BUF_SZ = W * H + W;
 
 // Active render resolution (always <= W/H). Arrays stay sized at W*H.
 extern unsigned rW;

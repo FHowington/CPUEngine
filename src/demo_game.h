@@ -23,6 +23,7 @@ class DemoGame : public Game {
   const std::vector<std::shared_ptr<ModelInstance>>& getModels() const override;
   void drawOverlay() override;
   void postProcess() override;
+  bool needsReflectionPass() const override { return _reflections; }
 
  private:
   Scene _scene;
@@ -39,7 +40,8 @@ class DemoGame : public Game {
   std::chrono::high_resolution_clock::time_point _fpsStart;
 
   // Camera options
-  float _cameraSpeed = 1.0f;
+  float _moveSpeed = 0.20f;
+  float _lookSpeed = 0.15f;
   float _fov = 41.0f;
   float _nearClip = 2.0f;
   float _farClip = 100.0f;
@@ -56,10 +58,12 @@ class DemoGame : public Game {
   bool _frustumCull = true;
   bool _dynamicLights = true;
   bool _specular = true;
+  bool _reflections = true;
   float _shininess = 64.0f;
   float _specStrength = 1.0f;
   float _resolution = 1080.0f;
   matrix<4,4> _renderCameraTransform;
+  matrix<4,4> _reflectionCameraTransform;
 
   // Animated entities
   std::vector<Firefly> _fireflies;

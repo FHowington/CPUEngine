@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstring>
 
-extern std::array<unsigned, W * H> pixels;
+extern std::array<unsigned, BUF_SZ> pixels;
 
 inline void applyAA(float threshold = 24.0f) {
   static std::array<unsigned, W * H> copy;

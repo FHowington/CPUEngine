@@ -363,8 +363,11 @@ class MenuStack {
 
         case MenuItemType::Slider: {
           // Label + value on first line
-          snprintf(buf, sizeof(buf), "%s: %.1f", item.text.c_str(),
-                   item.sliderVal ? *item.sliderVal : 0.0f);
+          int prec = 1;
+          if (item.sliderStep < 0.1f)  prec = 2;
+          if (item.sliderStep < 0.01f) prec = 3;
+          snprintf(buf, sizeof(buf), "%s: %.*f", item.text.c_str(),
+                   prec, item.sliderVal ? *item.sliderVal : 0.0f);
           Overlay::drawText(tx, ty, buf, _style.sliderColor, S);
 
           // Slider track on second line

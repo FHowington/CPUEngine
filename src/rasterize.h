@@ -20,8 +20,8 @@ const unsigned halfW = W/2;
 const unsigned halfH = H/2;
 
 
-extern std::array<unsigned, W * H> pixels;
-extern std::array<int, W * H> zbuff;
+extern std::array<unsigned, BUF_SZ> pixels;
+extern std::array<int, BUF_SZ> zbuff;
 extern bool renderWireframe;
 
 inline __attribute__((always_inline)) void plot(unsigned x, unsigned y, unsigned color);

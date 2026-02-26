@@ -4,6 +4,8 @@
 
 #include "geometry.h"
 #include "loader.h"
+#include "collision.h"
+#include "scene_node.h"
 #include "shader.h"
 #include "tgaimage.h"
 #include <algorithm>
@@ -110,10 +112,23 @@ void  Model::loadModel(const std::string& fileName, const unsigned width, const 
   }
 }
 
-void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile) {
+void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile, std::vector<std::shared_ptr<SceneNode>>& roots, std::map<std::string, std::shared_ptr<SceneNode>>& nodesByName, CollisionWorld& collision) {
   std::string line;
   std::ifstream infile(sceneFile);
   unsigned planeCount = 0;
+
+  // Deferred parent links: child name -> parent name
+  std::vector<std::pair<std::string, std::string>> deferredParents;
+
+  // Helper: register a node, optionally with a name and parent
+  auto registerNode = [&](std::shared_ptr<SceneNode> node, const std::string& parentName) {
+    if (!node->_name.empty())
+      nodesByName[node->_name] = node;
+    if (!parentName.empty())
+      deferredParents.push_back({node->_name, parentName});
+    else
+      roots.push_back(node);
+  };
 
   while (std::getline(infile, line))
   {
@@ -185,6 +200,18 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
       modelInstance->_position.set(3, 1, y);
       modelInstance->_position.set(3, 2, z);
       modelInstances.push_back(modelInstance);
+
+      // Parse optional name:xxx parent:xxx tokens
+      std::string nodeName, parentName, token;
+      while (iss >> token) {
+        if (token.substr(0, 5) == "name:") nodeName = token.substr(5);
+        else if (token.substr(0, 7) == "parent:") parentName = token.substr(7);
+      }
+      if (nodeName.empty()) nodeName = "instance_" + std::to_string(modelInstances.size() - 1);
+      auto node = std::make_shared<SceneNode>(nodeName);
+      node->_localTransform = modelInstance->_position;
+      node->_model = modelInstance;
+      registerNode(node, parentName);
 
     } else if (line.size() > 5 && !(bool)strncmp(line.c_str(), "model", 5)) {
       line.erase(std::remove(line.begin(), line.end(), '['), line.end());
@@ -336,6 +363,8 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
         st = shaderType::WoodXZShader;
       } else if (shader == "woodyz") {
         st = shaderType::WoodYZShader;
+      } else if (shader == "waterxz") {
+        st = shaderType::WaterXZShader;
       } else {
         std::cout << "Unknown shader type " << shader << std::endl;
       }
@@ -345,11 +374,66 @@ void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std:
       planeInstance->_position = matrix<4,4>::identity();
       modelInstances.push_back(planeInstance);
 
+      auto node = std::make_shared<SceneNode>(planeName);
+      node->_localTransform = planeInstance->_position;
+      node->_model = planeInstance;
+      registerNode(node, "");
+
       ++planeCount;
+
+    } else if (line.size() > 4 && !(bool)strncmp(line.c_str(), "node", 4)) {
+      // Group node: node <name> <x> <y> <z> [parent:<parentName>]
+      line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ','), line.end());
+      std::istringstream iss(line);
+      std::string junk, nodeName;
+      float x = 0, y = 0, z = 0;
+      if (!(iss >> junk >> nodeName >> x >> y >> z)) {
+        std::cout << "Parsing failed for node line " << line << std::endl;
+        break;
+      }
+      auto node = std::make_shared<SceneNode>(nodeName);
+      node->_localTransform = matrix<4,4>::identity();
+      node->_localTransform.set(3, 0, x);
+      node->_localTransform.set(3, 1, y);
+      node->_localTransform.set(3, 2, z);
+      std::string parentName, token;
+      while (iss >> token) {
+        if (token.substr(0, 7) == "parent:") parentName = token.substr(7);
+      }
+      registerNode(node, parentName);
+
+    } else if (line.size() > 8 && !(bool)strncmp(line.c_str(), "collider", 8)) {
+      // COLLIDER <x0> <y0> <z0> <x1> <y1> <z1>
+      line.erase(std::remove(line.begin(), line.end(), '['), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ']'), line.end());
+      line.erase(std::remove(line.begin(), line.end(), ','), line.end());
+      std::istringstream iss(line);
+      std::string junk;
+      float x0, y0, z0, x1, y1, z1;
+      if (!(iss >> junk >> x0 >> y0 >> z0 >> x1 >> y1 >> z1)) {
+        std::cout << "Parsing failed for collider line " << line << std::endl;
+        break;
+      }
+      collision.addBox(x0, y0, z0, x1, y1, z1);
 
     } else {
         std::cout << "Parsing failed for line " << line << std::endl;
         break;
+    }
+  }
+
+  // Resolve deferred parent links
+  for (auto& [childName, parentName] : deferredParents) {
+    auto cit = nodesByName.find(childName);
+    auto pit = nodesByName.find(parentName);
+    if (cit != nodesByName.end() && pit != nodesByName.end()) {
+      pit->second->addChild(cit->second);
+      // Remove from roots since it's now a child
+      roots.erase(std::remove(roots.begin(), roots.end(), cit->second), roots.end());
+    } else {
+      std::cout << "Warning: could not resolve parent '" << parentName << "' for node '" << childName << "'" << std::endl;
     }
   }
 }

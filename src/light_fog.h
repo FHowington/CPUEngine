@@ -7,8 +7,8 @@
 #include <array>
 #include <cmath>
 
-extern std::array<unsigned, W * H> pixels;
-extern std::array<int, W * H> zbuff;
+extern std::array<unsigned, BUF_SZ> pixels;
+extern std::array<int, BUF_SZ> zbuff;
 extern matrix<4,4> cameraTransform;
 extern float focalLength;
 
@@ -69,7 +69,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       float dy = y - sy;
       __m256 dySqV = _mm256_set1_ps(dy * dy);
       int rowOff = y * W;
-      int zRowOff = (rH - y) * W;  // zbuff uses non-flipped Y
+      int zRowOff = (rH - 1 - y) * W;  // zbuff uses non-flipped Y
 
       for (int x = x0a; x <= x1; x += 8) {
         __m256 dxV = _mm256_sub_ps(
@@ -137,7 +137,7 @@ inline void applyLightFog(const matrix<4,4>& camTransform, float intensity = 0.3
       float dy = y - sy;
       float dySq = dy * dy;
       int rowOff = y * W;
-      int zRowOff = (rH - y) * W;
+      int zRowOff = (rH - 1 - y) * W;
       for (int x = x0; x <= x1; ++x) {
         float dx = x - sx;
         float dSq = dx * dx + dySq;

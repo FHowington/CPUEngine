@@ -132,6 +132,11 @@ void Pool::job_wait() {
         renderModel<WoodYZShader>(job, cameraTransform);
         break;
       }
+
+      case shaderType::WaterXZShader: {
+        renderModel<WaterXZShader>(job, cameraTransform);
+        break;
+      }
     }
 
     Pool::copy_to_main_buffer();
@@ -140,8 +145,16 @@ void Pool::job_wait() {
       done_condition.notify_one();
     }
 
-    std::memset(t_pixels.data(), 0, t_pixels.size() * sizeof(unsigned));
-    std::fill(t_zbuff.begin(), t_zbuff.end(), std::numeric_limits<int>::min());
+    // Targeted clear: only reset the region this model touched
+    for (unsigned y = pMinY; y <= pMaxY; ++y) {
+      unsigned rowOff = y * Wt;
+      // Clear pMinX..pMaxX + up to 7 extra pixels the SIMD rasterizer may have written
+      unsigned clearEnd = pMaxX + 8;
+      if (clearEnd > Wt) clearEnd = Wt;
+      unsigned clearLen = clearEnd - pMinX;
+      std::memset(t_pixels.data() + rowOff + pMinX, 0, clearLen * sizeof(unsigned));
+      std::fill(t_zbuff.data() + rowOff + pMinX, t_zbuff.data() + rowOff + pMinX + clearLen, std::numeric_limits<int>::min());
+    }
   }
 }
 
@@ -171,9 +184,9 @@ void Pool::copy_to_main_buffer() {
 
 #ifdef __AVX2__
   unsigned offset_t = pMinY * Wt;
-  const unsigned loops = (pMaxX - pMinX) / 8;
+  const unsigned loops = (pMaxX + 1 - pMinX) / 8;
 
-  for (unsigned y = pMinY; y < pMaxY; ++y) {
+  for (unsigned y = pMinY; y <= pMaxY; ++y) {
     unsigned xVal = pMinX;
 
     for (unsigned loop = 0; loop < loops; ++loop) {
@@ -192,7 +205,7 @@ void Pool::copy_to_main_buffer() {
       xVal += 8;
     }
 
-    for (unsigned x = xVal; x < pMaxX; ++x) {
+    for (unsigned x = xVal; x <= pMaxX; ++x) {
       if (t_zbuff[offset_t + x] > zbuff[offset + x]) {
         pixels[offsetH + x] = t_pixels[offset_t + x];
         zbuff[offset + x] = t_zbuff[offset_t + x];
@@ -204,8 +217,8 @@ void Pool::copy_to_main_buffer() {
   }
 
 #else
-  for (unsigned y = pMinY; y < pMaxY; ++y) {
-    for (unsigned x = pMinX; x < pMaxX; ++x) {
+  for (unsigned y = pMinY; y <= pMaxY; ++y) {
+    for (unsigned x = pMinX; x <= pMaxX; ++x) {
       if (t_zbuff[offset + x] > zbuff[offset + x]) {
         pixels[offsetH + x] = t_pixels[offset + x];
         zbuff[offset + x] = t_zbuff[offset + x];

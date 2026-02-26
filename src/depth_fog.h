@@ -6,8 +6,8 @@
 #include <cmath>
 #include <limits>
 
-extern std::array<unsigned, W * H> pixels;
-extern std::array<int, W * H> zbuff;
+extern std::array<unsigned, BUF_SZ> pixels;
+extern std::array<int, BUF_SZ> zbuff;
 
 // Depth fog: blends pixels toward fogColor based on camera-space distance.
 // zbuffer stores camZ * depth (negative; higher = closer).

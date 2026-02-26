@@ -1,5 +1,6 @@
 #pragma once
 
+#include "collision.h"
 #include "geometry.h"
 #include <SDL.h>
 
@@ -15,8 +16,10 @@ class Camera {
   float getPitch() const { return _rotX; }
   float getYaw()   const { return _rotY; }
 
-  void setSensitivity(float s) { _sensitivity = s; }
-  float getSensitivity() const { return _sensitivity; }
+  void setMoveSpeed(float s) { _moveSpeed = s; }
+  float getMoveSpeed() const { return _moveSpeed; }
+  void setLookSpeed(float s) { _lookSpeed = s; }
+  float getLookSpeed() const { return _lookSpeed; }
 
   void setFOV(float fov) { _fov = fov; }
   float getFOV() const { return _fov; }
@@ -25,6 +28,8 @@ class Camera {
   void setFarClip(float d) { _farClip = d; }
   float getNearClip() const { return _nearClip; }
   float getFarClip() const { return _farClip; }
+
+  void setCollisionWorld(const CollisionWorld* cw) { _collision = cw; }
 
  private:
   float _rotX = 0;
@@ -43,9 +48,11 @@ class Camera {
   bool _mLeft = false;
   bool _mRight = false;
 
-  float _sensitivity = 1.0f;
+  float _moveSpeed = 1.0f;
+  float _lookSpeed = 1.0f;
   float _fov = 41.0f;
   float _nearClip = 2.0f;
   float _farClip = 100.0f;
   matrix<4,4> _transform;
+  const CollisionWorld* _collision = nullptr;
 };

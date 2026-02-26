@@ -19,8 +19,11 @@ INSTANCE sphereModel Gourand [6, -3, -15] [1, 1, 1] [0, 0, 0]
 INSTANCE sphereModel Gourand [12, -3, -15] [1, 1, 1] [0, 0, 0]
 
 # === OUTER WALLS ===
-# Floor
-PLANE planexz [-20 -5 15], [20 -5 15], [20 -5 -25], [-20 -5 -25]
+# Floor (split around pool rim at x=-6..6, z=-13..-7)
+PLANE planexz [-20 -5 15], [20 -5 15], [20 -5 -7], [-20 -5 -7]
+PLANE planexz [-20 -5 -7], [-6 -5 -7], [-6 -5 -13], [-20 -5 -13]
+PLANE planexz [6 -5 -7], [20 -5 -7], [20 -5 -13], [6 -5 -13]
+PLANE planexz [-20 -5 -13], [20 -5 -13], [20 -5 -25], [-20 -5 -25]
 
 # Front wall (with gap for gate) — 1 unit deep (z=15 outer, z=14 inner)
 # Outer faces (normal 0,0,1)
@@ -316,6 +319,27 @@ PLANE stoneyz [17 -5 -22], [17 12 -22], [17 12 -28], [17 -5 -28]
 PLANE stoneyz [23 -5 -22], [23 -5 -28], [23 12 -28], [23 12 -22]
 PLANE stonexz [17 12 -22], [23 12 -22], [23 12 -28], [17 12 -28]
 
+# === COURTYARD POOL ===
+# Pool basin: sunken rectangle from x=-5..5, z=-12..-8, floor y=-7, water at y=-5.2
+# Pool floor
+PLANE stonexz [-5 -7 -8], [5 -7 -8], [5 -7 -12], [-5 -7 -12]
+# Pool inner walls
+PLANE stonexy [-5 -7 -8], [5 -7 -8], [5 -5 -8], [-5 -5 -8]
+PLANE stonexy [5 -7 -12], [-5 -7 -12], [-5 -5 -12], [5 -5 -12]
+PLANE stoneyz [-5 -7 -12], [-5 -7 -8], [-5 -5 -8], [-5 -5 -12]
+PLANE stoneyz [5 -7 -8], [5 -7 -12], [5 -5 -12], [5 -5 -8]
+# Pool rim (stone ledge frame around the top — 4 strips with open center)
+PLANE stonexz [-6 -4.8 -7], [6 -4.8 -7], [6 -4.8 -8], [-6 -4.8 -8]
+PLANE stonexz [-6 -4.8 -12], [6 -4.8 -12], [6 -4.8 -13], [-6 -4.8 -13]
+PLANE stonexz [-6 -4.8 -8], [-5 -4.8 -8], [-5 -4.8 -12], [-6 -4.8 -12]
+PLANE stonexz [5 -4.8 -8], [6 -4.8 -8], [6 -4.8 -12], [5 -4.8 -12]
+PLANE stonexy [-6 -5 -7], [6 -5 -7], [6 -4.8 -7], [-6 -4.8 -7]
+PLANE stonexy [6 -5 -13], [-6 -5 -13], [-6 -4.8 -13], [6 -4.8 -13]
+PLANE stoneyz [-6 -5 -13], [-6 -5 -7], [-6 -4.8 -7], [-6 -4.8 -13]
+PLANE stoneyz [6 -5 -7], [6 -5 -13], [6 -4.8 -13], [6 -4.8 -7]
+# Water surface
+PLANE waterxz [-5 -5.2 -8], [5 -5.2 -8], [5 -5.2 -12], [-5 -5.2 -12]
+
 # === COURTYARD PILLARS ===
 PLANE stonexy [8 -5 2], [12 -5 2], [12 6 2], [8 6 2]
 PLANE stoneyz [12 -5 2], [12 -5 -2], [12 6 -2], [12 6 2]
@@ -405,3 +429,36 @@ PLANE woodxz [-0.55 3.5 -4.45], [0.55 3.5 -4.45], [0.55 3.5 -5.65], [-0.55 3.5 -
 # Lantern base
 PLANE woodxz [-0.45 2.3 -4.55], [0.45 2.3 -4.55], [0.45 2.3 -5.6], [-0.45 2.3 -5.6]
 
+
+# === COLLISION BOXES ===
+# Format: COLLIDER <x0> <y0> <z0> <x1> <y1> <z1>
+
+# Outer walls
+# Left wall
+COLLIDER [-20 -5 -25], [-19 8 15]
+# Right wall
+COLLIDER [19 -5 -25], [20 8 15]
+# Back wall
+COLLIDER [-20 -5 -25], [20 8 -24]
+# Front wall left of gate
+COLLIDER [-20 -5 14], [-3 8 15]
+# Front wall right of gate
+COLLIDER [3 -5 14], [20 8 15]
+# Front wall above gate
+COLLIDER [-3 4 14], [3 8 15]
+
+# Courtyard pillars
+COLLIDER [8 -5 -2], [12 6 2]
+COLLIDER [-12 -5 -2], [-8 6 2]
+
+# Pool rim (solid ledge the player can't walk through)
+COLLIDER [-6 -7 -13], [6 -4.8 -7]
+
+# Corner towers
+COLLIDER [-23 -5 12], [-17 12 18]
+COLLIDER [17 -5 12], [23 12 18]
+COLLIDER [-23 -5 -28], [-17 12 -22]
+COLLIDER [17 -5 -28], [23 12 -22]
+
+# Lantern post
+COLLIDER [-0.3 -5 -5.3], [0.3 4 -4.7]

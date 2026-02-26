@@ -16,6 +16,8 @@
 
 enum class shaderType;
 class TGAImage;
+class SceneNode;
+class CollisionWorld;
 
 class Model {
  public:
@@ -23,6 +25,8 @@ class Model {
   Model() : _texture(nullptr) {}
 
   [[nodiscard]] const std::vector<face>& getFaces() const { return faces; }
+  [[nodiscard]] const std::vector<vertex<float>>& getVertices() const { return vertices; }
+  [[nodiscard]] const std::vector<vertex<float>>& getVertexNormals() const { return vertexNormals; }
   [[nodiscard]] const vertex<float>& getVertex(const unsigned idx) const { return vertices[idx]; }
   [[nodiscard]] const vertex<float>& getVertexNormal(const unsigned idx) const { return vertexNormals[idx]; }
 
@@ -91,4 +95,4 @@ struct ModelInstance {
   float _bRadius = 0;
 };
 
-void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile);
+void loadScene(std::vector<std::shared_ptr<ModelInstance>>& modelInstances, std::map<const std::string, Model>& models, std::map<const std::string, TGAImage>& textures, const std::string& sceneFile, std::vector<std::shared_ptr<SceneNode>>& roots, std::map<std::string, std::shared_ptr<SceneNode>>& nodesByName, CollisionWorld& collision);

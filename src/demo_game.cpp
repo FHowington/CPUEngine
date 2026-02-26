@@ -3,6 +3,7 @@
 #include "depth_fog.h"
 #include "ssao.h"
 #include "geometry.h"
+#include "water_reflect.h"
 #include "light.h"
 #include "light_fog.h"
 #include "loader.h"
@@ -19,7 +20,8 @@ void DemoGame::init(Engine& engine) {
   _scene.lights.emplace_back(LightType::Point, 0, 3, -5, 200, 0.3, 0.3, 0.8);
   Light::sceneLights = _scene.lights;
 
-  _camera.setSensitivity(_cameraSpeed);
+  _camera.setMoveSpeed(_moveSpeed);
+  _camera.setLookSpeed(_lookSpeed);
   _fpsStart = std::chrono::high_resolution_clock::now();
 
   // Spawn fireflies orbiting under the main lamp at (0, 3, -5)
@@ -44,6 +46,8 @@ void DemoGame::init(Engine& engine) {
   _floor = RigidBody({0, -5.5f, -5}, 0.0f, {20, 0.5f, 25}, 0.5f);
   _physWorld.addBody(&_floor);
 
+  _camera.setCollisionWorld(&_scene.collision);
+
   buildMenus();
 }
 
@@ -55,19 +59,21 @@ void DemoGame::buildMenus() {
   _renderMenu.addItem(MenuItem::toggle("AA", &_aa));
   _renderMenu.addItem(MenuItem::slider("AA Thresh", &_aaThreshold, 4.0f, 64.0f, 4.0f));
   _renderMenu.addItem(MenuItem::toggle("SSAO", &_ssao));
-  _renderMenu.addItem(MenuItem::slider("SSAO Radius", &_ssaoRadius, 1.0f, 10.0f, 1.0f));
-  _renderMenu.addItem(MenuItem::slider("SSAO Str", &_ssaoStrength, 0.1f, 1.0f, 0.1f));
+  _renderMenu.addItem(MenuItem::slider("SSAO Radius", &_ssaoRadius, 0.0f, 5.0f, 0.1f));
+  _renderMenu.addItem(MenuItem::slider("SSAO Str", &_ssaoStrength, 0.1f, 2.0f, 0.1f));
   _renderMenu.addItem(MenuItem::toggle("Normals", &_showNormals));
   _renderMenu.addItem(MenuItem::toggle("Frustum Cull", &_frustumCull));
   _renderMenu.addItem(MenuItem::toggle("Dynamic Lights", &_dynamicLights));
   _renderMenu.addItem(MenuItem::toggle("Specular", &_specular));
+  _renderMenu.addItem(MenuItem::toggle("Reflections", &_reflections));
   _renderMenu.addItem(MenuItem::slider("Shininess", &_shininess, 4.0f, 512.0f, 8.0f));
   _renderMenu.addItem(MenuItem::slider("Spec Str", &_specStrength, 0.1f, 2.0f, 0.1f));
   _renderMenu.addItem(MenuItem::slider("Resolution", &_resolution, 270.0f, 1080.0f, 270.0f));
 
   _cameraMenu.addItem(MenuItem::back());
   _cameraMenu.addItem(MenuItem::separator());
-  _cameraMenu.addItem(MenuItem::slider("Speed", &_cameraSpeed, 0.1f, 4.0f, 0.1f));
+  _cameraMenu.addItem(MenuItem::slider("Move Speed", &_moveSpeed, 0.01f, 0.4f, 0.01f));
+  _cameraMenu.addItem(MenuItem::slider("Look Speed", &_lookSpeed, 0.01f, 0.3f, 0.01f));
   _cameraMenu.addItem(MenuItem::slider("FOV", &_fov, 30.0f, 120.0f, 5.0f));
   _cameraMenu.addItem(MenuItem::separator());
   _cameraMenu.addItem(MenuItem::slider("Near Clip", &_nearClip, 0.5f, 10.0f, 0.5f));
@@ -123,11 +129,11 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
       // Camera speed controls (- and =)
       case SDLK_MINUS:
       case SDLK_UNDERSCORE:
-        _cameraSpeed = std::max(0.1f, _cameraSpeed * 0.8f);
+        _moveSpeed = std::max(0.01f, _moveSpeed * 0.8f);
         break;
       case SDLK_EQUALS:
       case SDLK_PLUS:
-        _cameraSpeed = std::min(4.0f, _cameraSpeed * 1.25f);
+        _moveSpeed = std::min(0.4f, _moveSpeed * 1.25f);
         break;
       case SDLK_LEFTBRACKET:
         _fov = std::max(30.0f, _fov - 5.0f);
@@ -141,9 +147,11 @@ void DemoGame::handleEvent(const SDL_Event& event, bool& quit) {
 
 void DemoGame::update(float deltaTime, Engine& engine) {
   _renderCameraTransform = engine.getRenderCameraTransform();
+  _reflectionCameraTransform = engine.getReflectionCameraTransform();
 
   // Sync menu-controlled camera params
-  _camera.setSensitivity(_cameraSpeed);
+  _camera.setMoveSpeed(_moveSpeed);
+  _camera.setLookSpeed(_lookSpeed);
   _camera.setFOV(_fov);
   _camera.setNearClip(_nearClip);
   _camera.setFarClip(_farClip);
@@ -183,7 +191,8 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   newPosition = scaler * newPosition;
   newPosition.set(3, 2, -5);
   newPosition.set(3, 0, -5);
-  _scene.models.front()->_position = newPosition;
+  if (auto n = _scene.findNode("instance_0")) n->_localTransform = newPosition;
+  else _scene.models.front()->_position = newPosition;
 
   // Step physics and sync sphere positions back to model instances
   // deltaTime is in engine units (ns / 80M); convert to seconds
@@ -191,11 +200,21 @@ void DemoGame::update(float deltaTime, Engine& engine) {
   _physWorld.step(physicsDt);
   for (int i = 0; i < 5; ++i) {
     auto& body = _sphereBodies[i];
-    auto& model = _scene.models[1 + i];
-    model->_position.set(3, 0, body.position.x);
-    model->_position.set(3, 1, body.position.y);
-    model->_position.set(3, 2, body.position.z);
+    std::string nodeName = "instance_" + std::to_string(1 + i);
+    if (auto n = _scene.findNode(nodeName)) {
+      n->_localTransform.set(3, 0, body.position.x);
+      n->_localTransform.set(3, 1, body.position.y);
+      n->_localTransform.set(3, 2, body.position.z);
+    } else {
+      auto& model = _scene.models[1 + i];
+      model->_position.set(3, 0, body.position.x);
+      model->_position.set(3, 1, body.position.y);
+      model->_position.set(3, 2, body.position.z);
+    }
   }
+
+  // Propagate scene graph transforms
+  _scene.updateTransforms();
 
   // FPS counter — always running so the overlay can show it
   ++_frame;
@@ -221,6 +240,17 @@ const std::vector<std::shared_ptr<ModelInstance>>& DemoGame::getModels() const {
 // 4x SDL window. Line pitch = 18px (16px glyph + 2px gap).
 
 void DemoGame::postProcess() {
+  // Draw fireflies into reflection buffer so they appear in the water
+  if (_reflections) {
+    pixels.swap(reflectionBuf);
+    zbuff.swap(reflectionZBuf);
+    for (const auto& f : _fireflies)
+      f.draw(_reflectionCameraTransform);
+    zbuff.swap(reflectionZBuf);
+    pixels.swap(reflectionBuf);
+  }
+
+  applyWaterReflection(_reflections);
   if (_ssao) applySSAO(_ssaoRadius, _ssaoStrength);
   if (_depthFog) applyDepthFog(_nearClip, _farClip, 0x8090A0, _depthFogNear, _depthFogFar);
   if (_aa) applyAA(_aaThreshold);

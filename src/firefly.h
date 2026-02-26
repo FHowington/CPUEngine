@@ -8,8 +8,8 @@
 #include <cmath>
 #include <limits>
 
-extern std::array<unsigned, W * H> pixels;
-extern std::array<int, W * H> zbuff;
+extern std::array<unsigned, BUF_SZ> pixels;
+extern std::array<int, BUF_SZ> zbuff;
 extern float focalLength;
 
 // Firefly — a slow-drifting tiny light with a long sparkle trail.

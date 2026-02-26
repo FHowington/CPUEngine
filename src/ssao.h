@@ -7,8 +7,8 @@
 #include <cstring>
 #include <limits>
 
-extern std::array<unsigned, W * H> pixels;
-extern std::array<int, W * H> zbuff;
+extern std::array<unsigned, BUF_SZ> pixels;
+extern std::array<int, BUF_SZ> zbuff;
 
 inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
   const int zMin = std::numeric_limits<int>::min();
@@ -32,7 +32,7 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
   const __m256 oneV = _mm256_set1_ps(1.0f);
   const __m256 minAO = _mm256_set1_ps(0.3f);
   const __m256 hundredV = _mm256_set1_ps(100.0f);
-  const __m256 threshScale = _mm256_set1_ps(0.01f);
+  const __m256 threshScale = _mm256_set1_ps(0.002f);
   const __m256i mask8 = _mm256_set1_epi32(0xFF);
 
   for (unsigned y = 0; y < rH; ++y) {
@@ -56,12 +56,20 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
       for (int s = 0; s < nOffsets; ++s) {
         int sx = (int)x + offsets[s][0];
         int sy = (int)y + offsets[s][1];
-        if (sx < 0 || sx + 7 >= (int)rW || sy < 0 || sy >= (int)rH) continue;
+        if (sy < 0 || sy >= (int)rH) continue;
 
-        __m256i sampleZ = _mm256_loadu_si256((__m256i*)(zbuff.data() + sy * W + sx));
+        // Clamp sx for the load, then mask out-of-bounds lanes
+        int sxClamped = sx < 0 ? 0 : (sx + 7 >= (int)rW ? (int)rW - 8 : sx);
+        __m256i sampleZ = _mm256_loadu_si256((__m256i*)(zbuff.data() + sy * W + sxClamped));
 
-        __m256i sampleValid = _mm256_xor_si256(_mm256_cmpeq_epi32(sampleZ, zMinV), _mm256_set1_epi32(-1));
-        __m256i valid = _mm256_andnot_si256(isSky, sampleValid);
+        // Per-lane bounds check: actual sample column = sx + lane
+        __m256i sxLanes = _mm256_add_epi32(_mm256_set1_epi32(sx), _mm256_set_epi32(7,6,5,4,3,2,1,0));
+        __m256i inBoundsLo = _mm256_cmpgt_epi32(sxLanes, _mm256_set1_epi32(-1)); // sx+lane >= 0
+        __m256i inBoundsHi = _mm256_cmpgt_epi32(_mm256_set1_epi32((int)rW), sxLanes); // sx+lane < rW
+        __m256i inBounds = _mm256_and_si256(inBoundsLo, inBoundsHi);
+
+        __m256i sampleValid = _mm256_andnot_si256(_mm256_cmpeq_epi32(sampleZ, zMinV), _mm256_set1_epi32(-1));
+        __m256i valid = _mm256_and_si256(_mm256_andnot_si256(isSky, sampleValid), inBounds);
 
         totalSamples = _mm256_add_epi32(totalSamples, _mm256_and_si256(valid, _mm256_set1_epi32(1)));
 
@@ -108,7 +116,7 @@ inline void applySSAO(float radius = 10.0f, float strength = 0.5f) {
       int closerCount = 0;
       int totalSamples = 0;
       float totalWeight = 0.0f;
-      int thresh = (int)(fabsf((float)centerZ) * 0.01f);
+      int thresh = (int)(fabsf((float)centerZ) * 0.002f);
 
       for (int s = 0; s < nOffsets; ++s) {
         int sx = (int)x + offsets[s][0];
